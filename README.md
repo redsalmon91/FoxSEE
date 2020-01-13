@@ -1,5 +1,5 @@
-# FoxSEE Chess Engine
-A tiny yet strong chess engine written in Rust with ~ 3500 lines of code.  
+# FoxSEE Chess Engine 🦊
+A tiny yet strong chess engine written in Rust!  
 
 **Current Version**  
 0.1.8
@@ -35,8 +35,11 @@ The following are inspired by the 0x88 bit-mask:
 - Transposition Table is not used in this version because all PRNG implementation I have tried lead to some key collisions and fail a good % of tests that I have prepared. I need to find a better way to do trail-error when generating zobrist keys. Hopefully it will be added in the `0.2.x` versions.
 - LMR & Futility Pruning are not used. I am not a big fan of those aggressive forward-pruning techniques; I believe the same performance gain can be achieved if the move ordering is good.
 
+## How to build
+Run `cargo build --release`
+
 ## References
-- CPW (https://www.chessprogramming.org/Main_Page)
+- CPW (https://www.chessprogramming.org)
 
 ## Tools used in Testing
 - Lichess FEN Editor (https://lichess.org/editor)
