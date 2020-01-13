@@ -4,7 +4,7 @@ A tiny yet strong chess engine written in Rust!
 **Current Version**  
 0.1.8
 
-## Classical Features
+## Main Features
 
 - 0x88 Board Representation
 - Minimax Search with Alpha-Beta Pruning
