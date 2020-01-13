@@ -622,14 +622,14 @@ mod tests {
 
     #[test]
     fn test_search_puzzle_3() {
-        let mut state = State::new("5r1k/6pp/1n2Q3/4p3/8/7P/PP4PK/R1B1q3 b - - 0 1");
+        let mut state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1");
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 15500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("h7"));
-        assert_eq!(to, util::map_sqr_notation_to_index("h6"));
+        assert_eq!(from, util::map_sqr_notation_to_index("e8"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e4"));
     }
 
     #[test]
