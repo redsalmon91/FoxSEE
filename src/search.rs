@@ -147,7 +147,7 @@ impl SearchEngine {
 
         let in_check = self.mov_generator.is_in_check(state);
 
-        if in_check && depth_extend_count * 2 < ply {
+        if in_check && (ply < 2 || depth_extend_count * 2 < ply) {
             depth += 1;
             depth_extend_count += 1;
         }
