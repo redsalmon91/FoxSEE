@@ -299,9 +299,7 @@ impl SearchEngine {
         if score * player_sign >= beta * player_sign {
             if !is_capture && !depth_reduced {
                 let (refutation_score, refutation_mov) = self.refutation_table[ply as usize];
-                if refutation_mov == 0 {
-                    self.refutation_table[ply as usize] = (score, mov);
-                } else if score * player_sign > refutation_score * player_sign {
+                if refutation_mov == 0 || score * player_sign > refutation_score * player_sign {
                     self.refutation_table[ply as usize] = (score, mov);
                 }
             }
@@ -581,7 +579,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(-35, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(15, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
