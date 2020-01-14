@@ -33,7 +33,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
     let mut cmd_seq: Vec<&str> = uci_cmd.split(' ').collect();
     match cmd_seq[0] {
         "uci" => {
-            println!("id name FoxSEE 0.1.8");
+            println!("id name FoxSEE 0.1.9");
             println!("id author Zixiao Han");
             println!("uciok");
             io::stdout().flush().ok();
