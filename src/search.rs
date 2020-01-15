@@ -156,7 +156,7 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply, seldepth)
         }
 
-        if !in_check && (!depth_reduced || depth_extend_count > 1) && depth >= NULL_MOV_MIN_DEPTH {
+        if ply > 0 && !in_check && (!depth_reduced || depth_extend_count > 1) && depth >= NULL_MOV_MIN_DEPTH {
             let mut next_pv_table = [0; PV_TRACK_LENGTH];
 
             state.do_null_mov();
