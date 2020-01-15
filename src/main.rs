@@ -14,7 +14,6 @@ use uci::{UciProcessResult, Rawmov};
 use std::io::{self, prelude::*};
 
 const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const OVERHEAD_TIME: u128 = 50;
 
 fn main() {
     let mut search_engine = SearchEngine::new();
@@ -77,7 +76,7 @@ fn main() {
                 }
             },
             UciProcessResult::StartSearchWithTime(time_millis) => {
-                let best_mov = search_engine.search(&mut state, time_millis - OVERHEAD_TIME);
+                let best_mov = search_engine.search(&mut state, time_millis);
                 println!("bestmove {}", util::format_mov(best_mov));
                 io::stdout().flush().ok();
 
@@ -91,7 +90,7 @@ fn main() {
                     time_info.black_millis
                 };
 
-                let best_mov = search_engine.search(&mut state, time_millis - OVERHEAD_TIME);
+                let best_mov = search_engine.search(&mut state, time_millis);
                 println!("bestmove {}", util::format_mov(best_mov));
                 io::stdout().flush().ok();
 

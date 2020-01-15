@@ -4,7 +4,8 @@ use crate::{
 
 use std::io::{self, prelude::*};
 
-const DEFAULT_MOVS_TO_GO: u128 = 20;
+const DEFAULT_MOVS_TO_GO: u128 = 30;
+const OVERHEAD_TIME: u128 = 10;
 
 pub struct Rawmov {
     pub from: usize,
@@ -33,7 +34,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
     let mut cmd_seq: Vec<&str> = uci_cmd.split(' ').collect();
     match cmd_seq[0] {
         "uci" => {
-            println!("id name FoxSEE 0.1.9");
+            println!("id name FoxSEE 0.2.0");
             println!("id author Zixiao Han");
             println!("uciok");
             io::stdout().flush().ok();
@@ -84,17 +85,29 @@ fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciProcessResult {
 fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
     assert!(go_cmd_seq[1] == "wtime");
     let wtime = go_cmd_seq[2].parse::<u128>().unwrap();
-        
+
     assert!(go_cmd_seq[3] == "btime");
     let btime = go_cmd_seq[4].parse::<u128>().unwrap();
 
-    let movs_to_go = if go_cmd_seq[5] == "movestogo" {
+    let movs_to_go = if go_cmd_seq.len() > 5 && go_cmd_seq[5] == "movestogo" {
         go_cmd_seq[6].parse::<u128>().unwrap()
-    } else if go_cmd_seq[9] == "movestogo" {
+    } else if go_cmd_seq.len() > 9 && go_cmd_seq[9] == "movestogo" {
         go_cmd_seq[10].parse::<u128>().unwrap()
     } else {
         eprintln!("no movestogo specified, use default");
         DEFAULT_MOVS_TO_GO
+    };
+
+    let wtime = if wtime > OVERHEAD_TIME {
+        wtime - OVERHEAD_TIME
+    } else {
+        wtime
+    };
+
+    let btime = if btime > OVERHEAD_TIME {
+        btime - OVERHEAD_TIME
+    } else {
+        btime
     };
 
     UciProcessResult::StartSearchWithComplextTimeControl(TimeInfo{
