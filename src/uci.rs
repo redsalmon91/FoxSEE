@@ -4,7 +4,7 @@ use crate::{
 
 use std::io::{self, prelude::*};
 
-const DEFAULT_MOVS_TO_GO: u128 = 30;
+const DEFAULT_MOVS_TO_GO: u128 = 20;
 const OVERHEAD_TIME: u128 = 10;
 
 pub struct Rawmov {
@@ -89,14 +89,35 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
     assert!(go_cmd_seq[3] == "btime");
     let btime = go_cmd_seq[4].parse::<u128>().unwrap();
 
-    let movs_to_go = if go_cmd_seq.len() > 5 && go_cmd_seq[5] == "movestogo" {
-        go_cmd_seq[6].parse::<u128>().unwrap()
+    let movs_to_go;
+    let mut winc = 0;
+    let mut binc = 0;
+
+    if go_cmd_seq.len() > 5 && go_cmd_seq[5] == "movestogo" {
+        movs_to_go = go_cmd_seq[6].parse::<u128>().unwrap();
     } else if go_cmd_seq.len() > 9 && go_cmd_seq[9] == "movestogo" {
-        go_cmd_seq[10].parse::<u128>().unwrap()
+        if go_cmd_seq[5] == "winc" {
+            winc = go_cmd_seq[6].parse::<u128>().unwrap();
+        }
+
+        if go_cmd_seq[7] == "binc" {
+            binc = go_cmd_seq[8].parse::<u128>().unwrap()
+        }
+
+        movs_to_go = go_cmd_seq[10].parse::<u128>().unwrap();
     } else {
-        eprintln!("no movestogo specified, use default");
-        DEFAULT_MOVS_TO_GO
+        if go_cmd_seq[5] == "winc" {
+            winc = go_cmd_seq[6].parse::<u128>().unwrap();
+        }
+
+        if go_cmd_seq[7] == "binc" {
+            binc = go_cmd_seq[8].parse::<u128>().unwrap()
+        }
+        movs_to_go = DEFAULT_MOVS_TO_GO;
     };
+
+    let wtime = wtime + movs_to_go * winc;
+    let btime = btime + movs_to_go * binc;
 
     let wtime = if wtime > OVERHEAD_TIME {
         wtime - OVERHEAD_TIME
