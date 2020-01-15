@@ -6,6 +6,7 @@ use crate::{
 pub static TERM_VAL: i32 = 10000;
 pub static ADVANCE_VAL: i32 = 200;
 pub static EQUAL_EXCHANGE_VAL: i32 = 10;
+pub static LOSING_EXCHANGE_VAL: i32 = -50;
 pub static K_VAL: i32 = 20000;
 
 static Q_VAL: i32 = 950;
