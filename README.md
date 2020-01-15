@@ -22,10 +22,9 @@ A tiny yet strong chess engine written in Rust!
 
 ## Other Features
 
-- Always search captures before non-capture moves.
-- Generate & search caslting moves at the very end.
-- Extend search depth when in-check: I have tried to add a "backpropagation score" to each in-check ply, but it performed worse than doing depth extension. I have also limited the extension to `< ply / 2` to avoid search explosion. In test, this helps to quickly identify a mate sequence.
-- Extend search depth when SEE score is larger than a certain threshold: This feature is not stable yet; I still need to figure out the best parameters (the "threshold") to use.
+- Always search captures before non-capture moves, caslting moves are generated & searched at the very end.
+- Extend search depth when in-check. I have also limited the extension to `< ply / 2` to avoid search explosion.
+- Reduce search depth on branches that are obviously not worth considering (ex. SEE score < threshold)
 - I use `-non_captured_move_count` when one side has `score > advantage score` to encourage exchange when one side is in advantage & to avoid repeated moves.
 
 The following are inspired by the 0x88 bit-mask:
