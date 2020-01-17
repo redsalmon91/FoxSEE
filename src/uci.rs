@@ -116,8 +116,8 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
         movs_to_go = DEFAULT_MOVS_TO_GO;
     };
 
-    let wtime = wtime + movs_to_go * winc;
-    let btime = btime + movs_to_go * binc;
+    let wtime = ((wtime + movs_to_go * winc) / movs_to_go).min(wtime);
+    let btime = ((btime + movs_to_go * binc) / movs_to_go).min(btime);
 
     let wtime = if wtime > OVERHEAD_TIME {
         wtime - OVERHEAD_TIME
@@ -132,8 +132,8 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
     };
 
     UciProcessResult::StartSearchWithComplextTimeControl(TimeInfo{
-        white_millis: wtime / movs_to_go,
-        black_millis: btime / movs_to_go,
+        white_millis: wtime,
+        black_millis: btime,
     })
 }
 

@@ -317,6 +317,10 @@ impl SearchEngine {
 
     #[inline]
     fn search_mov(&mut self, state: &mut State, on_pv: bool, pv_table: &mut [u32], mov: u32, is_capture: bool, alpha: i32, beta: i32, depth: u8, depth_reduced: bool, depth_extend_count: u8, ply: u8, player_sign: i32, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
+        if self.abort {
+            return Beta(0)
+        }
+
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
         if is_capture {
@@ -401,6 +405,10 @@ impl SearchEngine {
     }
 
     pub fn q_search(&self, state: &mut State, mut alpha: i32, beta: i32, ply: u8, seldepth: &mut u8) -> i32 {
+        if self.abort {
+            return 0
+        }
+
         if ply > *seldepth {
             *seldepth = ply;
         }
