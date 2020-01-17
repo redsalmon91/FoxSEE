@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub static TERM_VAL: i32 = 10000;
-pub static ADVANCE_VAL: i32 = 200;
+pub static ADVANCE_VAL: i32 = 150;
 pub static EQUAL_EXCHANGE_VAL: i32 = 10;
 pub static LOSING_EXCHANGE_VAL: i32 = -50;
 pub static K_VAL: i32 = 20000;
@@ -15,11 +15,10 @@ static B_VAL: i32 = 330;
 static N_VAL: i32 = 320;
 static P_VAL: i32 = 100;
 
-static DOUBLE_BISHOP_VAL: i32 = 20;
-static ENDGAME_PAWN_EXTRA_VAL: i32 = 50;
+static ENDGAME_PAWN_EXTRA_VAL: i32 = 30;
 static DUP_PAWN_PEN: i32 = 30;
 static KING_SAFETY: i32 = 50;
-static DRAW_PEN: i32 = 200;
+static DRAW_PEN: i32 = 50;
 
 static WK_SQR_VAL: [i32; def::BOARD_SIZE] = [
      20, 30, 10,  0,  0, 10, 30, 20, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -228,8 +227,6 @@ pub fn eval_state(state: &State) -> i32 {
     let mut bp_count = 0;
     let mut wq_count = 0;
     let mut bq_count = 0;
-    let mut wb_count = 0;
-    let mut bb_count = 0;
     let mut w_piece_count = 0;
     let mut b_piece_count = 0;
     let mut wk_safe = true;
@@ -289,13 +286,11 @@ pub fn eval_state(state: &State) -> i32 {
             def::WB => {
                 base_score += B_VAL;
                 midgame_score += WB_SQR_VAL[index];
-                wb_count += 1;
                 w_piece_count += 1;
             },
             def::BB => {
                 base_score -= B_VAL;
                 midgame_score -= BB_SQR_VAL[index];
-                bb_count += 1;
                 b_piece_count += 1;
             },
 
@@ -347,17 +342,9 @@ pub fn eval_state(state: &State) -> i32 {
         index += 1;
     }
 
-    if (wq_count == 0 || bq_count == 0 || w_piece_count == 1 || b_piece_count == 1) && (w_piece_count < 4 || b_piece_count < 4) {
+    if (wq_count == 0 || bq_count == 0 || w_piece_count == 1 || b_piece_count == 1) && (w_piece_count < 3 || b_piece_count < 3) {
         if wp_count < 5 || bp_count < 5 {
             base_score += wp_count * ENDGAME_PAWN_EXTRA_VAL - bp_count * ENDGAME_PAWN_EXTRA_VAL;
-        }
-
-        if wb_count > 1 {
-            endgame_score += DOUBLE_BISHOP_VAL;
-        }
-
-        if bb_count > 1 {
-            endgame_score -= DOUBLE_BISHOP_VAL;
         }
 
         if base_score > ADVANCE_VAL && wp_count == 0 {
