@@ -29,8 +29,9 @@ use std::time::Instant;
 
 pub struct SearchEngine {
     mov_generator: MoveGenerator,
-    history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
-    refutation_table: [(i32, u32); REFUTATION_TABLE_SIZE],
+    w_history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
+    b_history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
+    refutation_table: [((i32, u32), (i32, u32)); REFUTATION_TABLE_SIZE],
     master_pv_table: Vec<u32>,
     time_tracker: Instant,
 
@@ -42,8 +43,9 @@ impl SearchEngine {
     pub fn new() -> SearchEngine {
         SearchEngine {
             mov_generator: MoveGenerator::new(),
-            history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
-            refutation_table: [(0, 0); REFUTATION_TABLE_SIZE],
+            w_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
+            b_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
+            refutation_table: [((0, 0), (0, 0)); REFUTATION_TABLE_SIZE],
             master_pv_table: Vec::new(),
             time_tracker: Instant::now(),
 
@@ -56,8 +58,6 @@ impl SearchEngine {
         self.time_tracker = Instant::now();
         self.max_time_millis = max_time_millis;
         self.abort = false;
-        self.history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
-        self.refutation_table = [(0, 0); REFUTATION_TABLE_SIZE];
         self.master_pv_table = Vec::new();
 
         let player_sign = if state.player == def::PLAYER_W {
@@ -70,6 +70,7 @@ impl SearchEngine {
         let mut alpha = -beta;
 
         let mut depth = 1;
+        let mut should_cleanup_history = false;
         let mut best_mov = 0;
         let mut previous_node_count = 1;
         let mut time_after_previous_iter = self.time_tracker.elapsed().as_millis();
@@ -77,6 +78,13 @@ impl SearchEngine {
         loop {
             let mut node_count = 0;
             let mut seldepth = 0;
+
+            if should_cleanup_history {
+                self.w_history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
+                self.b_history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
+                self.refutation_table = [((0, 0), (0, 0)); REFUTATION_TABLE_SIZE];
+                should_cleanup_history = false;
+            }
 
             let mut pv_table = [0; PV_TRACK_LENGTH];
             let score = self.ab_search(state, true, &mut pv_table, alpha, beta, depth, false, 0, 0, &mut node_count, &mut seldepth);
@@ -87,11 +95,13 @@ impl SearchEngine {
 
             if score * player_sign <= alpha * player_sign {
                 alpha = -eval::K_VAL * player_sign;
+                should_cleanup_history = true;
                 continue
             }
 
             if score * player_sign >= beta * player_sign {
                 beta = eval::K_VAL * player_sign;
+                should_cleanup_history = true;
                 continue
             }
     
@@ -154,13 +164,20 @@ impl SearchEngine {
 
         let in_check = self.mov_generator.is_in_check(state);
 
-        if in_check && (ply < 2 || depth_extend_count * 2 < ply) {
+        if in_check && (ply < 2 || depth_extend_count * 2 <= ply) {
             depth += 1;
             depth_extend_count += 1;
         }
 
         if depth == 0 {
-            return self.q_search(state, alpha, beta, ply, seldepth)
+            let mut score = self.q_search(state, alpha, beta, ply, seldepth);
+            if score > eval::ADVANCE_VAL {
+                score -= state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
+            } else if score < -eval::ADVANCE_VAL {
+                score += state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
+            }
+
+            return score
         }
 
         let mut pv_mov = 0;
@@ -216,13 +233,7 @@ impl SearchEngine {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        for (score, cap) in scored_capture_list {
-            let (depth, depth_reduced) = if score < eval::LOSING_EXCHANGE_VAL && !on_pv && !in_check && depth >= MIN_REDUCTION_DEPTH {
-                (depth -1, true)
-            } else {
-                (depth, depth_reduced)
-            };
-
+        for (_score, cap) in scored_capture_list {
             match self.search_mov(state, false, pv_table, cap, true, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
                 Beta(score) => return score,
                 Alpha(score) => {
@@ -234,10 +245,18 @@ impl SearchEngine {
 
         let mut refutation_mov = 0;
         if ply > 0 && !depth_reduced {
-            let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize];
-            refutation_mov = saved_refutation_mov;
+            let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize].0;
 
-            if refutation_mov != 0 && non_cap_list.contains(&refutation_mov) {
+            if saved_refutation_mov != 0 && non_cap_list.contains(&saved_refutation_mov) {
+                refutation_mov = saved_refutation_mov;
+            } else {
+                let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize].1;
+                if saved_refutation_mov != 0 && non_cap_list.contains(&saved_refutation_mov) {
+                    refutation_mov = saved_refutation_mov;
+                }
+            }
+
+            if refutation_mov != 0 {
                 match self.search_mov(state, false, pv_table, refutation_mov, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
                     Beta(score) => return score,
                     Alpha(score) => {
@@ -248,18 +267,20 @@ impl SearchEngine {
             }
         }
 
-        let castle_list = self.mov_generator.gen_castle_mov_list(state);
-        for cas_mov in castle_list {
-            if cas_mov == refutation_mov || cas_mov == pv_mov {
-                continue
-            }
-
-            match self.search_mov(state, false, pv_table, cas_mov, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
-                Beta(score) => return score,
-                Alpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
+        if (player_sign > 0 && (state.cas_rights & 0b1100 != 0)) || (player_sign < 0 && (state.cas_rights & 0b0011 != 0)) {
+            let castle_list = self.mov_generator.gen_castle_mov_list(state);
+            for cas_mov in castle_list {
+                if cas_mov == refutation_mov || cas_mov == pv_mov {
+                    continue
+                }
+    
+                match self.search_mov(state, false, pv_table, cas_mov, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                    Beta(score) => return score,
+                    Alpha(score) => {
+                        alpha = score;
+                    },
+                    Noop => (),
+                }
             }
         }
 
@@ -271,12 +292,17 @@ impl SearchEngine {
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(non_cap);
-            if promo != 0 {
+            if promo != 0 && def::is_q(promo) {
                 scored_non_cap_list.push((MAX_HISTORY_SCORE, non_cap));
                 continue
             }
 
-            let history_score = self.history_table[from][to];
+            let history_score = if player_sign > 0 {
+                self.w_history_table[from][to]
+            } else {
+                self.b_history_table[from][to]
+            };
+
             scored_non_cap_list.push((history_score, non_cap));
         }
 
@@ -284,19 +310,34 @@ impl SearchEngine {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        for (score, non_cap) in scored_non_cap_list {
-            let (depth, depth_reduced) = if score == 0 && !in_check && !on_pv && depth >= MIN_REDUCTION_DEPTH {
-                (depth -1, true)
-            } else {
-                (depth, depth_reduced)
-            };
+        for (_score, non_cap) in scored_non_cap_list {
+            if !in_check && !on_pv && depth >= MIN_REDUCTION_DEPTH {
+                let depth_extend_count = if depth_extend_count > 0 {
+                    depth_extend_count - 1
+                } else {
+                    depth_extend_count
+                };
 
-            match self.search_mov(state, false, pv_table, non_cap, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
-                Beta(score) => return score,
-                Alpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
+                match self.search_mov(state, false, pv_table, non_cap, false, alpha, alpha + player_sign, depth - 1, true, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                    Noop => (),
+                    _ => {
+                        match self.search_mov(state, false, pv_table, non_cap, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                            Beta(score) => return score,
+                            Alpha(score) => {
+                                alpha = score;
+                            },
+                            Noop => (),
+                        }
+                    }
+                }
+            } else {
+                match self.search_mov(state, false, pv_table, non_cap, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                    Beta(score) => return score,
+                    Alpha(score) => {
+                        alpha = score;
+                    },
+                    Noop => (),
+                }
             }
         }
 
@@ -340,25 +381,33 @@ impl SearchEngine {
 
         if score * player_sign >= beta * player_sign {
             if !is_capture && !depth_reduced {
-                let (refutation_score, refutation_mov) = self.refutation_table[ply as usize];
-                if refutation_mov == 0 || score * player_sign > refutation_score * player_sign {
-                    self.refutation_table[ply as usize] = (score, mov);
-                }
+                self.refutation_table[ply as usize].1 = self.refutation_table[ply as usize].0;
+                self.refutation_table[ply as usize].0 = (score, mov);
             }
 
             if !is_capture {
-                self.history_table[from][to] = self.history_table[from][to] + history_improvement * history_improvement;
+                if player_sign > 0 {
+                    self.w_history_table[from][to] = self.w_history_table[from][to] + history_improvement * history_improvement;
+                } else {
+                    self.b_history_table[from][to] = self.b_history_table[from][to] + history_improvement * history_improvement;
+                }
             }
 
             return Beta(score)
         }
 
         if score * player_sign > alpha * player_sign {
-            pv_table[0] = mov;
-            pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
+            if !depth_reduced {
+                pv_table[0] = mov;
+                pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
+            }
 
             if !is_capture {
-                self.history_table[from][to] = self.history_table[from][to] + history_improvement;
+                if player_sign > 0 {
+                    self.w_history_table[from][to] = self.w_history_table[from][to] + history_improvement;
+                } else {
+                    self.b_history_table[from][to] = self.b_history_table[from][to] + history_improvement;
+                }
             }
 
             return Alpha(score)
@@ -419,13 +468,7 @@ impl SearchEngine {
             -1
         };
 
-        let mut score = eval::eval_state(state);
-
-        if score > eval::ADVANCE_VAL {
-            score -= state.non_cap_mov_count.min(50) as i32;
-        } else if score < -eval::ADVANCE_VAL {
-            score += state.non_cap_mov_count.min(50) as i32;
-        }
+        let score = eval::eval_state(state);
 
         if score * player_sign >= beta * player_sign {
             return score
@@ -571,7 +614,7 @@ mod tests {
         let state = State::new("4q1kr/ppn1rp1p/n1p1PB2/5P2/2B1Q2P/2N3p1/PPP1b1P1/4R2K b - - 1 1");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(120, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
+        assert_eq!(145, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
         assert_eq!(-100, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BP));
         assert_eq!(300, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BR));
     }
@@ -581,9 +624,9 @@ mod tests {
         let state = State::new("r5kr/1b1pR1p1/ppq1N2p/5P1n/3Q4/B6B/P5PP/5RK1 w - - 1 1");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(-530, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
+        assert_eq!(-505, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WN));
-        assert_eq!(-80, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WR));
+        assert_eq!(-55, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WR));
     }
 
     #[test]
@@ -592,8 +635,8 @@ mod tests {
         let search_engine = SearchEngine::new();
 
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WN));
-        assert_eq!(90, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WB));
-        assert_eq!(-19580, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
+        assert_eq!(95, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WB));
+        assert_eq!(-19555, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
     }
 
     #[test]
@@ -601,7 +644,7 @@ mod tests {
         let state = State::new("r4kn1/p2bprb1/Bp1p1ppP/2pP4/1PP1Pn2/PRNB2K1/2QN1PPq/5R2 w - - 0 1");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(-19680, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
+        assert_eq!(-19655, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
     }
 
     #[test]
@@ -617,7 +660,7 @@ mod tests {
         let mut state = State::new("r5kr/1b1pR1p1/p1q1N2p/5P1n/3Q4/B7/P5PP/5RK1 w - - 1 1");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(70, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(85, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -625,7 +668,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(15, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(0, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
@@ -641,7 +684,7 @@ mod tests {
         let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(-985, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-980, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -670,14 +713,14 @@ mod tests {
 
     #[test]
     fn test_search_puzzle_3() {
-        let mut state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1");
+        let mut state = State::new("8/1k3ppp/8/5PPP/8/8/1K6/8 w - - 9 83");
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 15500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("e8"));
-        assert_eq!(to, util::map_sqr_notation_to_index("e4"));
+        assert_eq!(from, util::map_sqr_notation_to_index("g5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("g6"));
     }
 
     #[test]
@@ -709,7 +752,7 @@ mod tests {
         let mut state = State::new("r5rk/2p1Nppp/3p3P/pp2p1P1/4P3/2qnPQK1/8/R6R w - - 1 0");
         let mut search_engine = SearchEngine::new();
 
-        let best_mov = search_engine.search(&mut state, 10000);
+        let best_mov = search_engine.search(&mut state, 5500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("h6"));
@@ -766,25 +809,13 @@ mod tests {
 
     #[test]
     fn test_search_endgame_2() {
-        let mut state = State::new("7r/8/7P/4k3/4B3/4K2R/8/8 w - - 7 76");
+        let mut state = State::new("5rk1/2PQpppp/5b2/p7/8/4P1P1/2q2P1P/3R2K1 w - - 0 1");
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("h3"));
-        assert_eq!(to, util::map_sqr_notation_to_index("h5"));
-    }
-
-    #[test]
-    fn test_search_endgame_3() {
-        let mut state = State::new("8/1K6/8/3k4/8/8/5p2/8 b - - 9 83");
-        let mut search_engine = SearchEngine::new();
-
-        let best_mov = search_engine.search(&mut state, 5500);
-
-        let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("f2"));
-        assert_eq!(to, util::map_sqr_notation_to_index("f1"));
+        assert_eq!(from, util::map_sqr_notation_to_index("d7"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d8"));
     }
 }

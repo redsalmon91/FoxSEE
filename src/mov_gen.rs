@@ -208,42 +208,46 @@ impl MoveGenerator {
                                 }
                             }
                         }
-    
-                        let take_index = from_index - 15;
-                        if def::is_index_valid(take_index) {
-                            let take = squares[take_index];
-                            if take != 0 && !def::on_same_side(player, take) {
-                                if take_index < 8 {
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
-                                } else {
-                                    add_cap(from_index, take_index, def::MOV_REG, 0);
+
+                        if from_index >= 15 {
+                            let take_index = from_index - 15;
+                            if def::is_index_valid(take_index) {
+                                let take = squares[take_index];
+                                if take != 0 && !def::on_same_side(player, take) {
+                                    if take_index < 8 {
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
+                                    } else {
+                                        add_cap(from_index, take_index, def::MOV_REG, 0);
+                                    }
                                 }
-                            }
-    
-                            if take_index == state.enp_square && take_index != 0 {
-                                add_cap(from_index, take_index, def::MOV_ENP, 0);
+
+                                if take_index == state.enp_square && take_index != 0 {
+                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
+                                }
                             }
                         }
-    
-                        let take_index = from_index - 17;
-                        if def::is_index_valid(take_index) {
-                            let take = squares[take_index];
-                            if take != 0 && !def::on_same_side(player, take) {
-                                if take_index < 8 {
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
-                                    add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
-                                } else {
-                                    add_cap(from_index, take_index, def::MOV_REG, 0);
-                                }
-                            }
 
-                            if take_index == state.enp_square && take_index != 0 {
-                                add_cap(from_index, take_index, def::MOV_ENP, 0);
+                        if from_index >= 17 {
+                            let take_index = from_index - 17;
+                            if def::is_index_valid(take_index) {
+                                let take = squares[take_index];
+                                if take != 0 && !def::on_same_side(player, take) {
+                                    if take_index < 8 {
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
+                                    } else {
+                                        add_cap(from_index, take_index, def::MOV_REG, 0);
+                                    }
+                                }
+
+                                if take_index == state.enp_square && take_index != 0 {
+                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
+                                }
                             }
                         }
                     }

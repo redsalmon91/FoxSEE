@@ -25,7 +25,7 @@ pub struct State {
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
-    pub history_mov_stack: Vec<(usize, usize, u8, u8)>,
+    pub history_mov_stack: Vec<u32>,
     pub non_cap_mov_count_stack: Vec<u16>,
     pub wk_index_stack: Vec<usize>,
     pub bk_index_stack: Vec<usize>,
@@ -69,13 +69,13 @@ impl State {
 
         let history_len = self.history_mov_stack.len();
 
-        let (from, to, mov_piece, taken_piece) = self.history_mov_stack[history_len-1];
-        let (last_from, last_to, last_mov_piece, last_taken_piece) = self.history_mov_stack[history_len-LAST_DUP_MOV_DISTANCE];
-        if from == last_from && to == last_to && mov_piece == last_mov_piece && taken_piece == last_taken_piece {
+        let last_mov = self.history_mov_stack[history_len-1];
+        let last_opponent_mov = self.history_mov_stack[history_len-LAST_DUP_MOV_DISTANCE];
+        if last_mov == last_opponent_mov {
             
-            let (from, to, mov_piece, taken_piece) = self.history_mov_stack[history_len-2];
-            let (last_from, last_to, last_mov_piece, last_taken_piece) = self.history_mov_stack[history_len-LAST_DUP_MOV_DISTANCE-1];
-            if from == last_from && to == last_to && mov_piece == last_mov_piece && taken_piece == last_taken_piece {
+            let last_mov = self.history_mov_stack[history_len-2];
+            let last_opponent_mov = self.history_mov_stack[history_len-LAST_DUP_MOV_DISTANCE-1];
+            if last_mov == last_opponent_mov {
                 return true
             }
         }
@@ -97,7 +97,7 @@ impl State {
     pub fn do_mov(&mut self, from: usize, to: usize, mov_type: u8, promo: u8) {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
-        self.history_mov_stack.push((from, to, self.squares[from], self.squares[to]));
+        self.history_mov_stack.push(util::encode_history_mov(from, to, self.squares[from], self.squares[to]));
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.wk_index_stack.push(self.wk_index);
         self.bk_index_stack.push(self.bk_index);
