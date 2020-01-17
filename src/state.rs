@@ -140,7 +140,11 @@ impl State {
         let taken_piece = self.squares[to];
 
         if taken_piece == 0 {
-            self.non_cap_mov_count += 1;
+            if def::is_p(moving_piece) {
+                self.non_cap_mov_count = 0;
+            } else {
+                self.non_cap_mov_count += 1;
+            }
         } else {
             self.non_cap_mov_count = 0;
         }
