@@ -2,7 +2,7 @@
 A tiny yet strong chess engine written in Rust!  
 
 **Current Version**  
-0.2.1
+0.2.2
 
 ![alt text](https://travis-ci.org/redsalmon91/FoxSEE.svg?branch=master)
 
