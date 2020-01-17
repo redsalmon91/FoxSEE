@@ -248,6 +248,21 @@ impl SearchEngine {
             }
         }
 
+        let castle_list = self.mov_generator.gen_castle_mov_list(state);
+        for cas_mov in castle_list {
+            if cas_mov == refutation_mov || cas_mov == pv_mov {
+                continue
+            }
+
+            match self.search_mov(state, false, pv_table, cas_mov, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                Beta(score) => return score,
+                Alpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
         let mut scored_non_cap_list = Vec::new();
 
         for non_cap in non_cap_list {
@@ -277,21 +292,6 @@ impl SearchEngine {
             };
 
             match self.search_mov(state, false, pv_table, non_cap, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
-                Beta(score) => return score,
-                Alpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
-        let castle_list = self.mov_generator.gen_castle_mov_list(state);
-        for cas_mov in castle_list {
-            if cas_mov == refutation_mov || cas_mov == pv_mov {
-                continue
-            }
-
-            match self.search_mov(state, false, pv_table, cas_mov, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
                 Beta(score) => return score,
                 Alpha(score) => {
                     alpha = score;
