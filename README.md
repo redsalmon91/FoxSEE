@@ -2,7 +2,7 @@
 A tiny yet strong chess engine written in Rust!  
 
 **Current Version**  
-0.2.0
+0.2.1
 
 ![alt text](https://travis-ci.org/redsalmon91/FoxSEE.svg?branch=master)
 
@@ -26,12 +26,6 @@ A tiny yet strong chess engine written in Rust!
 - Extend search depth when in-check. I have also limited the extension to `< ply / 2` to avoid search explosion.
 - Reduce search depth on branches that are obviously not worth considering (ex. SEE score < threshold)
 - I use `-non_captured_move_count` when one side has `score > advantage score` to encourage exchange when one side is in advantage & to avoid repeated moves.
-
-The following are inspired by the 0x88 bit-mask:
-
-- Bit-based piece type checking.
-- Bit-based piece color checking.
-- Encode all move info into an `u32` integer.
 
 ## Notes
 - The engine is covered with good amount of tests (a good habit makes coding fun). You can run them with `cargo test --release`. 

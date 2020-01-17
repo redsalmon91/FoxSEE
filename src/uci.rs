@@ -1,4 +1,5 @@
 use crate::{
+    def,
     util,
 };
 
@@ -34,8 +35,8 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
     let mut cmd_seq: Vec<&str> = uci_cmd.split(' ').collect();
     match cmd_seq[0] {
         "uci" => {
-            println!("id name FoxSEE 0.2.0");
-            println!("id author Zixiao Han");
+            println!("id name {} {}", def::ENGINE_NAME, def::VERSION);
+            println!("id author {}", def::AUTHOR);
             println!("uciok");
             io::stdout().flush().ok();
             UciProcessResult::Ready
