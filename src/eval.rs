@@ -18,7 +18,7 @@ static P_VAL: i32 = 100;
 static ENDGAME_PAWN_EXTRA_VAL: i32 = 30;
 static DUP_PAWN_PEN: i32 = 30;
 static KING_SAFETY: i32 = 50;
-static DRAW_PEN: i32 = 50;
+static DRAW_PEN: i32 = 100;
 
 static WK_SQR_VAL: [i32; def::BOARD_SIZE] = [
      20, 30, 10,  0,  0, 10, 30, 20, 0,  0,  0,  0,  0,  0,  0,  0,
