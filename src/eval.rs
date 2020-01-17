@@ -5,14 +5,15 @@ use crate::{
 
 pub static TERM_VAL: i32 = 10000;
 pub static ADVANCE_VAL: i32 = 150;
-pub static EQUAL_EXCHANGE_VAL: i32 = 10;
-pub static LOSING_EXCHANGE_VAL: i32 = -50;
+pub static EQUAL_EXCHANGE_VAL: i32 = 5;
+pub static LOSING_EXCHANGE_VAL: i32 = -5;
+pub static MAX_NON_CAP_PEN: u16 = 50;
 pub static K_VAL: i32 = 20000;
 
 static Q_VAL: i32 = 950;
 static R_VAL: i32 = 500;
-static B_VAL: i32 = 330;
-static N_VAL: i32 = 320;
+static B_VAL: i32 = 350;
+static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
 static ENDGAME_PAWN_EXTRA_VAL: i32 = 30;
@@ -21,7 +22,7 @@ static KING_SAFETY: i32 = 50;
 static DRAW_PEN: i32 = 100;
 
 static WK_SQR_VAL: [i32; def::BOARD_SIZE] = [
-     20, 50, 10,  0,  0, 20, 40, 20, 0,  0,  0,  0,  0,  0,  0,  0,
+     20, 30, 10,  0,  0, 20, 30, 10, 0,  0,  0,  0,  0,  0,  0,  0,
      20, 20,  0,  0,  0,  0, 20, 20, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,-20,-20,-20,-20,-20,-20,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -20,-30,-30,-40,-40,-30,-30,-20, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -60,7 +61,7 @@ static WB_SQR_VAL: [i32; def::BOARD_SIZE] = [
     -10,  0, 10, 10, 10, 10,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  5,  5, 10, 10,  5,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5, 10, 10,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
-    -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -50,  0,  0,  0,  0,  0,  0,-50, 0,  0,  0,  0,  0,  0,  0,  0,
     -20,-10,-10,-10,-10,-10,-10,-20,
 ];
 
@@ -81,8 +82,8 @@ static WP_SQR_VAL: [i32; def::BOARD_SIZE] = [
      5, -5,-10,  0,  0,-10, -5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
      5,  5, 10, 25, 25, 10,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
-    10, 10, 20, 30, 30, 20, 10, 10,  0,  0,  0,  0,  0,  0,  0,  0,
-    50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0,
+    10, 20, 30, 30, 30, 30, 20, 10,  0,  0,  0,  0,  0,  0,  0,  0,
+    30, 50, 50, 50, 50, 50, 50, 30,  0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0
 ];
 
@@ -94,7 +95,7 @@ static BK_SQR_VAL: [i32; def::BOARD_SIZE] = [
     -20,-30,-30,-40,-40,-30,-30,-20,  0,  0,  0,  0,  0,  0,  0,  0,
     -10,-20,-20,-20,-20,-20,-20,-10,  0,  0,  0,  0,  0,  0,  0,  0,
      20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0,
-     20, 50, 10,  0,  0, 20, 40, 20
+     10, 30, 20,  0,  0, 10, 30, 20
 ];
 
 static BQ_SQR_VAL: [i32; def::BOARD_SIZE] = [
@@ -121,7 +122,7 @@ static BR_SQR_VAL: [i32; def::BOARD_SIZE] = [
 
 static BB_SQR_VAL: [i32; def::BOARD_SIZE] = [
     -20,-10,-10,-10,-10,-10,-10,-20,  0,  0,  0,  0,  0,  0,  0,  0,
-    -10,  0,  0,  0,  0,  0,  0,-10,  0,  0,  0,  0,  0,  0,  0,  0,
+    -50,  0,  0,  0,  0,  0,  0,-50,  0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5, 10, 10,  5,  0,-10,  0,  0,  0,  0,  0,  0,  0,  0,
     -10,  5,  5, 10, 10,  5,  5,-10,  0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0, 10, 10, 10, 10,  0,-10,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -143,8 +144,8 @@ static BN_SQR_VAL: [i32; def::BOARD_SIZE] = [
 
 static BP_SQR_VAL: [i32; def::BOARD_SIZE] = [
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0,
-    10, 10, 20, 30, 30, 20, 10, 10,  0,  0,  0,  0,  0,  0,  0,  0,
+    30, 50, 50, 50, 50, 50, 50, 30,  0,  0,  0,  0,  0,  0,  0,  0,
+    10, 20, 30, 30, 30, 30, 20, 10,  0,  0,  0,  0,  0,  0,  0,  0,
      5,  5, 10, 25, 25, 10,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
      5, -5,-10,  0,  0,-10, -5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -262,11 +263,13 @@ pub fn eval_state(state: &State) -> i32 {
                 base_score -= P_VAL;
                 midgame_score -= BP_SQR_VAL[index];
 
-                if squares[index - 16] == 0 {
-                    endgame_score -= END_BP_SQR_VAL[index];
-                }else if squares[index - 16] == def::BP {
-                    midgame_score += DUP_PAWN_PEN;
-                    endgame_score += DUP_PAWN_PEN;
+                if index > 15 {
+                    if squares[index - 16] == 0 {
+                        endgame_score -= END_BP_SQR_VAL[index];
+                    } else if squares[index - 16] == def::BP {
+                        midgame_score += DUP_PAWN_PEN;
+                        endgame_score += DUP_PAWN_PEN;
+                    }
                 }
 
                 bp_count += 1;
@@ -379,9 +382,9 @@ mod tests {
     #[test]
     fn test_eval() {
         let state = State::new("4k2r/pbppnppp/1bn2q2/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1");
-        assert_eq!(240, eval_state(&state));
+        assert_eq!(210, eval_state(&state));
 
         let state = State::new("4k2r/pbppnppp/1bn5/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1");
-        assert_eq!(1245, eval_state(&state));
+        assert_eq!(1215, eval_state(&state));
     }
 }
