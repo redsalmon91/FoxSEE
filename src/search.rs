@@ -171,10 +171,13 @@ impl SearchEngine {
 
         if depth == 0 {
             let mut score = self.q_search(state, alpha, beta, ply, seldepth);
-            if score > eval::ADVANCE_VAL {
-                score -= state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
-            } else if score < -eval::ADVANCE_VAL {
-                score += state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
+            
+            if score.abs() < eval::TERM_VAL {
+                if score > eval::ADVANCE_VAL {
+                    score -= state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
+                } else if score < -eval::ADVANCE_VAL {
+                    score += state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
+                }
             }
 
             return score
@@ -318,7 +321,7 @@ impl SearchEngine {
                     depth_extend_count
                 };
 
-                match self.search_mov(state, false, pv_table, non_cap, false, alpha, alpha + player_sign, depth - 1, true, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                match self.search_mov(state, false, pv_table, non_cap, false, alpha, alpha + player_sign, depth - 1, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
                     Noop => (),
                     _ => {
                         match self.search_mov(state, false, pv_table, non_cap, false, alpha, beta, depth, depth_reduced, depth_extend_count, ply, player_sign, node_count, seldepth) {
@@ -471,11 +474,15 @@ impl SearchEngine {
         let score = eval::eval_state(state);
 
         if score * player_sign >= beta * player_sign {
-            return score
+            if !self.mov_generator.is_in_check(state) {
+                return score
+            }
         }
 
         if score * player_sign > alpha * player_sign {
-            alpha = score;
+            if !self.mov_generator.is_in_check(state) {
+                alpha = score;
+            }
         }
 
         let (cap_list, _) = self.mov_generator.gen_reg_mov_list(state, true);
@@ -660,7 +667,7 @@ mod tests {
         let mut state = State::new("r5kr/1b1pR1p1/p1q1N2p/5P1n/3Q4/B7/P5PP/5RK1 w - - 1 1");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(85, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(19996, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -684,7 +691,7 @@ mod tests {
         let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27");
         let search_engine = SearchEngine::new();
 
-        assert_eq!(-980, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-19999, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -767,8 +774,8 @@ mod tests {
         let best_mov = search_engine.search(&mut state, 5500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("e7"));
-        assert_eq!(to, util::map_sqr_notation_to_index("g7"));
+        assert_eq!(from, util::map_sqr_notation_to_index("f5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("f6"));
     }
 
     #[test]
