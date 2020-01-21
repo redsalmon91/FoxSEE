@@ -83,17 +83,6 @@ impl State {
         false
     }
 
-    pub fn do_null_mov(&mut self) {
-        self.enp_sqr_stack.push(self.enp_square);
-        self.enp_square = 0;
-        self.player = def::get_opposite_player(self.player);
-    }
-
-    pub fn undo_null_mov(&mut self) {
-        self.enp_square = self.enp_sqr_stack.pop().unwrap();
-        self.player = def::get_opposite_player(self.player);
-    }
-
     pub fn do_mov(&mut self, from: usize, to: usize, mov_type: u8, promo: u8) {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
