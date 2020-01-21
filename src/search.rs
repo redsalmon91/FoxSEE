@@ -356,6 +356,7 @@ impl SearchEngine {
         if is_capture {
             let captured_piece = state.squares[to];
             if def::is_k(captured_piece) {
+                pv_table[0] = 0;
                 return Beta(player_sign * (eval::K_VAL - ply as i32))
             }
         }
