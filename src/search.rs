@@ -71,6 +71,7 @@ impl SearchEngine {
         let mut alpha = -beta;
 
         let mut depth = 1;
+        let mut acc_depth_count = 0;
         let mut should_cleanup_history = false;
         let mut best_mov = 0;
         let mut previous_node_count = 1;
@@ -120,6 +121,12 @@ impl SearchEngine {
                 score * player_sign, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
 
             depth += 1;
+            acc_depth_count += 1;
+
+            if acc_depth_count >= 3 {
+                acc_depth_count = 0;
+                should_cleanup_history = true;
+            }
 
             alpha = score - player_sign * WINDOW_SIZE;
             beta = score + player_sign * WINDOW_SIZE;
@@ -274,12 +281,7 @@ impl SearchEngine {
         let mut scored_capture_list = Vec::new();
         let squares = state.squares;
 
-        let last_to = if state.history_mov_stack.is_empty() {
-            def::BOARD_SIZE
-        } else {
-            let (_last_from, last_to, _last_moving_piece, _last_captured) = util::decode_u32_mov(*(state.history_mov_stack.last().unwrap()));
-            last_to
-        };
+        let (_last_from, last_to, _last_moving_piece, last_captured) = util::decode_u32_mov(*(state.history_mov_stack.last().unwrap()));
 
         for cap in cap_list {
             if cap == pv_mov {
@@ -288,19 +290,24 @@ impl SearchEngine {
 
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
 
-            let extra_ranking_score = if to == last_to {
+            let reply_score = if last_captured != 0 && to == last_to {
                 eval::TERM_VAL
             } else {
                 0
             };
 
+            if reply_score != 0 {
+                scored_capture_list.push((reply_score, cap));
+                continue
+            }
+
             let exchange_score = eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo);
 
             if exchange_score > eval::EQUAL_EXCHANGE_VAL || depth == 1 {
-                scored_capture_list.push((exchange_score + extra_ranking_score, cap));
+                scored_capture_list.push((exchange_score, cap));
             } else {
                 let see_score = self.see(state, to, squares[from]) * player_sign + eval::val_of(promo);
-                scored_capture_list.push((see_score + extra_ranking_score, cap));
+                scored_capture_list.push((see_score, cap));
             }
         }
 
