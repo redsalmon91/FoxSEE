@@ -21,7 +21,7 @@ pub struct MoveGenerator {
 }
 
 impl MoveGenerator {
-    pub fn new() -> MoveGenerator {
+    pub fn new() -> Self {
         MoveGenerator {
             k_mov_table: mov_tbl::gen_k_mov_table(),
             n_mov_table: mov_tbl::gen_n_mov_table(),
@@ -56,7 +56,7 @@ impl MoveGenerator {
                     mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_WK - 2, def::CAS_SQUARE_WK, def::MOV_CAS, 0));
                 }
             }
-        
+
             if cas_rights & 0b0100 != 0 {
                 if squares[def::CAS_SQUARE_WQ + 2] == def::WK
                 && squares[def::CAS_SQUARE_WQ - 2] == def::WR
@@ -80,7 +80,7 @@ impl MoveGenerator {
                     mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_BK - 2, def::CAS_SQUARE_BK, def::MOV_CAS, 0));
                 }
             }
-        
+
             if cas_rights & 0b0001 != 0 {
                 if squares[def::CAS_SQUARE_BQ + 2] == def::BK
                 && squares[def::CAS_SQUARE_BQ - 2] == def::BR
@@ -97,30 +97,28 @@ impl MoveGenerator {
         mov_list
     }
 
-    pub fn gen_reg_mov_list(&self, state: &State, capture_only: bool) -> (Vec<u32>, Vec<u32>) {
+    pub fn gen_reg_mov_list(&self, state: &State) -> (Vec<u32>, Vec<u32>) {
         let squares = state.squares;
         let player = state.player;
 
         let mut mov_list = Vec::new();
         let mut cap_list = Vec::new();
-    
+
         let mut add_mov = |from: usize, to: usize, tp: u8, promo: u8| {
-            if !capture_only {
-                mov_list.push(util::encode_u32_mov(from, to, tp, promo));
-            }
+            mov_list.push(util::encode_u32_mov(from, to, tp, promo));
         };
-    
+
         let mut add_cap = |from: usize, to: usize, tp: u8, promo: u8| {
             cap_list.push(util::encode_u32_mov(from, to, tp, promo));
         };
 
         let mut from_index = 0;
-    
+
         while from_index < def::BOARD_SIZE {
             if !def::is_index_valid(from_index) {
                 from_index += 8;
             }
-    
+
             let moving_piece = squares[from_index];
 
             if moving_piece == 0 || !def::on_same_side(player, moving_piece) {
@@ -199,7 +197,7 @@ impl MoveGenerator {
                                 add_mov(from_index, to_index, def::MOV_PROMO, def::BN);
                             } else {
                                 add_mov(from_index, to_index, def::MOV_REG, 0);
-    
+
                                 if from_index > 95 {
                                     let to_index = from_index - 32;
                                     if def::is_index_valid(to_index) && squares[to_index] == 0 {
@@ -262,7 +260,7 @@ impl MoveGenerator {
                         add_mov(from_index, to_index, def::MOV_REG, 0);
                         continue
                     }
-    
+
                     if !def::on_same_side(player, taken_piece) {
                         add_cap(from_index, to_index, def::MOV_REG, 0);
                     }
@@ -549,7 +547,7 @@ impl MoveGenerator {
                         add_mov(from_index, to_index, def::MOV_REG, 0);
                         continue
                     }
-    
+
                     if !def::on_same_side(player, taken_piece) {
                         add_cap(from_index, to_index, def::MOV_REG, 0);
                     }
@@ -560,6 +558,406 @@ impl MoveGenerator {
         }
 
         (cap_list, mov_list)
+    }
+
+    pub fn gen_capture_list(&self, state: &State) -> Vec<u32> {
+        let squares = state.squares;
+        let player = state.player;
+
+        let mut cap_list = Vec::new();
+
+        let mut add_cap = |from: usize, to: usize, tp: u8, promo: u8| {
+            cap_list.push(util::encode_u32_mov(from, to, tp, promo));
+        };
+
+        let mut from_index = 0;
+
+        while from_index < def::BOARD_SIZE {
+            if !def::is_index_valid(from_index) {
+                from_index += 8;
+            }
+
+            let moving_piece = squares[from_index];
+
+            if moving_piece == 0 || !def::on_same_side(player, moving_piece) {
+                from_index += 1;
+                continue
+            }
+
+            if def::is_p(moving_piece) {
+                if player == def::PLAYER_W {
+                    let take_index = from_index + 15;
+                    if def::is_index_valid(take_index) {
+                        let take = squares[take_index];
+                        if take != 0 && !def::on_same_side(player, take) {
+                            if take_index > 111 {
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WQ);
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WR);
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WB);
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WN);
+                            } else {
+                                add_cap(from_index, take_index, def::MOV_REG, 0);
+                            }
+                        }
+
+                        if take_index == state.enp_square {
+                            add_cap(from_index, take_index, def::MOV_ENP, 0);
+                        }
+                    }
+
+                    let take_index = from_index + 17;
+                    if def::is_index_valid(take_index) {
+                        let take = squares[take_index];
+                        if take != 0 && !def::on_same_side(player, take) {
+                            if take_index > 111 {
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WQ);
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WR);
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WB);
+                                add_cap(from_index, take_index, def::MOV_PROMO, def::WN);
+                            } else {
+                                add_cap(from_index, take_index, def::MOV_REG, 0);
+                            }
+                        }
+                        if take_index == state.enp_square {
+                            add_cap(from_index, take_index, def::MOV_ENP, 0);
+                        }
+                    }
+                } else {
+                    let to_index = from_index as isize - 16;
+                    if to_index >= 0 {
+                        if from_index >= 15 {
+                            let take_index = from_index - 15;
+                            if def::is_index_valid(take_index) {
+                                let take = squares[take_index];
+                                if take != 0 && !def::on_same_side(player, take) {
+                                    if take_index < 8 {
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
+                                    } else {
+                                        add_cap(from_index, take_index, def::MOV_REG, 0);
+                                    }
+                                }
+
+                                if take_index == state.enp_square && take_index != 0 {
+                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
+                                }
+                            }
+                        }
+
+                        if from_index >= 17 {
+                            let take_index = from_index - 17;
+                            if def::is_index_valid(take_index) {
+                                let take = squares[take_index];
+                                if take != 0 && !def::on_same_side(player, take) {
+                                    if take_index < 8 {
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
+                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
+                                    } else {
+                                        add_cap(from_index, take_index, def::MOV_REG, 0);
+                                    }
+                                }
+
+                                if take_index == state.enp_square && take_index != 0 {
+                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if def::is_n(moving_piece) {
+                let mov_index_list = &self.n_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+                }
+            } else if def::is_b(moving_piece) {
+                let mov_index_list = &self.up_left_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.up_right_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.down_right_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.down_left_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+            } else if def::is_r(moving_piece) {
+                let mov_index_list = &self.up_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.right_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.down_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.left_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+            } else if def::is_q(moving_piece) {
+                let mov_index_list = &self.up_left_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.up_right_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.down_right_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.down_left_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.up_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.right_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.down_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+
+                let mov_index_list = &self.left_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+
+                    break
+                }
+            } else if def::is_k(moving_piece) {
+                let mov_index_list = &self.k_mov_table[from_index];
+                for to_index in mov_index_list {
+                    let to_index = *to_index;
+                    let taken_piece = squares[to_index];
+
+                    if taken_piece == 0 {
+                        continue
+                    }
+
+                    if !def::on_same_side(player, taken_piece) {
+                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    }
+                }
+            }
+
+            from_index += 1;
+        }
+
+        cap_list
     }
 
     pub fn is_in_check(&self, state: &State) -> bool {
@@ -595,7 +993,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_r(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -612,7 +1010,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_r(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -629,7 +1027,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_r(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -646,7 +1044,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_r(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -663,7 +1061,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_b(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -680,7 +1078,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_b(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -697,7 +1095,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_b(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -714,7 +1112,7 @@ impl MoveGenerator {
                 if def::on_same_side(player, taken_piece) {
                     break
                 }
-    
+
                 if def::is_b(taken_piece) || def::is_q(taken_piece) {
                     return true
                 }
@@ -1078,7 +1476,7 @@ mod tests {
     fn gen_reg_movs_test_helper(fen: &str, expected_cap_list: Vec<&str>, expected_non_cap_list: Vec<&str>, debug: bool) {
         let state = State::new(fen);
 
-        let (cap_list, non_cap_list) = MoveGenerator::new().gen_reg_mov_list(&state, false);
+        let (cap_list, non_cap_list) = MoveGenerator::new().gen_reg_mov_list(&state);
 
         if debug {
             println!("Captures:");
@@ -1184,7 +1582,7 @@ mod tests {
             vec!["b7a8q", "b7c8q", "b7a8r", "b7c8r", "b7a8b", "b7c8b", "b7a8n", "b7c8n", "f3e5", "c4f7"],
             vec![
                 "a2a3", "a2a4", "d2d3", "d2d4", "g2g3", "g2g4", "h2h3", "h2h4",
-                "b7b8q", "b7b8r", "b7b8b", "b7b8n", 
+                "b7b8q", "b7b8r", "b7b8b", "b7b8n",
                 "a1b1",
                 "c1b2", "c1a3",
                 "c3b1", "c3a4", "c3b5", "c3d5", "c3e2",

@@ -325,7 +325,7 @@ pub fn eval_state(state: &State) -> i32 {
                 midgame_score += WK_SQR_VAL[index];
                 endgame_score += END_WK_SQR_VAL[index];
 
-                if index > 23 || !def::is_p(squares[index + 16]) {
+                if index > 23 || !def::on_same_side(def::WK, squares[index + 16]) {
                     wk_safe = false;
                 }
             },
@@ -334,7 +334,7 @@ pub fn eval_state(state: &State) -> i32 {
                 midgame_score -= BK_SQR_VAL[index];
                 endgame_score -= END_BK_SQR_VAL[index];
 
-                if index < 96 || !def::is_p(squares[index - 16]) {
+                if index < 96 || !def::on_same_side(def::BK, squares[index - 16]) {
                     bk_safe = false;
                 }
             },
@@ -344,7 +344,12 @@ pub fn eval_state(state: &State) -> i32 {
         index += 1;
     }
 
-    if (wq_count == 0 || bq_count == 0 || w_piece_count == 1 || b_piece_count == 1) && (w_piece_count < 3 || b_piece_count < 3) {
+    let is_endgame =
+        (w_piece_count == 0 || b_piece_count == 0)
+        || (w_piece_count == 1 || b_piece_count == 1)
+        || ((wq_count == 0 && bq_count == 0) && (w_piece_count < 3 || b_piece_count < 3));
+
+    if is_endgame {
         if wp_count < 5 || bp_count < 5 {
             base_score += wp_count * ENDGAME_PAWN_EXTRA_VAL - bp_count * ENDGAME_PAWN_EXTRA_VAL;
         }

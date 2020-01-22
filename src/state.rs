@@ -10,7 +10,6 @@ const FEN_PLAYER_INDEX: usize = 1;
 const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const LAST_DUP_MOV_DISTANCE: usize = 5;
-const MAX_NON_CAP_PLY_COUNT: u16 = 100;
 
 pub struct State {
     pub squares: [u8; def::BOARD_SIZE],
@@ -32,7 +31,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(fen_string: &str) -> State {
+    pub fn new(fen_string: &str) -> Self {
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
         let (squares, wk_index, bk_index) = get_squares_from_fen(fen_segment_list[FEN_SQRS_INDEX]);
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
@@ -59,10 +58,6 @@ impl State {
     }
 
     pub fn is_draw(&self) -> bool {
-        if self.non_cap_mov_count >= MAX_NON_CAP_PLY_COUNT {
-            return true
-        }
-
         if (self.non_cap_mov_count as usize) < LAST_DUP_MOV_DISTANCE + 1 {
             return false
         }
