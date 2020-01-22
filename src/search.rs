@@ -277,8 +277,13 @@ impl SearchEngine {
         let last_to = if state.history_mov_stack.is_empty() {
             def::BOARD_SIZE
         } else {
-            let (_last_from, last_to, _last_moving_piece, _last_captured) = util::decode_u32_mov(*(state.history_mov_stack.last().unwrap()));
-            last_to
+            let (_last_from, last_to, _last_moving_piece, last_captured) = util::decode_u32_mov(*(state.history_mov_stack.last().unwrap()));
+
+            if last_captured != 0 {
+                last_to
+            } else {
+                def::BOARD_SIZE
+            }
         };
 
         for cap in cap_list {
