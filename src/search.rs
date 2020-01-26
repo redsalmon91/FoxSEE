@@ -326,26 +326,24 @@ impl SearchEngine {
         }
 
         let mut refutation_mov = 0;
-        if ply > 0 {
-            let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize].0;
+        let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize].0;
 
+        if saved_refutation_mov != 0 && non_cap_list.contains(&saved_refutation_mov) {
+            refutation_mov = saved_refutation_mov;
+        } else {
+            let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize].1;
             if saved_refutation_mov != 0 && non_cap_list.contains(&saved_refutation_mov) {
                 refutation_mov = saved_refutation_mov;
-            } else {
-                let (_refutation_score, saved_refutation_mov) = self.refutation_table[ply as usize].1;
-                if saved_refutation_mov != 0 && non_cap_list.contains(&saved_refutation_mov) {
-                    refutation_mov = saved_refutation_mov;
-                }
             }
+        }
 
-            if refutation_mov != 0 {
-                match self.search_mov(state, false, pv_table, refutation_mov, false, alpha, beta, depth, depth_extend_count, ply, player_sign, node_count, seldepth) {
-                    Beta(score) => return score,
-                    Alpha(score) => {
-                        alpha = score;
-                    },
-                    Noop => (),
-                }
+        if refutation_mov != 0 {
+            match self.search_mov(state, false, pv_table, refutation_mov, false, alpha, beta, depth, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                Beta(score) => return score,
+                Alpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
             }
         }
 
@@ -426,7 +424,7 @@ impl SearchEngine {
         let signed_score = alpha * player_sign;
 
         if signed_score < -eval::TERM_VAL {
-            if ply > 0 && pv_table[1] == 0 {
+            if pv_table[1] == 0 {
                 pv_table[0] = 0;
             }
 
