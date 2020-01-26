@@ -265,8 +265,10 @@ impl SearchEngine {
         if on_pv && self.master_pv_table.len() > ply as usize {
             pv_mov = self.master_pv_table[ply as usize];
 
+            let (_from, to, _tp, _promo) = util::decode_u32_mov(pv_mov);
+
             if pv_mov != 0 {
-                match self.search_mov(state, false, pv_table, pv_mov, true, alpha, beta, depth, depth_extend_count, ply, player_sign, node_count, seldepth) {
+                match self.search_mov(state, true, pv_table, pv_mov, state.squares[to] != 0, alpha, beta, depth, depth_extend_count, ply, player_sign, node_count, seldepth) {
                     Beta(score) => return score,
                     Alpha(score) => {
                         alpha = score;
@@ -350,7 +352,7 @@ impl SearchEngine {
         if (player_sign > 0 && (state.cas_rights & 0b1100 != 0)) || (player_sign < 0 && (state.cas_rights & 0b0011 != 0)) {
             let castle_list = self.mov_generator.gen_castle_mov_list(state);
             for cas_mov in castle_list {
-                if cas_mov == refutation_mov || cas_mov == pv_mov {
+                if cas_mov == pv_mov || cas_mov == refutation_mov {
                     continue
                 }
 
@@ -367,7 +369,7 @@ impl SearchEngine {
         let mut scored_non_cap_list = Vec::new();
 
         for non_cap in non_cap_list {
-            if non_cap == refutation_mov || non_cap == pv_mov {
+            if non_cap == pv_mov || non_cap == refutation_mov {
                 continue
             }
 
