@@ -325,7 +325,7 @@ pub fn eval_state(state: &State) -> i32 {
                 midgame_score += WK_SQR_VAL[index];
                 endgame_score += END_WK_SQR_VAL[index];
 
-                if index > 23 || !def::on_same_side(def::WK, squares[index + 16]) {
+                if index > 23 || !def::is_p(squares[index + 16]) {
                     wk_safe = false;
                 }
             },
@@ -334,7 +334,7 @@ pub fn eval_state(state: &State) -> i32 {
                 midgame_score -= BK_SQR_VAL[index];
                 endgame_score -= END_BK_SQR_VAL[index];
 
-                if index < 96 || !def::on_same_side(def::BK, squares[index - 16]) {
+                if index < 96 || !def::is_p(squares[index - 16]) {
                     bk_safe = false;
                 }
             },
