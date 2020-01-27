@@ -241,17 +241,7 @@ impl SearchEngine {
         }
 
         if depth == 0 {
-            let mut score = self.q_search(state, alpha, beta, ply, seldepth);
-
-            if score.abs() < eval::TERM_VAL {
-                if score > eval::ADVANCE_VAL {
-                    score -= state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
-                } else if score < -eval::ADVANCE_VAL {
-                    score += state.non_cap_mov_count.min(eval::MAX_NON_CAP_PEN) as i32;
-                }
-            }
-
-            return score
+            return self.q_search(state, alpha, beta, ply, seldepth)
         }
 
         let mut pv_mov = 0;
