@@ -71,7 +71,6 @@ impl SearchEngine {
         let mut alpha = -beta;
 
         let mut depth = 1;
-        let mut acc_depth_count = 0;
         let mut should_cleanup_history = false;
         let mut best_mov = 0;
         let mut previous_node_count = 1;
@@ -121,12 +120,6 @@ impl SearchEngine {
                 score * player_sign, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
 
             depth += 1;
-            acc_depth_count += 1;
-
-            if acc_depth_count >= 3 {
-                acc_depth_count = 0;
-                should_cleanup_history = true;
-            }
 
             alpha = score - player_sign * WINDOW_SIZE;
             beta = score + player_sign * WINDOW_SIZE;
@@ -230,7 +223,7 @@ impl SearchEngine {
             return 0
         }
 
-        if ply > 0 && state.is_draw() {
+        if state.is_draw() {
             return 0
         }
 
@@ -795,7 +788,7 @@ mod tests {
         let mut state = State::new("8/1k3ppp/8/5PPP/8/8/1K6/8 w - - 9 83");
         let mut search_engine = SearchEngine::new();
 
-        let best_mov = search_engine.search(&mut state, 15500);
+        let best_mov = search_engine.search(&mut state, 5500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("g5"));
