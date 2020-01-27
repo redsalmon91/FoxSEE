@@ -18,6 +18,7 @@ static ENDGAME_PAWN_EXTRA_VAL: i32 = 30;
 static DUP_PAWN_PEN: i32 = 30;
 static KING_SAFETY: i32 = 50;
 static DRAW_PEN: i32 = 100;
+static ROOK_SEVENTH_RANK_BONUS: i32 = 30;
 
 static WK_SQR_VAL: [i32; def::BOARD_SIZE] = [
      20, 30, 10,  0,  0, 20, 30, 10, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -299,11 +300,19 @@ pub fn eval_state(state: &State) -> i32 {
                 base_score += R_VAL;
                 midgame_score += WR_SQR_VAL[index];
                 w_piece_count += 1;
+
+                if index >= 96 && index <= 103 {
+                    midgame_score += ROOK_SEVENTH_RANK_BONUS;
+                }
             },
             def::BR => {
                 base_score -= R_VAL;
                 midgame_score -= BR_SQR_VAL[index];
                 b_piece_count += 1;
+
+                if index >= 16 && index <= 23 {
+                    midgame_score -= ROOK_SEVENTH_RANK_BONUS;
+                }
             },
 
             def::WQ => {
