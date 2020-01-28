@@ -7,7 +7,7 @@ A tiny yet strong chess engine written in Rust!
 **Current Version**  
 1.0.1
 
-![alt text](https://travis-ci.org/redsalmon91/FoxSEE.svg?branch=master)
+[![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 
 ## Main Features
 
