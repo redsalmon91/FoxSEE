@@ -19,7 +19,8 @@ A tiny yet strong chess engine written in Rust!
 - Quiescence Search
 - SEE
 - MVV-LVA
-- Piece-square Evaluation Table
+- Piece-square-value Table
+- Zobrist Hashing
 - UCI-compatible
 
 ## Other Features

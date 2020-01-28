@@ -15,6 +15,7 @@ const MAX_HISTORY_SCORE: u64 = u64::MAX;
 const WINDOW_SIZE: i32 = 10;
 const MIN_BRANCHING_FACTOR: u64 = 2;
 const MIN_REDUCTION_DEPTH: u8 = 3;
+const MAX_DRAW_SEARCH_DEPTH: u8 = 32;
 
 pub enum SearchMovResult {
     Beta(i32),
@@ -119,17 +120,21 @@ impl SearchEngine {
             println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}",
                 score * player_sign, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
 
-            depth += 1;
-
-            alpha = score - player_sign * WINDOW_SIZE;
-            beta = score + player_sign * WINDOW_SIZE;
-
             let current_time_millis = self.time_tracker.elapsed().as_millis();
             let estimated_time_for_next_iter = (node_count / previous_node_count).max(MIN_BRANCHING_FACTOR) as u128 * (current_time_millis - time_after_previous_iter);
 
             if current_time_millis + estimated_time_for_next_iter > max_time_millis {
                 break
             }
+
+            if score == 0 && depth > MAX_DRAW_SEARCH_DEPTH {
+                break
+            }
+
+            depth += 1;
+
+            alpha = score - player_sign * WINDOW_SIZE;
+            beta = score + player_sign * WINDOW_SIZE;
 
             previous_node_count = node_count;
             time_after_previous_iter = current_time_millis;
@@ -266,7 +271,7 @@ impl SearchEngine {
         let mut scored_capture_list = Vec::new();
         let squares = state.squares;
 
-        let (_last_from, last_to, _last_moving_piece, last_captured) = util::decode_u32_mov(*(state.history_mov_stack.last().unwrap()));
+        let (last_to, last_captured) = *(state.history_mov_stack.last().unwrap());
 
         for cap in cap_list {
             if cap == pv_mov {

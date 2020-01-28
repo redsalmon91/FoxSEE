@@ -1,5 +1,6 @@
 use crate::{
     def,
+    prng::XorshiftPrng,
     util,
 };
 
@@ -9,7 +10,8 @@ const FEN_SQRS_INDEX: usize = 0;
 const FEN_PLAYER_INDEX: usize = 1;
 const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
-const LAST_DUP_MOV_DISTANCE: usize = 5;
+const FEN_HALF_MOV_INDEX: usize = 4;
+const LAST_DUP_POS_DISTANCE: usize = 4;
 
 pub struct State {
     pub squares: [u8; def::BOARD_SIZE],
@@ -17,6 +19,7 @@ pub struct State {
     pub cas_rights: u8,
     pub enp_square: usize,
     pub non_cap_mov_count: u16,
+    pub hash_key: u64,
 
     pub wk_index: usize,
     pub bk_index: usize,
@@ -24,53 +27,68 @@ pub struct State {
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
-    pub history_mov_stack: Vec<u32>,
+    pub history_mov_stack: Vec<(usize, u8)>,
+    pub history_pos_stack: Vec<u64>,
     pub non_cap_mov_count_stack: Vec<u16>,
     pub wk_index_stack: Vec<usize>,
     pub bk_index_stack: Vec<usize>,
+
+    zob_keys: Vec<Vec<u64>>,
 }
 
 impl State {
     pub fn new(fen_string: &str) -> Self {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
-        let (squares, wk_index, bk_index) = get_squares_from_fen(fen_segment_list[FEN_SQRS_INDEX]);
+        let (squares, hash_key, wk_index, bk_index) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], &zob_keys);
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
         let enp_sqr = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
+        let non_cap_mov_count = fen_segment_list[FEN_HALF_MOV_INDEX].parse::<u16>().unwrap();
 
         State {
             squares: squares,
             player: player,
             cas_rights: cas_rights,
             enp_square: enp_sqr,
-            non_cap_mov_count: 0,
+            non_cap_mov_count: non_cap_mov_count,
+            hash_key: hash_key,
+
             wk_index: wk_index,
             bk_index: bk_index,
-            
+
             taken_piece_stack: Vec::new(),
             enp_sqr_stack: Vec::new(),
             cas_rights_stack: Vec::new(),
             history_mov_stack: Vec::new(),
+            history_pos_stack: Vec::new(),
             non_cap_mov_count_stack: Vec::new(),
             wk_index_stack: Vec::new(),
             bk_index_stack: Vec::new(),
+
+            zob_keys: zob_keys,
         }
     }
 
     pub fn is_draw(&self) -> bool {
-        if (self.non_cap_mov_count as usize) < LAST_DUP_MOV_DISTANCE + 1 {
+        let history_len = self.history_pos_stack.len();
+        let check_range = history_len.min(self.non_cap_mov_count as usize);
+
+        if check_range < LAST_DUP_POS_DISTANCE {
             return false
         }
 
-        let history_len = self.history_mov_stack.len();
+        if self.hash_key == self.history_pos_stack[history_len-LAST_DUP_POS_DISTANCE] {
+            return true
+        }
 
-        let last_mov = self.history_mov_stack[history_len-1];
-        let last_opponent_mov = self.history_mov_stack[history_len-LAST_DUP_MOV_DISTANCE];
-        if last_mov == last_opponent_mov {
-            
-            let last_mov = self.history_mov_stack[history_len-2];
-            let last_opponent_mov = self.history_mov_stack[history_len-LAST_DUP_MOV_DISTANCE-1];
-            if last_mov == last_opponent_mov {
+        let mut dup_count = 0;
+        for check_index in 1..=check_range {
+            if self.history_pos_stack[history_len-check_index] == self.hash_key {
+                dup_count += 1;
+            }
+
+            if dup_count > 1 {
                 return true
             }
         }
@@ -81,7 +99,8 @@ impl State {
     pub fn do_mov(&mut self, from: usize, to: usize, mov_type: u8, promo: u8) {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
-        self.history_mov_stack.push(util::encode_history_mov(from, to, self.squares[from], self.squares[to]));
+        self.history_mov_stack.push((to, self.squares[to]));
+        self.history_pos_stack.push(self.hash_key);
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.wk_index_stack.push(self.wk_index);
         self.bk_index_stack.push(self.bk_index);
@@ -105,6 +124,7 @@ impl State {
         self.non_cap_mov_count = self.non_cap_mov_count_stack.pop().unwrap();
         self.wk_index = self.wk_index_stack.pop().unwrap();
         self.bk_index = self.bk_index_stack.pop().unwrap();
+        self.hash_key = self.history_pos_stack.pop().unwrap();
         self.history_mov_stack.pop();
 
         self.player = def::get_opposite_player(self.player);
@@ -123,6 +143,9 @@ impl State {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
 
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[to][moving_piece as usize];
+
         if taken_piece == 0 {
             if def::is_p(moving_piece) {
                 self.non_cap_mov_count = 0;
@@ -131,6 +154,7 @@ impl State {
             }
         } else {
             self.non_cap_mov_count = 0;
+            self.hash_key ^= self.zob_keys[to][taken_piece as usize];
         }
 
         self.taken_piece_stack.push(taken_piece);
@@ -173,12 +197,17 @@ impl State {
     }
 
     fn do_promo_mov(&mut self, from: usize, to: usize, promo: u8) {
+        let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
+
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[to][promo as usize];
 
         if taken_piece == 0 {
             self.non_cap_mov_count += 1;
         } else {
             self.non_cap_mov_count = 0;
+            self.hash_key ^= self.zob_keys[to][taken_piece as usize];
         }
 
         self.taken_piece_stack.push(taken_piece);
@@ -215,6 +244,11 @@ impl State {
             self.squares[r_index] = 0;
             self.squares[r_to_index] = def::WR;
             self.squares[def::CAS_SQUARE_WK] = def::WK;
+
+            self.hash_key ^= self.zob_keys[k_index][def::WK as usize];
+            self.hash_key ^= self.zob_keys[r_index][def::WR as usize];
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WK][def::WK as usize];
+            self.hash_key ^= self.zob_keys[r_to_index][def::WR as usize];
         } else if to == def::CAS_SQUARE_BK {
             self.cas_rights &= 0b1101;
             self.bk_index = to;
@@ -227,6 +261,11 @@ impl State {
             self.squares[r_index] = 0;
             self.squares[r_to_index] = def::BR;
             self.squares[def::CAS_SQUARE_BK] = def::BK;
+
+            self.hash_key ^= self.zob_keys[k_index][def::BK as usize];
+            self.hash_key ^= self.zob_keys[r_index][def::BR as usize];
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BK][def::BK as usize];
+            self.hash_key ^= self.zob_keys[r_to_index][def::BR as usize];
         } else if to == def::CAS_SQUARE_WQ {
             self.cas_rights &= 0b1011;
             self.wk_index = to;
@@ -239,6 +278,11 @@ impl State {
             self.squares[r_index] = 0;
             self.squares[r_to_index] = def::WR;
             self.squares[def::CAS_SQUARE_WQ] = def::WK;
+
+            self.hash_key ^= self.zob_keys[k_index][def::WK as usize];
+            self.hash_key ^= self.zob_keys[r_index][def::WR as usize];
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WQ][def::WK as usize];
+            self.hash_key ^= self.zob_keys[r_to_index][def::WR as usize];
         } else if to == def::CAS_SQUARE_BQ {
             self.cas_rights &= 0b1110;
             self.bk_index = to;
@@ -251,6 +295,11 @@ impl State {
             self.squares[r_index] = 0;
             self.squares[r_to_index] = def::BR;
             self.squares[def::CAS_SQUARE_BQ] = def::BK;
+
+            self.hash_key ^= self.zob_keys[k_index][def::BK as usize];
+            self.hash_key ^= self.zob_keys[r_index][def::BR as usize];
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BQ][def::BK as usize];
+            self.hash_key ^= self.zob_keys[r_to_index][def::BR as usize];
         }
     }
 
@@ -290,6 +339,10 @@ impl State {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[taken_index];
 
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[to][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[taken_index][taken_piece as usize];
+
         self.taken_piece_stack.push(taken_piece);
         self.squares[to] = moving_piece;
         self.squares[from] = 0;
@@ -321,6 +374,9 @@ impl State {
         self.non_cap_mov_count += 1;
 
         let moving_piece = self.squares[from];
+
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[to][moving_piece as usize];
 
         self.squares[to] = moving_piece;
         self.squares[from] = 0;
@@ -357,8 +413,9 @@ impl  fmt::Display for State {
     }
 }
 
-fn get_squares_from_fen(fen_squares_string: &str) -> ([u8; def::BOARD_SIZE], usize, usize) {
+fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>) -> ([u8; def::BOARD_SIZE], u64, usize, usize) {
     let mut squares = [0; def::BOARD_SIZE];
+    let mut hash_key = 0;
     let mut wk_index = 0;
     let mut bk_index = 0;
 
@@ -378,6 +435,7 @@ fn get_squares_from_fen(fen_squares_string: &str) -> ([u8; def::BOARD_SIZE], usi
             if char_code.is_alphabetic() {
                 let piece = util::map_piece_char_to_code(char_code);
                 squares[index] = piece;
+                hash_key ^= zob_keys[index][piece as usize];
 
                 if piece == def::WK {
                     wk_index = index;
@@ -398,7 +456,7 @@ fn get_squares_from_fen(fen_squares_string: &str) -> ([u8; def::BOARD_SIZE], usi
         index -= 24;
     }
 
-    (squares, wk_index, bk_index)
+    (squares, hash_key, wk_index, bk_index)
 }
 
 fn get_player_from_fen(fen_player_string: &str) -> u8 {
@@ -580,5 +638,57 @@ mod tests {
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("f6")]);
         assert_eq!(def::BP, state.squares[util::map_sqr_notation_to_index("f5")]);
         assert_eq!(def::WP, state.squares[util::map_sqr_notation_to_index("e5")]);
+    }
+
+    #[test]
+    fn test_zob_hash_1() {
+        let mut state = State::new("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1");
+        let original_hash = state.hash_key;
+
+        state.do_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("g1"), def::MOV_CAS, 0);
+        let hash_after_castle = state.hash_key;
+
+        state.undo_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("g1"), def::MOV_CAS);
+
+        assert_eq!(state.hash_key, original_hash);
+
+        state.do_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("e2"), def::MOV_REG, 0);
+        state.do_mov(util::map_sqr_notation_to_index("f8"), util::map_sqr_notation_to_index("e7"), def::MOV_REG, 0);
+
+        state.do_mov(util::map_sqr_notation_to_index("h1"), util::map_sqr_notation_to_index("e1"), def::MOV_REG, 0);
+        state.do_mov(util::map_sqr_notation_to_index("e7"), util::map_sqr_notation_to_index("f8"), def::MOV_REG, 0);
+
+        state.do_mov(util::map_sqr_notation_to_index("e2"), util::map_sqr_notation_to_index("f1"), def::MOV_REG, 0);
+        state.do_mov(util::map_sqr_notation_to_index("f8"), util::map_sqr_notation_to_index("e7"), def::MOV_REG, 0);
+
+        state.do_mov(util::map_sqr_notation_to_index("f1"), util::map_sqr_notation_to_index("g1"), def::MOV_REG, 0);
+        state.do_mov(util::map_sqr_notation_to_index("e7"), util::map_sqr_notation_to_index("f8"), def::MOV_REG, 0);
+
+        state.do_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("f1"), def::MOV_REG, 0);
+
+        assert_eq!(state.hash_key, hash_after_castle);
+    }
+
+    #[test]
+    fn test_zob_hash_2() {
+        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 1");
+        let original_hash = state.hash_key;
+
+        state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS, 0);
+        let hash_after_castle = state.hash_key;
+
+        state.undo_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS);
+
+        assert_eq!(state.hash_key, original_hash);
+
+        state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("d7"), def::MOV_REG, 0);
+        state.do_mov(util::map_sqr_notation_to_index("b1"), util::map_sqr_notation_to_index("c3"), def::MOV_REG, 0);
+
+        state.do_mov(util::map_sqr_notation_to_index("a8"), util::map_sqr_notation_to_index("d8"), def::MOV_REG, 0);
+        state.do_mov(util::map_sqr_notation_to_index("c3"), util::map_sqr_notation_to_index("b1"), def::MOV_REG, 0);
+
+        state.do_mov(util::map_sqr_notation_to_index("d7"), util::map_sqr_notation_to_index("c8"), def::MOV_REG, 0);
+
+        assert_eq!(state.hash_key, hash_after_castle);
     }
 }

@@ -99,10 +99,6 @@ pub fn encode_u32_mov(from: usize, to: usize, tp: u8, promo: u8) -> u32 {
     from as u32 | (to as u32) << 8 | (tp as u32) << 16 | (promo as u32) << 24
 }
 
-pub fn encode_history_mov(from: usize, to: usize, mov_piece: u8, taken_piece: u8) -> u32 {
-    from as u32 | (to as u32) << 8 | (mov_piece as u32) << 16 | (taken_piece as u32) << 24
-}
-
 pub fn decode_u32_mov(rep: u32) -> (usize, usize, u8, u8) {
     (
         (rep & MOV_ENCODE_BIT_MASK) as usize,

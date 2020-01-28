@@ -2,6 +2,7 @@ mod def;
 mod eval;
 mod mov_gen;
 mod mov_tbl;
+mod prng;
 mod search;
 mod state;
 mod uci;
