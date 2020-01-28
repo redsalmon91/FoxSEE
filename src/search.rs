@@ -288,7 +288,7 @@ impl SearchEngine {
 
             let exchange_score = eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo);
 
-            if exchange_score > eval::EQUAL_EXCHANGE_VAL || depth == 1 {
+            if exchange_score >= eval::EQUAL_EXCHANGE_VAL || depth == 1 {
                 scored_capture_list.push((exchange_score, cap));
             } else {
                 let see_score = self.see(state, to, squares[from]) * player_sign + eval::val_of(promo);
