@@ -14,4 +14,4 @@ deploy:
   file: "target/release/foxsee.exe"
   skip_cleanup: true
   on:
-    tags: false
+    tags: true
