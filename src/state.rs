@@ -11,7 +11,7 @@ const FEN_PLAYER_INDEX: usize = 1;
 const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
-const LAST_DUP_POS_DISTANCE: usize = 4;
+const MIN_POS_COUNT_FOR_REP: usize = 6;
 
 pub struct State {
     pub squares: [u8; def::BOARD_SIZE],
@@ -74,12 +74,8 @@ impl State {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize);
 
-        if check_range < LAST_DUP_POS_DISTANCE {
+        if check_range < MIN_POS_COUNT_FOR_REP {
             return false
-        }
-
-        if self.hash_key == self.history_pos_stack[history_len-LAST_DUP_POS_DISTANCE] {
-            return true
         }
 
         let mut dup_count = 0;
