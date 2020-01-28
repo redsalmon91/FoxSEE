@@ -5,7 +5,7 @@ A tiny yet strong chess engine written in Rust!
 - Very small memory footprint (less than 3MB)
 
 **Current Version**  
-1.0.0
+1.0.1
 
 ![alt text](https://travis-ci.org/redsalmon91/FoxSEE.svg?branch=master)
 
