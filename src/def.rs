@@ -1,5 +1,5 @@
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "0.2.5";
+pub static VERSION: &str = "1.0.0";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const BOARD_SIZE: usize = 120;
