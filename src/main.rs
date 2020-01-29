@@ -8,6 +8,7 @@ mod state;
 mod uci;
 mod util;
 
+use prng::XorshiftPrng;
 use state::State;
 use search::SearchEngine;
 use uci::{UciProcessResult, Rawmov};
@@ -18,14 +19,15 @@ const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 
 fn main() {
     let mut search_engine = SearchEngine::new();
-    let mut state = State::new(FEN_START_POS);
+    let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+    let mut state = State::new(FEN_START_POS, &zob_keys);
 
     loop {
         let input_cmd = read_gui_input();
         let uci_cmd_process_result = uci::process_uci_cmd(input_cmd.trim());
         match uci_cmd_process_result {
             UciProcessResult::Position(mov_list) => {
-                state = State::new(FEN_START_POS);
+                state = State::new(FEN_START_POS, &zob_keys);
 
                 if mov_list.is_empty() {
                     continue

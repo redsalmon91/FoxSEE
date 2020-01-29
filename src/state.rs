@@ -1,6 +1,5 @@
 use crate::{
     def,
-    prng::XorshiftPrng,
     util,
 };
 
@@ -13,7 +12,7 @@ const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const MIN_POS_COUNT_FOR_REP: usize = 6;
 
-pub struct State {
+pub struct State<'state> {
     pub squares: [u8; def::BOARD_SIZE],
     pub player: u8,
     pub cas_rights: u8,
@@ -33,14 +32,13 @@ pub struct State {
     pub wk_index_stack: Vec<usize>,
     pub bk_index_stack: Vec<usize>,
 
-    zob_keys: Vec<Vec<u64>>,
+    zob_keys: &'state Vec<Vec<u64>>,
 }
 
-impl State {
-    pub fn new(fen_string: &str) -> Self {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+impl <'state> State<'state> {
+    pub fn new(fen_string: &str, zob_keys: &'state Vec<Vec<u64>>) -> Self {
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
-        let (squares, hash_key, wk_index, bk_index) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], &zob_keys);
+        let (squares, hash_key, wk_index, bk_index) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], zob_keys);
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
         let enp_sqr = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
@@ -386,7 +384,7 @@ impl State {
     }
 }
 
-impl  fmt::Display for State {
+impl <'state> fmt::Display for State <'state> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut display_string = String::new();
 
@@ -500,11 +498,15 @@ fn get_enp_sqr_from_fen(fen_enp_sqr_string: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::def;
+    use crate::{
+        def,
+        prng::XorshiftPrng,
+    };
 
     #[test]
     fn test_new_startpos() {
-        let state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys);
 
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
@@ -513,7 +515,8 @@ mod tests {
 
     #[test]
     fn test_do_move_1() {
-        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
@@ -531,7 +534,8 @@ mod tests {
 
     #[test]
     fn test_do_move_2() {
-        let mut state = State::new("r1bqk1nr/pPpp1ppp/2n5/2b1p3/2B1P3/2N2N2/P1PP1PPP/R1BQK2R w KQkq - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("r1bqk1nr/pPpp1ppp/2n5/2b1p3/2B1P3/2N2N2/P1PP1PPP/R1BQK2R w KQkq - 0 1", &zob_keys);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
@@ -552,7 +556,8 @@ mod tests {
 
     #[test]
     fn test_do_move_3() {
-        let mut state = State::new("r3k2r/pbppnppp/1bn2q2/4p3/2B5/2N1PN2/PPPP1PPP/R1BQK2R b Qkq - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("r3k2r/pbppnppp/1bn2q2/4p3/2B5/2N1PN2/PPPP1PPP/R1BQK2R b Qkq - 0 1", &zob_keys);
         assert_eq!(0b0111, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_B, state.player);
@@ -581,7 +586,8 @@ mod tests {
 
     #[test]
     fn test_do_move_4() {
-        let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys);
         assert_eq!(0b0000, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_B, state.player);
@@ -611,7 +617,8 @@ mod tests {
 
     #[test]
     fn test_do_move_5() {
-        let mut state = State::new("r1bqkbnr/ppp1p1pp/2n5/3pPp2/3P4/8/PPP2PPP/RNBQKBNR w KQkq f6 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("r1bqkbnr/ppp1p1pp/2n5/3pPp2/3P4/8/PPP2PPP/RNBQKBNR w KQkq f6 0 1", &zob_keys);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(util::map_sqr_notation_to_index("f6"), state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
@@ -638,7 +645,8 @@ mod tests {
 
     #[test]
     fn test_zob_hash_1() {
-        let mut state = State::new("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1", &zob_keys);
         let original_hash = state.hash_key;
 
         state.do_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("g1"), def::MOV_CAS, 0);
@@ -667,7 +675,8 @@ mod tests {
 
     #[test]
     fn test_zob_hash_2() {
-        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 1", &zob_keys);
         let original_hash = state.hash_key;
 
         state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS, 0);

@@ -389,14 +389,17 @@ mod tests {
     use super::*;
     use crate::{
         state::State,
+        prng::XorshiftPrng,
     };
 
     #[test]
     fn test_eval() {
-        let state = State::new("4k2r/pbppnppp/1bn2q2/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1");
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+
+        let state = State::new("4k2r/pbppnppp/1bn2q2/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1", &zob_keys);
         assert_eq!(210, eval_state(&state));
 
-        let state = State::new("4k2r/pbppnppp/1bn5/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1");
+        let state = State::new("4k2r/pbppnppp/1bn5/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1", &zob_keys);
         assert_eq!(1215, eval_state(&state));
     }
 }
