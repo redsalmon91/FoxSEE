@@ -8,6 +8,8 @@ use std::io::{self, prelude::*};
 const DEFAULT_MOVS_TO_GO: u128 = 20;
 const OVERHEAD_TIME: u128 = 10;
 
+pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 pub struct Rawmov {
     pub from: usize,
     pub to: usize,
@@ -24,7 +26,7 @@ pub enum UciProcessResult {
     Noop,
     Ready,
     Reset,
-    Position(Vec<Rawmov>),
+    Position(&'static str, Vec<Rawmov>),
     StartSearchWithTime(u128),
     StartSearchWithComplextTimeControl(TimeInfo),
     Stop,
@@ -139,7 +141,7 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
 }
 
 fn process_position_startpos() -> UciProcessResult {
-    UciProcessResult::Position(vec![])
+    UciProcessResult::Position(FEN_START_POS, vec![])
 }
 
 fn process_position_startpos_with_mov_list(mov_str_list: Vec<&str>) -> UciProcessResult {
@@ -148,7 +150,7 @@ fn process_position_startpos_with_mov_list(mov_str_list: Vec<&str>) -> UciProces
         mov_list.push(parse_mov_str(mov_str));
     }
 
-    UciProcessResult::Position(mov_list)
+    UciProcessResult::Position(FEN_START_POS, mov_list)
 }
 
 fn parse_mov_str(mov_str: &str) -> Rawmov {
