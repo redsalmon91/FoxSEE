@@ -22,10 +22,10 @@ A tiny yet strong UCI chess engine written in Rust!
 - Piece-square-value Table
 - Zobrist Hashing
 - Partial bitboards with rook, pawn, and king surroundings
-- Depth extensions while in check
+- Depth extension for checks
 - Depth reduction & zero-window search for non-captures
 - Prioritized re-captures
-- Root search with memory to track scores from the previous iterations
+- Root search with memory to track scores from previous iterations
 
 ## How to build
 Run `cargo build --release`
