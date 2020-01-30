@@ -15,11 +15,13 @@ static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
 static ENDGAME_PAWN_EXTRA_VAL: i32 = 30;
-static DUP_PAWN_PEN: i32 = 30;
+static DUP_PAWN_PEN: i32 = 20;
 static KING_SAFETY: i32 = 50;
 static DRAW_PEN: i32 = 100;
-static ROOK_SEMI_OPEN_LINE_BONUS: i32 = 20;
-static ROOK_OPEN_LINE_BONUS: i32 = 30;
+static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
+static ROOK_OPEN_LINE_VAL: i32 = 30;
+static ENDGAME_OPEN_PAWN_VAL: i32 = 50;
+static MIDGAME_OPEN_PAWN_VAL: i32 = 20;
 
 static WK_SQR_VAL: [i32; def::BOARD_SIZE] = [
      20, 30, 10,  0,  0, 20, 30, 10, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -250,9 +252,12 @@ pub fn eval_state(state: &State) -> i32 {
                 base_score += P_VAL;
                 midgame_score += WP_SQR_VAL[index];
 
-                if squares[index + 16] == 0 {
+                let file_mask = state.bitmask.file_masks[index];
+                if file_mask & state.bitboard.b_pawn == 0 {
                     endgame_score += END_WP_SQR_VAL[index];
-                } else if squares[index + 16] == def::WP {
+                    endgame_score += ENDGAME_OPEN_PAWN_VAL;
+                    midgame_score += MIDGAME_OPEN_PAWN_VAL;
+                } else if (file_mask & state.bitboard.w_pawn).count_ones() > 1 {
                     midgame_score -= DUP_PAWN_PEN;
                     endgame_score -= DUP_PAWN_PEN;
                 }
@@ -263,13 +268,14 @@ pub fn eval_state(state: &State) -> i32 {
                 base_score -= P_VAL;
                 midgame_score -= BP_SQR_VAL[index];
 
-                if index > 15 {
-                    if squares[index - 16] == 0 {
-                        endgame_score -= END_BP_SQR_VAL[index];
-                    } else if squares[index - 16] == def::BP {
-                        midgame_score += DUP_PAWN_PEN;
-                        endgame_score += DUP_PAWN_PEN;
-                    }
+                let file_mask = state.bitmask.file_masks[index];
+                if file_mask & state.bitboard.w_pawn == 0 {
+                    endgame_score -= END_BP_SQR_VAL[index];
+                    endgame_score -= ENDGAME_OPEN_PAWN_VAL;
+                    midgame_score -= MIDGAME_OPEN_PAWN_VAL;
+                } else if (file_mask & state.bitboard.b_pawn).count_ones() > 1 {
+                    midgame_score += DUP_PAWN_PEN;
+                    endgame_score += DUP_PAWN_PEN;
                 }
 
                 bp_count += 1;
@@ -304,11 +310,11 @@ pub fn eval_state(state: &State) -> i32 {
 
                 let file_mask = state.bitmask.file_masks[index];
                 if file_mask & state.bitboard.w_pawn == 0 {
-                    midgame_score += ROOK_SEMI_OPEN_LINE_BONUS;
+                    midgame_score += ROOK_SEMI_OPEN_LINE_VAL;
 
                     if file_mask & state.bitboard.b_pawn == 0
                     && file_mask & state.bitboard.b_rook == 0 {
-                        midgame_score += ROOK_OPEN_LINE_BONUS;
+                        midgame_score += ROOK_OPEN_LINE_VAL;
                     }
                 }
             },
@@ -319,11 +325,11 @@ pub fn eval_state(state: &State) -> i32 {
 
                 let file_mask = state.bitmask.file_masks[index];
                 if file_mask & state.bitboard.b_pawn == 0 {
-                    midgame_score -= ROOK_SEMI_OPEN_LINE_BONUS;
+                    midgame_score -= ROOK_SEMI_OPEN_LINE_VAL;
 
                     if file_mask & state.bitboard.w_pawn == 0
                     && file_mask & state.bitboard.w_rook == 0 {
-                        midgame_score -= ROOK_OPEN_LINE_BONUS;
+                        midgame_score -= ROOK_OPEN_LINE_VAL;
                     }
                 }
             },
@@ -366,9 +372,8 @@ pub fn eval_state(state: &State) -> i32 {
     }
 
     let is_endgame =
-        (w_piece_count == 0 || b_piece_count == 0)
-        || (w_piece_count == 1 || b_piece_count == 1)
-        || ((wq_count == 0 && bq_count == 0) && (w_piece_count < 3 || b_piece_count < 3));
+        (w_piece_count < 2 || b_piece_count < 2)
+        || ((wq_count == 0 && bq_count == 0) && ((w_piece_count < 3 || b_piece_count < 3)));
 
     if is_endgame {
         if wp_count < 5 || bp_count < 5 {
@@ -407,14 +412,47 @@ mod tests {
     };
 
     #[test]
-    fn test_eval() {
+    fn test_eval_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
         let state = State::new("4k2r/pbppnppp/1bn2q2/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1", &zob_keys, &bitmask);
-        assert_eq!(210, eval_state(&state));
+        assert_eq!(230, eval_state(&state));
+    }
+
+    #[test]
+    fn test_eval_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
 
         let state = State::new("4k2r/pbppnppp/1bn5/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1", &zob_keys, &bitmask);
-        assert_eq!(1165, eval_state(&state));
+        assert_eq!(1185, eval_state(&state));
+    }
+
+    #[test]
+    fn test_eval_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("rnbqkbnr/pppppppp/8/8/8/2P5/PPP1PPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
+        assert_eq!(-50, eval_state(&state));
+    }
+
+    #[test]
+    fn test_eval_4() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("rnbqkbnr/pppp2pp/8/4p3/4p3/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1", &zob_keys, &bitmask);
+        assert_eq!(55, eval_state(&state));
+    }
+
+    #[test]
+    fn test_eval_5() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("rnbqr1k1/pppp1ppp/5nb1/8/8/5NB1/PPPP1PPP/RNBQ1RK1 w Qq - 0 1", &zob_keys, &bitmask);
+        assert_eq!(-50, eval_state(&state));
     }
 }
