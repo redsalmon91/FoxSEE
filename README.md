@@ -5,7 +5,7 @@ A tiny yet strong UCI chess engine written in Rust!
 - Very small memory footprint (around 3MB depending on the os arch)
 
 **Current Version**  
-1.1.0
+1.1.1
 
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 
