@@ -123,7 +123,7 @@ impl SearchEngine {
             let current_time_millis = self.time_tracker.elapsed().as_millis();
             let estimated_time_for_next_iter = (node_count / previous_node_count).max(MIN_BRANCHING_FACTOR) as u128 * (current_time_millis - time_after_previous_iter);
 
-            if current_time_millis + estimated_time_for_next_iter > max_time_millis {
+            if current_time_millis + estimated_time_for_next_iter > max_time_millis && current_time_millis > max_time_millis / 2 {
                 break
             }
 
