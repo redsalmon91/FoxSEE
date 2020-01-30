@@ -672,6 +672,7 @@ impl SearchEngine {
 mod tests {
     use super::*;
     use crate::{
+        bitboard::BitMask,
         state::State,
         prng::XorshiftPrng,
         util,
@@ -680,7 +681,8 @@ mod tests {
     #[test]
     fn test_see_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let state = State::new("4q1kr/ppn1rp1p/n1p1PB2/5P2/2B1Q2P/2N3p1/PPP1b1P1/4R2K b - - 1 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let state = State::new("4q1kr/ppn1rp1p/n1p1PB2/5P2/2B1Q2P/2N3p1/PPP1b1P1/4R2K b - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(145, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
@@ -691,7 +693,8 @@ mod tests {
     #[test]
     fn test_see_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let state = State::new("r5kr/1b1pR1p1/ppq1N2p/5P1n/3Q4/B6B/P5PP/5RK1 w - - 1 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let state = State::new("r5kr/1b1pR1p1/ppq1N2p/5P1n/3Q4/B6B/P5PP/5RK1 w - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(-505, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
@@ -702,7 +705,8 @@ mod tests {
     #[test]
     fn test_see_3() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let state = State::new("r2q1kn1/p2b1rb1/1p1p1pp1/2pPp3/1PP1Pn2/PRNBB1K1/3QNPPP/5R2 w - - 0 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let state = State::new("r2q1kn1/p2b1rb1/1p1p1pp1/2pPp3/1PP1Pn2/PRNBB1K1/3QNPPP/5R2 w - - 0 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WN));
@@ -713,7 +717,8 @@ mod tests {
     #[test]
     fn test_see_4() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let state = State::new("r4kn1/p2bprb1/Bp1p1ppP/2pP4/1PP1Pn2/PRNB2K1/2QN1PPq/5R2 w - - 0 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let state = State::new("r4kn1/p2bprb1/Bp1p1ppP/2pP4/1PP1Pn2/PRNB2K1/2QN1PPq/5R2 w - - 0 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(-19655, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
@@ -722,7 +727,8 @@ mod tests {
     #[test]
     fn test_see_5() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let state = State::new("rn1qkbnr/pppbpppp/8/3p4/4P3/5Q2/PPPP1PPP/RNB1KBNR w KQkq - 2 3", &zob_keys);
+        let bitmask = BitMask::new();
+        let state = State::new("rn1qkbnr/pppbpppp/8/3p4/4P3/5Q2/PPPP1PPP/RNB1KBNR w KQkq - 2 3", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("d5"), def::WP));
@@ -731,25 +737,28 @@ mod tests {
     #[test]
     fn test_q_search_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("r5kr/1b1pR1p1/p1q1N2p/5P1n/3Q4/B7/P5PP/5RK1 w - - 1 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r5kr/1b1pR1p1/p1q1N2p/5P1n/3Q4/B7/P5PP/5RK1 w - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
-        assert_eq!(115, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(185, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
     fn test_q_search_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
-        assert_eq!(0, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(-5, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
     fn test_q_search_3() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(0, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
@@ -758,7 +767,8 @@ mod tests {
     #[test]
     fn test_q_search_4() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new();
 
         assert_eq!(-900, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
@@ -767,7 +777,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -780,7 +791,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b - - 0 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -793,7 +805,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_3() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("8/1k3ppp/8/5PPP/8/8/1K6/8 w - - 9 83", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/1k3ppp/8/5PPP/8/8/1K6/8 w - - 9 83", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -806,7 +819,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_4() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("8/8/1r2b2p/8/8/2p5/2kR4/K7 b - - 3 56", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/8/1r2b2p/8/8/2p5/2kR4/K7 b - - 3 56", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -819,7 +833,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_5() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -832,7 +847,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_6() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("r5rk/2p1Nppp/3p3P/pp2p1P1/4P3/2qnPQK1/8/R6R w - - 1 0", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r5rk/2p1Nppp/3p3P/pp2p1P1/4P3/2qnPQK1/8/R6R w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -845,7 +861,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_7() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("r1b3kr/3pR1p1/ppq4p/5P2/4Q3/B7/P5PP/5RK1 w - - 1 0", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r1b3kr/3pR1p1/ppq4p/5P2/4Q3/B7/P5PP/5RK1 w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -858,7 +875,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_8() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -871,7 +889,8 @@ mod tests {
     #[test]
     fn test_search_puzzle_9() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("8/8/8/5p1p/3k1P1P/5K2/8/8 b - - 1 59", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/8/8/5p1p/3k1P1P/5K2/8/8 b - - 1 59", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -884,7 +903,8 @@ mod tests {
     #[test]
     fn test_search_endgame_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("8/2k5/2pR4/1pPp4/p7/P1P2P2/1P6/5K2 w - - 5 52", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/2k5/2pR4/1pPp4/p7/P1P2P2/1P6/5K2 w - - 5 52", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);
@@ -897,7 +917,8 @@ mod tests {
     #[test]
     fn test_search_endgame_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let mut state = State::new("5rk1/2PQpppp/5b2/p7/8/4P1P1/2q2P1P/3R2K1 w - - 0 1", &zob_keys);
+        let bitmask = BitMask::new();
+        let mut state = State::new("5rk1/2PQpppp/5b2/p7/8/4P1P1/2q2P1P/3R2K1 w - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new();
 
         let best_mov = search_engine.search(&mut state, 5500);

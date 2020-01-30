@@ -1,3 +1,4 @@
+mod bitboard;
 mod def;
 mod eval;
 mod mov_gen;
@@ -8,6 +9,7 @@ mod state;
 mod uci;
 mod util;
 
+use bitboard::BitMask;
 use prng::XorshiftPrng;
 use state::State;
 use search::SearchEngine;
@@ -18,14 +20,15 @@ use std::io::{self, prelude::*};
 fn main() {
     let mut search_engine = SearchEngine::new();
     let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-    let mut state = State::new(uci::FEN_START_POS, &zob_keys);
+    let bitmask = BitMask::new();
+    let mut state = State::new(uci::FEN_START_POS, &zob_keys, &bitmask);
 
     loop {
         let input_cmd = read_gui_input();
         let uci_cmd_process_result = uci::process_uci_cmd(input_cmd.trim());
         match uci_cmd_process_result {
             UciProcessResult::Position(fen_str, mov_list) => {
-                state = State::new(fen_str, &zob_keys);
+                state = State::new(fen_str, &zob_keys, &bitmask);
 
                 if mov_list.is_empty() {
                     continue
