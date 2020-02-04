@@ -68,9 +68,7 @@ fn main() {
                         if to == state.enp_square {
                             state.do_mov(from, to, def::MOV_ENP, 0);
                             continue
-                        }
-
-                        if (from as isize - to as isize).abs() == 32 {
+                        } else if (from as isize - to as isize).abs() == 32 {
                             state.do_mov(from, to, def::MOV_CR_ENP, 0);
                             continue
                         }
@@ -83,9 +81,6 @@ fn main() {
                 let best_mov = search_engine.search(&mut state, time_millis);
                 println!("bestmove {}", util::format_mov(best_mov));
                 io::stdout().flush().ok();
-
-                let (from, to, tp, promo) = util::decode_u32_mov(best_mov);
-                state.do_mov(from, to, tp, promo);
             },
             UciProcessResult::StartSearchWithComplextTimeControl(time_info) => {
                 let time_millis = if state.player == def::PLAYER_W {
@@ -97,9 +92,6 @@ fn main() {
                 let best_mov = search_engine.search(&mut state, time_millis);
                 println!("bestmove {}", util::format_mov(best_mov));
                 io::stdout().flush().ok();
-
-                let (from, to, tp, promo) = util::decode_u32_mov(best_mov);
-                state.do_mov(from, to, tp, promo);
             },
             UciProcessResult::Ready => {},
             UciProcessResult::Stop => {},

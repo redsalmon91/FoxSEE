@@ -1,31 +1,27 @@
 # FoxSEE Chess Engine 🦊
 A tiny yet strong UCI chess engine written in Rust!  
 
-- Only 3000 lines of code (excluding tests)
-- Very small memory footprint (around 3MB depending on the os arch)
+- Only 3000 lines of code
+- Very small memory footprint
+- Mainly focusing on stability
 
 **Current Version**  
-1.1.1
+1.2.1
 
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 
 ## Features
 
-- 0x88 Board Representation
+- 0x88 Board
 - Minimax Search with Alpha-Beta Pruning
-- Aspiration Window
+- Quiescence Search
 - History Heuristic
 - Refutation Table
-- Quiescence Search
-- SEE
-- MVV-LVA
-- Piece-square-value Table
 - Zobrist Hashing
-- Partial bitboards with rook, pawn, and king surroundings
-- Depth extension for checks
-- Depth reduction & zero-window search for non-captures
-- Prioritized re-captures
-- Root search with memory to track scores from previous iterations
+- Bitboards
+- Check Extension
+- SEE
+- MVV/LVA
 
 ## How to build
 Run `cargo build --release`

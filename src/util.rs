@@ -2,6 +2,7 @@ use crate::def;
 
 const MOV_ENCODE_BIT_MASK: u32 = 0b11111111;
 
+#[inline]
 pub fn map_piece_char_to_code(piece_char: char) -> u8 {
     match piece_char {
         'K' => def::WK,
@@ -22,6 +23,7 @@ pub fn map_piece_char_to_code(piece_char: char) -> u8 {
     }
 }
 
+#[inline]
 pub fn map_piece_code_to_char(piece_code: u8) -> char {
     match piece_code {
         def::WK => '♔',
@@ -41,6 +43,7 @@ pub fn map_piece_code_to_char(piece_code: u8) -> char {
     }
 }
 
+#[inline]
 pub fn map_promo_piece_to_char(piece: u8) -> char {
     match piece {
         def::WQ => 'q',
@@ -57,6 +60,7 @@ pub fn map_promo_piece_to_char(piece: u8) -> char {
     }
 }
 
+#[inline]
 pub fn map_index_to_sqr_notation(index: usize) -> String {
     let rank = index / 16 + 1;
     let file = index % 16;
@@ -76,6 +80,7 @@ pub fn map_index_to_sqr_notation(index: usize) -> String {
     format!("{}{}", file_str, rank)
 }
 
+#[inline]
 pub fn map_sqr_notation_to_index(sqr_notation: &str) -> usize {
     let sqr_notation_chars: Vec<char> = sqr_notation.chars().collect();
     let file_index = match sqr_notation_chars[0] {
@@ -95,10 +100,12 @@ pub fn map_sqr_notation_to_index(sqr_notation: &str) -> usize {
     (rank_index * 16 + file_index) as usize
 }
 
+#[inline]
 pub fn encode_u32_mov(from: usize, to: usize, tp: u8, promo: u8) -> u32 {
     from as u32 | (to as u32) << 8 | (tp as u32) << 16 | (promo as u32) << 24
 }
 
+#[inline]
 pub fn decode_u32_mov(rep: u32) -> (usize, usize, u8, u8) {
     (
         (rep & MOV_ENCODE_BIT_MASK) as usize,
@@ -108,6 +115,7 @@ pub fn decode_u32_mov(rep: u32) -> (usize, usize, u8, u8) {
     )
 }
 
+#[inline]
 pub fn format_mov(mov: u32) -> String {
     let (from, to, _tp, promo) = decode_u32_mov(mov);
 
@@ -118,6 +126,7 @@ pub fn format_mov(mov: u32) -> String {
     }
 }
 
+#[inline]
 pub fn format_pv(pv_table: &[u32]) -> String {
     let mut pv_line = String::new();
 
@@ -130,6 +139,37 @@ pub fn format_pv(pv_table: &[u32]) -> String {
     }
 
     pv_line
+}
+
+#[allow(dead_code)]
+#[inline]
+pub fn print_bitboard(bitboard: u64) {
+    let mut index = 56;
+
+    loop {
+        print!(" {} ", get_bit(bitboard, index));
+        index += 1;
+
+        if index % def::DIM_SIZE == 0 {
+            print!("\n");
+
+            if index == def::DIM_SIZE {
+                break;
+            }
+
+            index -= def::DIM_SIZE * 2;
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[inline]
+pub fn get_bit(bitboard: u64, index: usize) -> u64 {
+    if bitboard & 1u64 << index == 0 {
+        0
+    } else {
+        1
+    }
 }
 
 #[cfg(test)]

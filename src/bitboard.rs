@@ -38,27 +38,62 @@ pub struct BitMask {
     pub index_masks: [u64; def::BOARD_SIZE],
     pub file_masks: [u64; def::BOARD_SIZE],
     pub rank_masks: [u64; def::BOARD_SIZE],
-    pub surround_masks: [u64; def::BOARD_SIZE],
+    pub wk_protect_masks: [u64; def::BOARD_SIZE],
+    pub bk_protect_masks: [u64; def::BOARD_SIZE],
+    pub wp_forward_masks: [u64; def::BOARD_SIZE],
+    pub bp_forward_masks: [u64; def::BOARD_SIZE],
+    pub wp_nearby_masks: [u64; def::BOARD_SIZE],
+    pub bp_nearby_masks: [u64; def::BOARD_SIZE],
 }
 
 impl BitMask {
     pub fn new() -> Self {
-        let (index_masks, file_masks, rank_masks, surround_masks) = gen_masks();
+        let (
+            index_masks,
+            file_masks,
+            rank_masks,
+            wk_protect_masks,
+            bk_protect_masks,
+            wp_forward_masks,
+            bp_forward_masks,
+            wp_nearby_masks,
+            bp_nearby_masks,
+        ) = gen_masks();
 
         BitMask {
             index_masks,
             file_masks,
             rank_masks,
-            surround_masks,
+            wk_protect_masks,
+            bk_protect_masks,
+            wp_forward_masks,
+            bp_forward_masks,
+            wp_nearby_masks,
+            bp_nearby_masks,
         }
     }
 }
 
-pub fn gen_masks() -> ([u64; def::BOARD_SIZE], [u64; def::BOARD_SIZE], [u64; def::BOARD_SIZE], [u64; def::BOARD_SIZE]) {
+pub fn gen_masks() -> (
+    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE]) {
+
     let mut index_masks = [0; def::BOARD_SIZE];
     let mut file_masks = [0; def::BOARD_SIZE];
     let mut rank_masks = [0; def::BOARD_SIZE];
-    let mut surround_masks = [0; def::BOARD_SIZE];
+    let mut wk_protect_masks = [0; def::BOARD_SIZE];
+    let mut bk_protect_masks = [0; def::BOARD_SIZE];
+    let mut wp_forward_masks = [0; def::BOARD_SIZE];
+    let mut bp_forward_masks = [0; def::BOARD_SIZE];
+    let mut wp_nearby_masks = [0; def::BOARD_SIZE];
+    let mut bp_nearby_masks = [0; def::BOARD_SIZE];
 
     let mut index = 0;
 
@@ -93,23 +128,117 @@ pub fn gen_masks() -> ([u64; def::BOARD_SIZE], [u64; def::BOARD_SIZE], [u64; def
             index += 8;
         }
 
-        let mut surround_mask = 0;
-        for index_change in vec![1, 15, 16, 17, -1, -15, -16, -17] {
-            let surround_index = index as isize + index_change;
-            if surround_index >= 0 {
-                let surround_index = surround_index as usize;
-                if def::is_index_valid(surround_index) {
-                    surround_mask ^= index_masks[surround_index];
+        let mut wk_protect_mask = 0;
+        for index_change in vec![15, 16, 17, 31, 32, 33] {
+            let protect_index = index + index_change;
+            if def::is_index_valid(protect_index) {
+                wk_protect_mask ^= index_masks[protect_index];
+            }
+        }
+
+        wk_protect_masks[index] = wk_protect_mask;
+
+        let mut bk_protect_mask = 0;
+        for index_change in vec![-15, -16, -17, -31, -32, -33] {
+            let protect_index = index as isize + index_change;
+            if protect_index >= 0 {
+                let protect_index = protect_index as usize;
+                if def::is_index_valid(protect_index) {
+                    bk_protect_mask ^= index_masks[protect_index];
                 }
             }
         }
 
-        surround_masks[index] = surround_mask;
+        bk_protect_masks[index] = bk_protect_mask;
 
         index += 1;
     }
 
-    (index_masks, file_masks, rank_masks, surround_masks)
+    index = 0;
+    while index < def::BOARD_SIZE {
+        if !def::is_index_valid(index) {
+            index += 8;
+        }
+
+        let mut wp_forward_mask = file_masks[index];
+        let mut bp_forward_mask = file_masks[index];
+        let mut nearby_mask = 0;
+
+        if index as isize - 1 >= 16 && def::is_index_valid(index - 1) {
+            wp_forward_mask |= file_masks[index - 1];
+            bp_forward_mask |= file_masks[index - 1];
+            nearby_mask |= file_masks[index - 1];
+        }
+
+        if index + 1 <= 103 && def::is_index_valid(index + 1) {
+            wp_forward_mask |= file_masks[index + 1];
+            bp_forward_mask |= file_masks[index + 1];
+            nearby_mask |= file_masks[index + 1];
+        }
+
+        wp_forward_masks[index] = wp_forward_mask;
+        bp_forward_masks[index] = bp_forward_mask;
+        wp_nearby_masks[index] = nearby_mask;
+        bp_nearby_masks[index] = nearby_mask;
+
+        index += 1;
+    }
+
+    index = 0;
+    while index < def::BOARD_SIZE {
+        if !def::is_index_valid(index) {
+            index += 8;
+        }
+
+        let mut wp_forward_mask = wp_forward_masks[index];
+        let mut bp_forward_mask = bp_forward_masks[index];
+        let mut wp_nearby_mask = wp_nearby_masks[index];
+        let mut bp_nearby_mask = bp_nearby_masks[index];
+
+        let mut mask_index = 0;
+        while mask_index < def::BOARD_SIZE {
+            if !def::is_index_valid(mask_index) {
+                mask_index += 8;
+            }
+
+            if mask_index > index + 1 {
+                wp_nearby_mask &= !index_masks[mask_index];
+            }
+
+            if index > 1 && mask_index < index - 1 {
+                bp_nearby_mask &= !index_masks[mask_index];
+            }
+
+            if mask_index < index || mask_index - index < 15 {
+                wp_forward_mask &= !index_masks[mask_index]; 
+            }
+
+            if mask_index > index || index - mask_index < 15 {
+                bp_forward_mask &= !index_masks[mask_index]; 
+            }
+
+            mask_index += 1;
+        }
+
+        wp_forward_masks[index] = wp_forward_mask;
+        bp_forward_masks[index] = bp_forward_mask;
+        wp_nearby_masks[index] = wp_nearby_mask;
+        bp_nearby_masks[index] = bp_nearby_mask;
+
+        index += 1;
+    }
+
+    (
+        index_masks, 
+        file_masks, 
+        rank_masks, 
+        wk_protect_masks, 
+        bk_protect_masks, 
+        wp_forward_masks, 
+        bp_forward_masks, 
+        wp_nearby_masks, 
+        bp_nearby_masks,
+    )
 }
 
 #[cfg(test)]
@@ -118,7 +247,17 @@ mod tests {
 
     #[test]
     fn test_gen_masks() {
-        let (index_masks, file_masks, rank_masks, surround_masks) = gen_masks();
+        let (
+            index_masks, 
+            file_masks, 
+            rank_masks, 
+            wk_protect_masks, 
+            bk_protect_masks, 
+            wp_forward_masks, 
+            bp_forward_masks,
+            wp_nearby_masks,
+            bp_nearby_masks,
+        ) = gen_masks();
 
         assert_eq!(0b1, index_masks[0]);
         assert_eq!(0b10, index_masks[1]);
@@ -134,8 +273,14 @@ mod tests {
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, rank_masks[7]);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000, rank_masks[33]);
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000011_00000010, surround_masks[0]);
-        assert_eq!(0b01000000_11000000_00000000_00000000_00000000_00000000_00000000_00000000, surround_masks[119]);
-        assert_eq!(0b00000000_00000000_00000000_01110000_01010000_01110000_00000000_00000000, surround_masks[53]);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_11100000_11100000_00000000, wk_protect_masks[6]);
+        assert_eq!(0b00000000_11000000_11000000_00000000_00000000_00000000_00000000_00000000, bk_protect_masks[119]);
+        assert_eq!(0b00000000_00011100_00011100_00000000_00000000_00000000_00000000_00000000, bk_protect_masks[115]);
+
+        assert_eq!(0b00000011_00000011_00000011_00000011_00000011_00000000_00000000_00000000, wp_forward_masks[32]);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000111_00000111, bp_forward_masks[33]);
+
+        assert_eq!(0b00000000_00000000_00000000_00000000_00101000_00101000_00101000_00101000, wp_nearby_masks[52]);
+        assert_eq!(0b00101000_00101000_00101000_00101000_00000000_00000000_00000000_00000000, bp_nearby_masks[68]);
     }
 }

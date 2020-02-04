@@ -11,6 +11,8 @@ const FEN_PLAYER_INDEX: usize = 1;
 const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
+
+const LAST_DUP_POS_INDEX: usize = 4;
 const MIN_POS_COUNT_FOR_REP: usize = 6;
 
 pub struct State<'state> {
@@ -77,12 +79,16 @@ impl <'state> State<'state> {
         }
     }
 
-    pub fn is_draw(&self) -> bool {
+    pub fn is_draw(&self, ply: u8) -> bool {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize);
 
         if check_range < MIN_POS_COUNT_FOR_REP {
             return false
+        }
+
+        if ply > 2 && self.history_pos_stack[history_len - LAST_DUP_POS_INDEX] == self.hash_key {
+            return true
         }
 
         let mut dup_count = 0;
@@ -186,20 +192,20 @@ impl <'state> State<'state> {
             self.hash_key ^= self.zob_keys[to][taken_piece as usize];
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
-                self.bitboard.w_all ^= self.bitmask.index_masks[from];
+                self.bitboard.w_all ^= self.bitmask.index_masks[to];
     
                 if def::is_p(taken_piece) {
-                    self.bitboard.w_pawn ^= self.bitmask.index_masks[from];
+                    self.bitboard.w_pawn ^= self.bitmask.index_masks[to];
                 } else if def::is_r(taken_piece) {
-                    self.bitboard.w_rook ^= self.bitmask.index_masks[from];
+                    self.bitboard.w_rook ^= self.bitmask.index_masks[to];
                 }
             } else {
-                self.bitboard.b_all ^= self.bitmask.index_masks[from];
+                self.bitboard.b_all ^= self.bitmask.index_masks[to];
     
                 if def::is_p(taken_piece) {
-                    self.bitboard.b_pawn ^= self.bitmask.index_masks[from];
+                    self.bitboard.b_pawn ^= self.bitmask.index_masks[to];
                 } else if def::is_r(taken_piece) {
-                    self.bitboard.b_rook ^= self.bitmask.index_masks[from];
+                    self.bitboard.b_rook ^= self.bitmask.index_masks[to];
                 }
             }
         }
@@ -273,16 +279,16 @@ impl <'state> State<'state> {
             self.hash_key ^= self.zob_keys[to][taken_piece as usize];
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
-                self.bitboard.w_all ^= self.bitmask.index_masks[from];
+                self.bitboard.w_all ^= self.bitmask.index_masks[to];
     
                 if def::is_r(taken_piece) {
-                    self.bitboard.w_rook ^= self.bitmask.index_masks[from];
+                    self.bitboard.w_rook ^= self.bitmask.index_masks[to];
                 }
             } else {
-                self.bitboard.b_all ^= self.bitmask.index_masks[from];
+                self.bitboard.b_all ^= self.bitmask.index_masks[to];
     
                 if def::is_r(taken_piece) {
-                    self.bitboard.b_rook ^= self.bitmask.index_masks[from];
+                    self.bitboard.b_rook ^= self.bitmask.index_masks[to];
                 }
             }
         }
