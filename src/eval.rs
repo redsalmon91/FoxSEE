@@ -13,7 +13,9 @@ static B_VAL: i32 = 350;
 static N_VAL: i32 = 350;
 static P_VAL: i32 = 100;
 
-static KING_SAFETY_VAL: i32 = 40;
+static KING_PROTECTED_VAL: i32 = 50;
+static KING_COVERED_VAL: i32 = 30;
+static KING_SAFE_SPOT_VAL: i32 = 30;
 static DRAW_PEN: i32 = 100;
 
 static PASS_PAWN_VAL: i32 = 15;
@@ -23,8 +25,8 @@ static ISOLATE_PAWN_PEN: i32 = 20;
 static ROOK_OPEN_LINE_VAL: i32 = 20;
 static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
-static COMF_SQR_VAL: i32 = 5;
-static PREF_SQR_VAL: i32 = 10;
+static COMF_SQR_VAL: i32 = 10;
+static PREF_SQR_VAL: i32 = 20;
 
 static WK_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
 static BK_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
@@ -34,8 +36,8 @@ static BQ_COMF_MASK: u64 = 0b00000000_00111100_01111110_00000000_00000000_000000
 
 static WR_COMF_MASK: u64 = 0b11111111_11111111_00000000_00000000_00000000_00000000_00000000_00111100;
 static BR_COMF_MASK: u64 = 0b00111100_00000000_00000000_00000000_00000000_00000000_11111111_11111111;
-static WR_PREF_MASK: u64 = 0b11111111_11111111_00000000_00000000_00000000_00000000_00000000_00011000;
-static BR_PREF_MASK: u64 = 0b00011000_00000000_00000000_00000000_00000000_00000000_11111111_11111111;
+static WR_PREF_MASK: u64 = 0b00000000_00111100_00000000_00000000_00000000_00000000_00000000_00000000;
+static BR_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00111100_00000000;
 
 static WB_COMF_MASK: u64 = 0b00000000_00000000_11111111_01111110_00111100_01011010_01000010_00000000;
 static BB_COMF_MASK: u64 = 0b00000000_01000010_01011010_00111100_01111110_11111111_00000000_00000000;
@@ -312,10 +314,14 @@ pub fn eval_state(state: &State) -> i32 {
                     endgame_score += COMF_SQR_VAL;
                 }
 
-                if file_masks[index] & bitboard.w_pawn == 0 || (wk_protect_masks[index] & bitboard.w_pawn).count_ones() < 2 {
-                    wk_safety_score -= KING_SAFETY_VAL;
+                if (wk_protect_masks[index] & bitboard.w_pawn).count_ones() < 2 {
+                    wk_safety_score -= KING_PROTECTED_VAL;
                 } else if index_mask & WK_SAFE_MASK != 0 {
-                    wk_safety_score += KING_SAFETY_VAL;
+                    wk_safety_score += KING_SAFE_SPOT_VAL;
+
+                    if file_masks[index] & bitboard.w_pawn != 0 {
+                        wk_safety_score += KING_COVERED_VAL;
+                    }
                 }
             },
             def::BK => {
@@ -325,10 +331,14 @@ pub fn eval_state(state: &State) -> i32 {
                     endgame_score -= COMF_SQR_VAL;
                 }
 
-                if file_masks[index] & bitboard.b_pawn == 0 || (bk_protect_masks[index] & bitboard.b_pawn).count_ones() < 2 {
-                    bk_safety_score += KING_SAFETY_VAL;
+                if (bk_protect_masks[index] & bitboard.b_pawn).count_ones() < 2 {
+                    bk_safety_score += KING_PROTECTED_VAL;
                 } else if index_mask & BK_SAFE_MASK != 0 {
-                    bk_safety_score -= KING_SAFETY_VAL;
+                    bk_safety_score -= KING_SAFE_SPOT_VAL;
+
+                    if file_masks[index] & bitboard.b_pawn != 0 {
+                        bk_safety_score -= KING_COVERED_VAL;
+                    }
                 }
             },
             _ => {},
@@ -381,7 +391,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("5rk1/pbp1nppp/1bn2q2/3pp3/3P4/1BN1P3/PPP2PPP/R1BQ1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        assert_eq!(280, eval_state(&state));
+        assert_eq!(265, eval_state(&state));
     }
 
     #[test]
@@ -390,7 +400,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("4k2r/pbppnppp/1bn5/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1", &zob_keys, &bitmask);
-        assert_eq!(1285, eval_state(&state));
+        assert_eq!(1275, eval_state(&state));
     }
 
     #[test]
@@ -417,7 +427,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("rnbqr1k1/pppp1ppp/5nb1/8/8/5NB1/PPPP1PPP/RNBQ1RK1 w Qq - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-50, eval_state(&state));
+        assert_eq!(-40, eval_state(&state));
     }
 
     #[test]
@@ -426,7 +436,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("bnrqnrkb/1pp2pp1/8/8/3pp3/8/PPP2PPP/BNRQNRKB w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-10, eval_state(&state));
+        assert_eq!(-30, eval_state(&state));
     }
 
     #[test]
@@ -453,6 +463,6 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("8/p6k/p4K1P/P4PP1/8/3b4/8/8 w - - 11 61", &zob_keys, &bitmask);
-        assert_eq!(45, eval_state(&state));
+        assert_eq!(50, eval_state(&state));
     }
 }
