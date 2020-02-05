@@ -4,7 +4,6 @@ use crate::{
 };
 
 pub static TERM_VAL: i32 = 10000;
-pub static ADVANCE_VAL: i32 = 150;
 pub static K_VAL: i32 = 20000;
 
 static Q_VAL: i32 = 1000;
@@ -16,6 +15,9 @@ static P_VAL: i32 = 100;
 static KING_PROTECTED_VAL: i32 = 50;
 static KING_COVERED_VAL: i32 = 30;
 static KING_SAFE_SPOT_VAL: i32 = 30;
+static KING_THREAT_VAL: i32 = 15;
+
+static ADVANCE_VAL: i32 = 150;
 static DRAW_PEN: i32 = 100;
 
 static PASS_PAWN_VAL: i32 = 15;
@@ -27,6 +29,9 @@ static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
 static COMF_SQR_VAL: i32 = 10;
 static PREF_SQR_VAL: i32 = 20;
+
+const W_FIFTH_RANK: usize = 63;
+const B_FIFTH_RANK: usize = 56;
 
 static WK_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
 static BK_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
@@ -41,13 +46,13 @@ static BR_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_000000
 
 static WB_COMF_MASK: u64 = 0b00000000_00000000_11111111_01111110_00111100_01011010_01000010_00000000;
 static BB_COMF_MASK: u64 = 0b00000000_01000010_01011010_00111100_01111110_11111111_00000000_00000000;
-static WB_PREF_MASK: u64 = 0b00000000_00000000_00111100_01111110_00000000_00000000_00000000_00000000;
-static BB_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_01111110_00111100_00000000_00000000;
+static WB_PREF_MASK: u64 = 0b00000000_00000000_01111110_01011010_00011000_00000000_00000000_00000000;
+static BB_PREF_MASK: u64 = 0b00000000_00000000_00000000_00011000_01011010_01111110_00000000_00000000;
 
 static WN_COMF_MASK: u64 = 0b00000000_00111100_11111111_01111110_00111100_01100110_00011000_00000000;
 static BN_COMF_MASK: u64 = 0b00000000_00011000_01100110_00111100_01111110_11111111_00111100_00000000;
-static WN_PREF_MASK: u64 = 0b00000000_00111100_01111110_00011000_00000000_00000000_00000000_00000000;
-static BN_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00011000_01111110_00111100_00000000;
+static WN_PREF_MASK: u64 = 0b00000000_00111100_01111110_00011000_00011000_00000000_00000000_00000000;
+static BN_PREF_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_01111110_00111100_00000000;
 
 static WP_COMF_MASK: u64 = 0b00000000_01111110_01111110_01111110_00111100_11000011_11100111_00000000;
 static BP_COMF_MASK: u64 = 0b00000000_11100111_11000011_00111100_01111110_01111110_01111110_00000000;
@@ -132,7 +137,7 @@ pub fn eval_state(state: &State) -> i32 {
                 let w_pawn_mask = bitboard.w_pawn;
                 let b_pawn_mask = bitboard.b_pawn;
 
-                if index > 63 && wp_forward_masks[index] & b_pawn_mask == 0 {
+                if index > W_FIFTH_RANK && wp_forward_masks[index] & b_pawn_mask == 0 {
                     let pass_pawn_weight = (index / 16 - 3) as i32;
                     let pass_pawn_val = pass_pawn_weight * PASS_PAWN_VAL;
 
@@ -166,7 +171,7 @@ pub fn eval_state(state: &State) -> i32 {
                 let w_pawn_mask = bitboard.w_pawn;
                 let b_pawn_mask = bitboard.b_pawn;
 
-                if index < 56 && bp_forward_masks[index] & w_pawn_mask == 0 {
+                if index < B_FIFTH_RANK && bp_forward_masks[index] & w_pawn_mask == 0 {
                     let pass_pawn_weight = (4 - index / 16) as i32;
                     let pass_pawn_val = pass_pawn_weight * PASS_PAWN_VAL;
 
@@ -323,6 +328,25 @@ pub fn eval_state(state: &State) -> i32 {
                         wk_safety_score += KING_COVERED_VAL;
                     }
                 }
+
+                let file_mask = file_masks[index];
+                if file_mask & bitboard.b_rook != 0 && file_mask & bitboard.b_pawn == 0 {
+                    wk_safety_score -= KING_THREAT_VAL;
+                }
+
+                if index > 0 && def::is_index_valid(index - 1) {
+                    let file_mask = file_masks[index - 1];
+                    if file_mask & bitboard.b_rook != 0 && file_mask & bitboard.b_pawn == 0 && file_mask & bitboard.w_rook == 0 {
+                        wk_safety_score -= KING_THREAT_VAL;
+                    }
+                }
+
+                if def::is_index_valid(index + 1) {
+                    let file_mask = file_masks[index + 1];
+                    if file_mask & bitboard.b_rook != 0 && file_mask & bitboard.b_pawn == 0 && file_mask & bitboard.w_rook == 0 {
+                        wk_safety_score -= KING_THREAT_VAL;
+                    }
+                }
             },
             def::BK => {
                 base_score -= K_VAL;
@@ -338,6 +362,25 @@ pub fn eval_state(state: &State) -> i32 {
 
                     if file_masks[index] & bitboard.b_pawn != 0 {
                         bk_safety_score -= KING_COVERED_VAL;
+                    }
+                }
+
+                let file_mask = file_masks[index];
+                if file_mask & bitboard.w_rook != 0 && file_mask & bitboard.w_pawn == 0 {
+                    bk_safety_score += KING_THREAT_VAL;
+                }
+
+                if index > 0 && def::is_index_valid(index - 1) {
+                    let file_mask = file_masks[index - 1];
+                    if file_mask & bitboard.w_rook != 0 && file_mask & bitboard.w_pawn == 0 && file_mask & bitboard.b_rook == 0 {
+                        bk_safety_score += KING_THREAT_VAL;
+                    }
+                }
+
+                if def::is_index_valid(index + 1) {
+                    let file_mask = file_masks[index + 1];
+                    if file_mask & bitboard.w_rook != 0 && file_mask & bitboard.w_pawn == 0 && file_mask & bitboard.b_rook == 0 {
+                        bk_safety_score += KING_THREAT_VAL;
                     }
                 }
             },
