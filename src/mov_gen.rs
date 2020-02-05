@@ -61,6 +61,7 @@ impl MoveGenerator {
                 if squares[def::CAS_SQUARE_WQ + 2] == def::WK
                 && squares[def::CAS_SQUARE_WQ - 2] == def::WR
                 && squares[def::CAS_SQUARE_WQ] == 0
+                && squares[def::CAS_SQUARE_WQ - 1] == 0
                 && squares[def::CAS_SQUARE_WQ + 1] == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 1)
@@ -85,6 +86,7 @@ impl MoveGenerator {
                 if squares[def::CAS_SQUARE_BQ + 2] == def::BK
                 && squares[def::CAS_SQUARE_BQ - 2] == def::BR
                 && squares[def::CAS_SQUARE_BQ] == 0
+                && squares[def::CAS_SQUARE_BQ - 1] == 0
                 && squares[def::CAS_SQUARE_BQ + 1] == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 1)
