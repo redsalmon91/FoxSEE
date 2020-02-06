@@ -975,4 +975,46 @@ mod tests {
         assert_eq!(from, util::map_sqr_notation_to_index("b7"));
         assert_eq!(to, util::map_sqr_notation_to_index("e4"));
     }
+
+    #[test]
+    fn test_sbd_1() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2b1k2r/2p2ppp/1qp4n/7B/1p2P3/5Q2/PPPr2PP/R2N1R1K b k - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new();
+
+        let best_mov = search_engine.search(&mut state, 15500);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("e8"));
+        assert_eq!(to, util::map_sqr_notation_to_index("g8"));
+    }
+
+    #[test]
+    fn test_sbd_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r1bq1rk1/pp3ppp/2n2n2/3p4/8/P1NB4/1PP2PPP/R1BQK2R w KQ - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new();
+
+        let best_mov = search_engine.search(&mut state, 15500);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("e1"));
+        assert_eq!(to, util::map_sqr_notation_to_index("g1"));
+    }
+
+    #[test]
+    fn test_sbd_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("rnbq1rk1/5ppp/p3pn2/1p6/2BP4/P1P2N2/5PPP/R1BQ1RK1 w - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new();
+
+        let best_mov = search_engine.search(&mut state, 15500);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c4"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d3"));
+    }
 }
