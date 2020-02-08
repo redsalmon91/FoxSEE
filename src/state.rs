@@ -79,7 +79,7 @@ impl <'state> State<'state> {
         }
     }
 
-    pub fn is_draw(&self, ply: u8) -> bool {
+    pub fn is_draw(&self) -> bool {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize);
 
@@ -87,7 +87,7 @@ impl <'state> State<'state> {
             return false
         }
 
-        if ply > 2 && self.history_pos_stack[history_len - LAST_DUP_POS_INDEX] == self.hash_key {
+        if self.history_pos_stack[history_len - LAST_DUP_POS_INDEX] == self.hash_key {
             return true
         }
 

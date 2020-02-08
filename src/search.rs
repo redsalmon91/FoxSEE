@@ -194,8 +194,14 @@ impl SearchEngine {
             return 0
         }
 
-        if state.is_draw(ply) {
-            return 0
+        if state.is_draw() {
+            state.player = def::get_opposite_player(state.player);
+            let opponent_in_check = self.mov_generator.is_in_check(state);
+            state.player = def::get_opposite_player(state.player);
+
+            if !opponent_in_check {
+                return 0
+            }
         }
 
         let player_sign = if state.player == def::PLAYER_W {
