@@ -16,7 +16,7 @@ static KING_PROTECTED_VAL: i32 = 50;
 static KING_COVERED_VAL: i32 = 30;
 static KING_SAFE_SPOT_VAL: i32 = 30;
 static KING_THREAT_VAL: i32 = 15;
-static KING_CASTLED_VAL: i32 = 20;
+static KING_CASTLED_VAL: i32 = 10;
 
 static ADVANCE_VAL: i32 = 150;
 static DRAW_PEN: i32 = 100;
