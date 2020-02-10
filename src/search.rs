@@ -86,6 +86,8 @@ impl SearchEngine {
                 break
             }
 
+            let pv_changed = best_mov != pv_table[0];
+
             best_mov = pv_table[0];
             let time_taken_millis = self.time_tracker.elapsed().as_millis();
             let nps = node_count as u128 / (time_taken_millis / 1000).max(1);
@@ -100,10 +102,13 @@ impl SearchEngine {
                 score * player_sign, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
 
             let current_time_millis = self.time_tracker.elapsed().as_millis();
-            let estimated_time_for_next_iter = (node_count / previous_node_count).max(MIN_BRANCHING_FACTOR) as u128 * (current_time_millis - time_after_previous_iter);
 
-            if current_time_millis + estimated_time_for_next_iter > max_time_millis && current_time_millis > max_time_millis / 2 {
-                break
+            if !pv_changed {
+                let estimated_time_for_next_iter = (node_count / previous_node_count).max(MIN_BRANCHING_FACTOR) as u128 * (current_time_millis - time_after_previous_iter);
+
+                if current_time_millis + estimated_time_for_next_iter > max_time_millis && current_time_millis > max_time_millis / 2 {
+                    break
+                }
             }
 
             depth += 1;
