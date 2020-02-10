@@ -322,7 +322,7 @@ impl <'state> State<'state> {
         self.non_cap_mov_count = 0;
 
         if to == def::CAS_SQUARE_WK {
-            self.cas_rights &= 0b0111;
+            self.cas_rights &= 0b0011;
             self.wk_index = to;
             self.w_castled = true;
 
@@ -347,7 +347,7 @@ impl <'state> State<'state> {
             self.bitboard.w_rook ^= self.bitmask.index_masks[r_index];
             self.bitboard.w_rook ^= self.bitmask.index_masks[r_to_index];
         } else if to == def::CAS_SQUARE_BK {
-            self.cas_rights &= 0b1101;
+            self.cas_rights &= 0b1100;
             self.bk_index = to;
             self.b_castled = true;
 
@@ -372,7 +372,7 @@ impl <'state> State<'state> {
             self.bitboard.b_rook ^= self.bitmask.index_masks[r_index];
             self.bitboard.b_rook ^= self.bitmask.index_masks[r_to_index];
         } else if to == def::CAS_SQUARE_WQ {
-            self.cas_rights &= 0b1011;
+            self.cas_rights &= 0b0011;
             self.wk_index = to;
             self.w_castled = true;
 
@@ -397,7 +397,7 @@ impl <'state> State<'state> {
             self.bitboard.w_rook ^= self.bitmask.index_masks[r_index];
             self.bitboard.w_rook ^= self.bitmask.index_masks[r_to_index];
         } else if to == def::CAS_SQUARE_BQ {
-            self.cas_rights &= 0b1110;
+            self.cas_rights &= 0b1100;
             self.bk_index = to;
             self.b_castled = true;
 
@@ -756,7 +756,7 @@ mod tests {
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("c8")]);
 
         state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS, 0);
-        assert_eq!(0b0110, state.cas_rights);
+        assert_eq!(0b0100, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("e8")]);
