@@ -5,8 +5,8 @@ use crate::{
 
 use std::io::{self, prelude::*};
 
-const DEFAULT_MOVS_TO_GO: u128 = 20;
-const OVERHEAD_TIME: u128 = 10;
+const DEFAULT_MOVS_TO_GO: u128 = 30;
+const OVERHEAD_TIME: u128 = 100;
 
 pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -26,6 +26,7 @@ pub enum UciProcessResult {
     Noop,
     Ready,
     Reset,
+    SetHashSize(usize),
     Position(&'static str, Vec<Rawmov>),
     StartSearchWithTime(u128),
     StartSearchWithComplextTimeControl(TimeInfo),
@@ -39,6 +40,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
         "uci" => {
             println!("id name {} {}", def::ENGINE_NAME, def::VERSION);
             println!("id author {}", def::AUTHOR);
+            println!("option name Hash type spin default {} min {} max {}", def::DEFAULT_HASH_SIZE_MB, def::MIN_HASH_SIZE_MB, def::MAX_HASH_SIZE_MB);
             println!("uciok");
             io::stdout().flush().ok();
             UciProcessResult::Ready
@@ -49,7 +51,26 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             io::stdout().flush().ok();
             UciProcessResult::Noop
         }
-        "setoption" => UciProcessResult::Noop,
+        "setoption" => {
+            match cmd_seq[2] {
+                "Hash" => {
+                    let hash_size_mb = cmd_seq[4].parse::<usize>().unwrap();
+                    if hash_size_mb < def::MIN_HASH_SIZE_MB {
+                        println!("hash size {} is not supported", hash_size_mb);
+                        return UciProcessResult::Noop
+                    }
+
+                    let hash_ratio = hash_size_mb / def::MIN_HASH_SIZE_MB;
+                    if hash_ratio != 1 && hash_ratio % 2 != 0 {
+                        println!("hash size {} is not supported", hash_size_mb);
+                        return UciProcessResult::Noop
+                    }
+
+                    UciProcessResult::SetHashSize(hash_ratio * def::MIN_HASH_SIZE_UNIT)
+                },
+                _ => UciProcessResult::Noop,
+            }
+        },
         "register" => UciProcessResult::Noop,
         "ucinewgame" => UciProcessResult::Reset,
         "position" => match cmd_seq[1] {
@@ -108,7 +129,7 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
         }
 
         movs_to_go = go_cmd_seq[10].parse::<u128>().unwrap();
-    } else {
+    } else if go_cmd_seq.len() > 5 {
         if go_cmd_seq[5] == "winc" {
             winc = go_cmd_seq[6].parse::<u128>().unwrap();
         }
@@ -116,6 +137,9 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
         if go_cmd_seq[7] == "binc" {
             binc = go_cmd_seq[8].parse::<u128>().unwrap()
         }
+
+        movs_to_go = DEFAULT_MOVS_TO_GO;
+    } else {
         movs_to_go = DEFAULT_MOVS_TO_GO;
     };
 

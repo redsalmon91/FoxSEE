@@ -1,6 +1,7 @@
 mod bitboard;
 mod def;
 mod eval;
+mod hashtable;
 mod mov_gen;
 mod mov_tbl;
 mod prng;
@@ -18,7 +19,7 @@ use uci::{UciProcessResult, Rawmov};
 use std::io::{self, prelude::*};
 
 fn main() {
-    let mut search_engine = SearchEngine::new();
+    let mut search_engine = SearchEngine::new(def::DEFAULT_HASH_SIZE_UNIT);
     let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
     let bitmask = BitMask::new();
     let mut state = State::new(uci::FEN_START_POS, &zob_keys, &bitmask);
@@ -27,6 +28,9 @@ fn main() {
         let input_cmd = read_gui_input();
         let uci_cmd_process_result = uci::process_uci_cmd(input_cmd.trim());
         match uci_cmd_process_result {
+            UciProcessResult::SetHashSize(hash_size) => {
+                search_engine.set_hash_size(hash_size);
+            },
             UciProcessResult::Position(fen_str, mov_list) => {
                 state = State::new(fen_str, &zob_keys, &bitmask);
 
@@ -96,7 +100,9 @@ fn main() {
             UciProcessResult::Ready => {},
             UciProcessResult::Stop => {},
             UciProcessResult::Noop => {},
-            UciProcessResult::Reset => {},
+            UciProcessResult::Reset => {
+                search_engine.reset();
+            },
             UciProcessResult::Quit => {
                 println!("quit");
                 std::process::exit(0);

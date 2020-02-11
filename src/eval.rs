@@ -9,27 +9,24 @@ pub static K_VAL: i32 = 20000;
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
 static B_VAL: i32 = 350;
-static N_VAL: i32 = 350;
+static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
 static KING_PROTECTED_VAL: i32 = 50;
 static KING_COVERED_VAL: i32 = 30;
 static KING_SAFE_SPOT_VAL: i32 = 30;
 static KING_THREAT_VAL: i32 = 15;
-static KING_CASTLED_VAL: i32 = 10;
 
-static ADVANCE_VAL: i32 = 150;
-static DRAW_PEN: i32 = 100;
-
-static PASS_PAWN_VAL: i32 = 15;
-static DUP_PAWN_PEN: i32 = 10;
+static PASS_PAWN_VAL: i32 = 10;
+static DUP_PAWN_PEN: i32 = 20;
 static ISOLATE_PAWN_PEN: i32 = 20;
+static ENDGAME_PAWN_VAL: i32 = 5;
 
 static ROOK_OPEN_LINE_VAL: i32 = 20;
-static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
 static COMF_SQR_VAL: i32 = 10;
 static PREF_SQR_VAL: i32 = 20;
+static AVOID_SQR_PEN: i32 = 20;
 
 const W_FIFTH_RANK: usize = 63;
 const B_FIFTH_RANK: usize = 56;
@@ -39,21 +36,27 @@ static BK_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_000000
 
 static WQ_COMF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_01111110_00111100_00000000;
 static BQ_COMF_MASK: u64 = 0b00000000_00111100_01111110_00000000_00000000_00000000_00000000_00000000;
+static WQ_AVOID_MASK: u64 = 0b11000011_11000011_10000001_10000001_10000001_10000001_11000011_11111111;
+static BQ_AVOID_MASK: u64 = 0b11111111_11000011_10000001_10000001_10000001_10000001_11000011_11000011;
 
 static WR_COMF_MASK: u64 = 0b11111111_11111111_00000000_00000000_00000000_00000000_00000000_00111100;
 static BR_COMF_MASK: u64 = 0b00111100_00000000_00000000_00000000_00000000_00000000_11111111_11111111;
 static WR_PREF_MASK: u64 = 0b00000000_00111100_00000000_00000000_00000000_00000000_00000000_00000000;
 static BR_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00111100_00000000;
+static WR_AVOID_MASK: u64 = 0b00000000_00000000_00000000_10000001_11000011_11000011_11111111_00000000;
+static BR_AVOID_MASK: u64 = 0b00000000_11111111_11000011_11000011_10000001_00000000_00000000_00000000;
 
 static WB_COMF_MASK: u64 = 0b00000000_00000000_11111111_01111110_00111100_01011010_01000010_00000000;
 static BB_COMF_MASK: u64 = 0b00000000_01000010_01011010_00111100_01111110_11111111_00000000_00000000;
-static WB_PREF_MASK: u64 = 0b00000000_00000000_01111110_01011010_00011000_00000000_00000000_00000000;
-static BB_PREF_MASK: u64 = 0b00000000_00000000_00000000_00011000_01011010_01111110_00000000_00000000;
+static WB_AVOID_MASK: u64 = 0b11111111_10000001_00000000_10000001_10000001_10000001_10000001_11111111;
+static BB_AVOID_MASK: u64 = 0b11111111_10000001_10000001_10000001_10000001_00000000_10000001_11111111;
 
-static WN_COMF_MASK: u64 = 0b00000000_00111100_11111111_01111110_00111100_01100110_00011000_00000000;
-static BN_COMF_MASK: u64 = 0b00000000_00011000_01100110_00111100_01111110_11111111_00111100_00000000;
-static WN_PREF_MASK: u64 = 0b00000000_00111100_01111110_00011000_00011000_00000000_00000000_00000000;
-static BN_PREF_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_01111110_00111100_00000000;
+static WN_COMF_MASK: u64 = 0b00000000_00111100_01111110_01111110_00111100_01100110_00011000_00000000;
+static BN_COMF_MASK: u64 = 0b00000000_00011000_01100110_00111100_01111110_01111110_00111100_00000000;
+static WN_PREF_MASK: u64 = 0b00000000_00000000_00011000_00011000_00000000_00000000_00000000_00000000;
+static BN_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00011000_00011000_00000000_00000000;
+static WN_AVOID_MASK: u64 = 0b11111111_10000001_00000000_10000001_10000001_10000001_11000011_11111111;
+static BN_AVOID_MASK: u64 = 0b11111111_11000011_10000001_10000001_10000001_00000000_10000001_11111111;
 
 static WP_COMF_MASK: u64 = 0b00000000_01111110_01111110_01111110_00111100_11000011_11100111_00000000;
 static BP_COMF_MASK: u64 = 0b00000000_11100111_11000011_00111100_01111110_01111110_01111110_00000000;
@@ -64,6 +67,7 @@ static K_ENDGAME_COMF_MASK: u64 = 0b00000000_00000000_01111110_01111110_01111110
 
 pub fn val_of(piece: u8) -> i32 {
     match piece {
+        0 => 0,
         def::WK => K_VAL,
         def::WQ => Q_VAL,
         def::WR => R_VAL,
@@ -137,17 +141,20 @@ pub fn eval_state(state: &State) -> i32 {
 
                 let w_pawn_mask = bitboard.w_pawn;
                 let b_pawn_mask = bitboard.b_pawn;
+                let rank = def::get_rank(index) as i32;
+
+                endgame_score += rank * ENDGAME_PAWN_VAL;
 
                 if index > W_FIFTH_RANK && wp_forward_masks[index] & b_pawn_mask == 0 {
-                    let pass_pawn_weight = (index / 16 - 3) as i32;
-                    let pass_pawn_val = pass_pawn_weight * PASS_PAWN_VAL;
+                    let pass_pawn_weight = rank - 4;
+                    let pass_pawn_val =  PASS_PAWN_VAL * pass_pawn_weight * pass_pawn_weight;
 
                     midgame_score += pass_pawn_val;
-                    endgame_score += pass_pawn_val * pass_pawn_weight;
+                    endgame_score += pass_pawn_val;
 
                     if wp_nearby_masks[index] & w_pawn_mask != 0 {
                         midgame_score += pass_pawn_val;
-                        endgame_score += pass_pawn_val * pass_pawn_weight;
+                        endgame_score += pass_pawn_val;
                     }
                 } else if wp_nearby_masks[index] & w_pawn_mask == 0 && wp_forward_masks[index] & w_pawn_mask == 0 {
                     midgame_score -= ISOLATE_PAWN_PEN;
@@ -171,17 +178,20 @@ pub fn eval_state(state: &State) -> i32 {
 
                 let w_pawn_mask = bitboard.w_pawn;
                 let b_pawn_mask = bitboard.b_pawn;
+                let rank = def::get_rank(index) as i32;
+
+                endgame_score -= rank * ENDGAME_PAWN_VAL;
 
                 if index < B_FIFTH_RANK && bp_forward_masks[index] & w_pawn_mask == 0 {
-                    let pass_pawn_weight = (4 - index / 16) as i32;
-                    let pass_pawn_val = pass_pawn_weight * PASS_PAWN_VAL;
+                    let pass_pawn_weight = 5 - rank;
+                    let pass_pawn_val =  PASS_PAWN_VAL * pass_pawn_weight * pass_pawn_weight;
 
                     midgame_score -= pass_pawn_val;
-                    endgame_score -= pass_pawn_val * pass_pawn_weight;
+                    endgame_score -= pass_pawn_val;
 
                     if bp_nearby_masks[index] & b_pawn_mask != 0 {
                         midgame_score -= pass_pawn_val;
-                        endgame_score -= pass_pawn_val * pass_pawn_weight;
+                        endgame_score -= pass_pawn_val;
                     }
                 } else if bp_nearby_masks[index] & b_pawn_mask == 0 && bp_forward_masks[index] & b_pawn_mask == 0 {
                     midgame_score += ISOLATE_PAWN_PEN;
@@ -202,6 +212,8 @@ pub fn eval_state(state: &State) -> i32 {
                     if index_mask & WN_PREF_MASK != 0 {
                         midgame_score += PREF_SQR_VAL;
                     }
+                } else if index_mask & WN_AVOID_MASK != 0 {
+                    midgame_score -= AVOID_SQR_PEN;
                 }
             },
             def::BN => {
@@ -213,6 +225,8 @@ pub fn eval_state(state: &State) -> i32 {
                     if index_mask & BN_PREF_MASK != 0 {
                         midgame_score -= PREF_SQR_VAL;
                     }
+                } else if index_mask & BN_AVOID_MASK != 0 {
+                    midgame_score += AVOID_SQR_PEN;
                 }
             },
 
@@ -221,10 +235,8 @@ pub fn eval_state(state: &State) -> i32 {
 
                 if index_mask & WB_COMF_MASK != 0 {
                     midgame_score += COMF_SQR_VAL;
-
-                    if index_mask & WB_PREF_MASK != 0 {
-                        midgame_score += PREF_SQR_VAL;
-                    }
+                } else if index_mask & WB_AVOID_MASK != 0 {
+                    midgame_score -= AVOID_SQR_PEN;
                 }
             },
             def::BB => {
@@ -232,10 +244,8 @@ pub fn eval_state(state: &State) -> i32 {
 
                 if index_mask & BB_COMF_MASK != 0 {
                     midgame_score -= COMF_SQR_VAL;
-
-                    if index_mask & BB_PREF_MASK != 0 {
-                        midgame_score -= PREF_SQR_VAL;
-                    }
+                } else if index_mask & BB_AVOID_MASK != 0 {
+                    midgame_score += AVOID_SQR_PEN;
                 }
             },
 
@@ -248,6 +258,8 @@ pub fn eval_state(state: &State) -> i32 {
                     if index_mask & WR_PREF_MASK != 0 {
                         midgame_score += PREF_SQR_VAL;
                     }
+                } else if index_mask & WR_AVOID_MASK != 0 {
+                    midgame_score -= AVOID_SQR_PEN;
                 }
 
                 let file_mask = file_masks[index];
@@ -269,6 +281,8 @@ pub fn eval_state(state: &State) -> i32 {
                     if index_mask & BR_PREF_MASK != 0 {
                         midgame_score -= PREF_SQR_VAL;
                     }
+                } else if index_mask & BR_AVOID_MASK != 0 {
+                    midgame_score += AVOID_SQR_PEN;
                 }
 
                 let file_mask = file_masks[index];
@@ -287,12 +301,8 @@ pub fn eval_state(state: &State) -> i32 {
 
                 if index_mask & WQ_COMF_MASK != 0 {
                     midgame_score += COMF_SQR_VAL;
-                }
-
-                let file_mask = file_masks[index];
-                if file_mask & bitboard.w_pawn == 0
-                && file_mask & bitboard.b_rook == 0 {
-                    midgame_score += QUEEN_OPEN_LINE_VAL;
+                } else if index_mask & WQ_AVOID_MASK != 0 {
+                    midgame_score -= AVOID_SQR_PEN;
                 }
 
                 wq_count += 1;
@@ -302,12 +312,8 @@ pub fn eval_state(state: &State) -> i32 {
 
                 if index_mask & BQ_COMF_MASK != 0 {
                     midgame_score -= COMF_SQR_VAL;
-                }
-
-                let file_mask = file_masks[index];
-                if file_mask & bitboard.b_pawn == 0
-                && file_mask & bitboard.w_rook == 0 {
-                    midgame_score -= QUEEN_OPEN_LINE_VAL;
+                } else if index_mask & BQ_AVOID_MASK != 0 {
+                    midgame_score += AVOID_SQR_PEN;
                 }
 
                 bq_count += 1;
@@ -393,17 +399,11 @@ pub fn eval_state(state: &State) -> i32 {
 
     let is_endgame =
         (w_piece_count < 3 || b_piece_count < 3)
-        || ((wq_count == 0 || bq_count == 0) && ((w_piece_count <= 3 || b_piece_count <= 3)));
+        || ((wq_count == 0 || bq_count == 0) && ((w_piece_count <= 3 || b_piece_count <= 3) && (w_pawn_count <= 3 || b_pawn_count <= 3)));
 
     if is_endgame {
-        if base_score > ADVANCE_VAL {
-            if w_pawn_count == 0 && base_score < R_VAL {
-                endgame_score -= DRAW_PEN;
-            }
-        } else if base_score < -ADVANCE_VAL {
-            if b_pawn_count == 0 && base_score > -R_VAL {
-                endgame_score += DRAW_PEN;
-            }
+        if w_pawn_count + b_pawn_count == 0 && base_score.abs() < R_VAL {
+            return 0
         }
 
         return base_score + endgame_score
@@ -411,18 +411,10 @@ pub fn eval_state(state: &State) -> i32 {
 
     if bq_count > 0 {
         midgame_score += wk_safety_score;
-
-        if state.w_castled {
-            midgame_score += KING_CASTLED_VAL;
-        }
     }
 
     if wq_count > 0 {
         midgame_score += bk_safety_score;
-
-        if state.b_castled {
-            midgame_score -= KING_CASTLED_VAL;
-        }
     }
 
     base_score + midgame_score
@@ -443,7 +435,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("5rk1/pbp1nppp/1bn2q2/3pp3/3P4/1BN1P3/PPP2PPP/R1BQ1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        assert_eq!(265, eval_state(&state));
+        assert_eq!(230, eval_state(&state));
     }
 
     #[test]
@@ -452,7 +444,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("4k2r/pbppnppp/1bn5/4p3/2B5/2N1P3/PPPP1PPP/R1BQK2R b KQk - 0 1", &zob_keys, &bitmask);
-        assert_eq!(1275, eval_state(&state));
+        assert_eq!(1240, eval_state(&state));
     }
 
     #[test]
@@ -461,7 +453,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("2q5/3p1rk1/3P1pp1/p3P2p/8/4Q3/5PPP/R5K1 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state));
+        assert_eq!(-60, eval_state(&state));
     }
 
     #[test]
@@ -470,7 +462,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("1r2k3/8/3P4/p3P2p/8/8/1R2K3/8 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(135, eval_state(&state));
+        assert_eq!(95, eval_state(&state));
     }
 
     #[test]
@@ -488,7 +480,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("bnrqnrkb/1pp2pp1/8/8/3pp3/8/PPP2PPP/BNRQNRKB w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-30, eval_state(&state));
+        assert_eq!(-40, eval_state(&state));
     }
 
     #[test]
@@ -506,7 +498,7 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("8/6k1/6b1/p3p1p1/P3p1P1/1P1p3P/8/2R3K1 b - - 1 39", &zob_keys, &bitmask);
-        assert_eq!(-60, eval_state(&state));
+        assert_eq!(-55, eval_state(&state));
     }
 
     #[test]
@@ -515,6 +507,6 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("8/p6k/p4K1P/P4PP1/8/3b4/8/8 w - - 11 61", &zob_keys, &bitmask);
-        assert_eq!(50, eval_state(&state));
+        assert_eq!(40, eval_state(&state));
     }
 }

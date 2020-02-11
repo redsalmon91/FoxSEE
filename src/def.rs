@@ -1,6 +1,12 @@
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "1.2.4";
+pub static VERSION: &str = "2.0.0";
 pub static AUTHOR: &str = "Zixiao Han";
+
+pub const DEFAULT_HASH_SIZE_MB: usize = 64;
+pub const DEFAULT_HASH_SIZE_UNIT: usize = 2097152;
+pub const MIN_HASH_SIZE_MB: usize = 1;
+pub const MIN_HASH_SIZE_UNIT: usize = 32768;
+pub const MAX_HASH_SIZE_MB: usize = 512;
 
 pub const BOARD_SIZE: usize = 120;
 pub const DIM_SIZE: usize = 8;
@@ -55,6 +61,11 @@ pub const fn get_opposite_player(player: u8) -> u8 {
 #[inline]
 pub const fn on_same_side(player: u8, piece_code: u8) -> bool {
     player & piece_code == player
+}
+
+#[inline]
+pub const fn get_rank(index: usize) -> usize {
+    index / 16 + 1
 }
 
 #[inline]

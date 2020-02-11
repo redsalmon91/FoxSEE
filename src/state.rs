@@ -12,9 +12,6 @@ const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 
-const LAST_DUP_POS_INDEX: usize = 4;
-const MIN_POS_COUNT_FOR_REP: usize = 6;
-
 pub struct State<'state> {
     pub squares: [u8; def::BOARD_SIZE],
     pub player: u8,
@@ -25,9 +22,6 @@ pub struct State<'state> {
 
     pub wk_index: usize,
     pub bk_index: usize,
-
-    pub w_castled: bool,
-    pub b_castled: bool,
 
     pub bitboard: BitBoard,
     pub bitboard_stack: Vec<BitBoard>,
@@ -65,9 +59,6 @@ impl <'state> State<'state> {
             wk_index: wk_index,
             bk_index: bk_index,
 
-            w_castled: false,
-            b_castled: false,
-
             bitboard: bitboard,
             bitboard_stack: Vec::new(),
 
@@ -88,14 +79,6 @@ impl <'state> State<'state> {
     pub fn is_draw(&self) -> bool {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize);
-
-        if check_range < MIN_POS_COUNT_FOR_REP {
-            return false
-        }
-
-        if self.history_pos_stack[history_len - LAST_DUP_POS_INDEX] == self.hash_key {
-            return true
-        }
 
         let mut dup_count = 0;
         for check_index in 1..=check_range {
@@ -324,7 +307,6 @@ impl <'state> State<'state> {
         if to == def::CAS_SQUARE_WK {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
-            self.w_castled = true;
 
             let k_index = def::CAS_SQUARE_WK-2;
             let r_index = def::CAS_SQUARE_WK+1;
@@ -349,7 +331,6 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_BK {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
-            self.b_castled = true;
 
             let k_index = def::CAS_SQUARE_BK-2;
             let r_index = def::CAS_SQUARE_BK+1;
@@ -374,7 +355,6 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_WQ {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
-            self.w_castled = true;
 
             let k_index = def::CAS_SQUARE_WQ+2;
             let r_index = def::CAS_SQUARE_WQ-2;
@@ -399,7 +379,6 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_BQ {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
-            self.b_castled = true;
 
             let k_index = def::CAS_SQUARE_BQ+2;
             let r_index = def::CAS_SQUARE_BQ-2;
@@ -426,29 +405,21 @@ impl <'state> State<'state> {
 
     fn undo_cas_mov(&mut self, to: usize) {
         if to == def::CAS_SQUARE_WK {
-            self.w_castled = false;
-
             self.squares[def::CAS_SQUARE_WK-2] = def::WK;
             self.squares[def::CAS_SQUARE_WK+1] = def::WR;
             self.squares[def::CAS_SQUARE_WK-1] = 0;
             self.squares[def::CAS_SQUARE_WK] = 0;
         } else if to == def::CAS_SQUARE_BK {
-            self.b_castled = false;
-
             self.squares[def::CAS_SQUARE_BK-2] = def::BK;
             self.squares[def::CAS_SQUARE_BK+1] = def::BR;
             self.squares[def::CAS_SQUARE_BK-1] = 0;
             self.squares[def::CAS_SQUARE_BK] = 0;
         } else if to == def::CAS_SQUARE_WQ {
-            self.w_castled = false;
-
             self.squares[def::CAS_SQUARE_WQ+2] = def::WK;
             self.squares[def::CAS_SQUARE_WQ-2] = def::WR;
             self.squares[def::CAS_SQUARE_WQ+1] = 0;
             self.squares[def::CAS_SQUARE_WQ] = 0;
         } else if to == def::CAS_SQUARE_BQ {
-            self.b_castled = false;
-
             self.squares[def::CAS_SQUARE_BQ+2] = def::BK;
             self.squares[def::CAS_SQUARE_BQ-2] = def::BR;
             self.squares[def::CAS_SQUARE_BQ+1] = 0;
