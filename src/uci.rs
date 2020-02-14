@@ -61,7 +61,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
                     }
 
                     let hash_ratio = hash_size_mb / def::MIN_HASH_SIZE_MB;
-                    if hash_ratio != 1 && hash_ratio % 2 != 0 {
+                    if hash_ratio < 2 || hash_ratio % 2 != 0 {
                         println!("hash size {} is not supported", hash_size_mb);
                         return UciProcessResult::Noop
                     }

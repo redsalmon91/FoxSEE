@@ -5,6 +5,11 @@ use crate::{
     util,
 };
 
+static CAS_WK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000;
+static CAS_WQ_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110;
+static CAS_BK_MASK: u64 = 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+static CAS_BQ_MASK: u64 = 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
 pub struct MoveGenerator {
     k_mov_table: Vec<Vec<usize>>,
     n_mov_table: Vec<Vec<usize>>,
@@ -41,6 +46,7 @@ impl MoveGenerator {
     pub fn gen_castle_mov_list(&self, state: &State) -> Vec<u32> {
         let cas_rights = state.cas_rights;
         let squares = state.squares;
+        let all_mask = state.bitboard.w_all | state.bitboard.b_all;
 
         let mut mov_list = Vec::new();
 
@@ -48,8 +54,7 @@ impl MoveGenerator {
             if cas_rights & 0b1000 != 0 {
                 if squares[def::CAS_SQUARE_WK - 2] == def::WK
                 && squares[def::CAS_SQUARE_WK + 1] == def::WR
-                && squares[def::CAS_SQUARE_WK] == 0
-                && squares[def::CAS_SQUARE_WK - 1] == 0
+                && all_mask & CAS_WK_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK - 1)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK - 2) {
@@ -60,9 +65,7 @@ impl MoveGenerator {
             if cas_rights & 0b0100 != 0 {
                 if squares[def::CAS_SQUARE_WQ + 2] == def::WK
                 && squares[def::CAS_SQUARE_WQ - 2] == def::WR
-                && squares[def::CAS_SQUARE_WQ] == 0
-                && squares[def::CAS_SQUARE_WQ - 1] == 0
-                && squares[def::CAS_SQUARE_WQ + 1] == 0
+                && all_mask & CAS_WQ_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 1)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 2) {
@@ -73,8 +76,7 @@ impl MoveGenerator {
             if cas_rights & 0b0010 != 0 {
                 if squares[def::CAS_SQUARE_BK - 2] == def::BK
                 && squares[def::CAS_SQUARE_BK + 1] == def::BR
-                && squares[def::CAS_SQUARE_BK] == 0
-                && squares[def::CAS_SQUARE_BK - 1] == 0
+                && all_mask & CAS_BK_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK - 1)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK - 2) {
@@ -85,9 +87,7 @@ impl MoveGenerator {
             if cas_rights & 0b0001 != 0 {
                 if squares[def::CAS_SQUARE_BQ + 2] == def::BK
                 && squares[def::CAS_SQUARE_BQ - 2] == def::BR
-                && squares[def::CAS_SQUARE_BQ] == 0
-                && squares[def::CAS_SQUARE_BQ - 1] == 0
-                && squares[def::CAS_SQUARE_BQ + 1] == 0
+                && all_mask & CAS_BQ_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 1)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 2) {

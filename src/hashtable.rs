@@ -1,17 +1,15 @@
 type Key = u64;
-type BitMask = u32;
+type BitMask = u64;
 type Player = u8;
 type Flag = u8;
 type Depth = u8;
 type CasRights = u8;
-type EnpSqr = usize;
+type EnpSqr = u32;
 
 type RegTableEntry = (Key, BitMask, Player, Depth, CasRights, EnpSqr, Flag, i32, u32);
 
 pub const HASH_TYPE_ALPHA: u8 = 1;
 pub const HASH_TYPE_BETA: u8 = 2;
-
-static SHRINK_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_11111111_11111111_11111111;
 
 #[derive(PartialEq, Debug)]
 pub enum RegLookupResult {
@@ -36,7 +34,7 @@ impl RegHashTable {
     pub fn get(&self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> RegLookupResult {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
-        if k == key && p == player && c == cas_rights && e == enp_sqr && bm == ((bit_mask >> 16) & SHRINK_MASK) as u32 {
+        if k == key && p == player && c == cas_rights && e == enp_sqr as u32 && bm == bit_mask {
             if d == depth {
                 RegLookupResult::Match(f, s, m)
             } else {
@@ -48,7 +46,7 @@ impl RegHashTable {
     }
 
     pub fn set(&mut self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) {
-        self.table[(key & self.mod_base) as usize] = (key, ((bit_mask >> 16) & SHRINK_MASK) as u32, player, depth, cas_rights, enp_sqr, flag, score, mov);
+        self.table[(key & self.mod_base) as usize] = (key, bit_mask, player, depth, cas_rights, enp_sqr as u32, flag, score, mov);
     }
 
     pub fn clear(&mut self) {
@@ -59,12 +57,6 @@ impl RegHashTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_shrink_bitmask() {
-        assert_eq!(0b10101010_11111111_01010101_00001111, ((0b11001101_00100001_10101010_11111111_01010101_00001111_00100011_11010101 >> 16) & SHRINK_MASK) as u32);
-        assert_eq!(0b10101010_11111111_01010101_00001111, ((0b00000000_11111111_10101010_11111111_01010101_00001111_11111111_00000000 >> 16) & SHRINK_MASK) as u32);
-    }
 
     #[test]
     fn test_get_set_reg_entries() {

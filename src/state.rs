@@ -22,6 +22,8 @@ pub struct State<'state> {
 
     pub wk_index: usize,
     pub bk_index: usize,
+    pub w_castled: bool,
+    pub b_castled: bool,
 
     pub bitboard: BitBoard,
     pub bitboard_stack: Vec<BitBoard>,
@@ -58,6 +60,8 @@ impl <'state> State<'state> {
 
             wk_index: wk_index,
             bk_index: bk_index,
+            w_castled: false,
+            b_castled: false,
 
             bitboard: bitboard,
             bitboard_stack: Vec::new(),
@@ -307,6 +311,7 @@ impl <'state> State<'state> {
         if to == def::CAS_SQUARE_WK {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
+            self.w_castled = true;
 
             let k_index = def::CAS_SQUARE_WK-2;
             let r_index = def::CAS_SQUARE_WK+1;
@@ -331,6 +336,7 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_BK {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
+            self.b_castled = true;
 
             let k_index = def::CAS_SQUARE_BK-2;
             let r_index = def::CAS_SQUARE_BK+1;
@@ -355,6 +361,7 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_WQ {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
+            self.w_castled = true;
 
             let k_index = def::CAS_SQUARE_WQ+2;
             let r_index = def::CAS_SQUARE_WQ-2;
@@ -379,6 +386,7 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_BQ {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
+            self.b_castled = true;
 
             let k_index = def::CAS_SQUARE_BQ+2;
             let r_index = def::CAS_SQUARE_BQ-2;
@@ -405,21 +413,25 @@ impl <'state> State<'state> {
 
     fn undo_cas_mov(&mut self, to: usize) {
         if to == def::CAS_SQUARE_WK {
+            self.w_castled = false;
             self.squares[def::CAS_SQUARE_WK-2] = def::WK;
             self.squares[def::CAS_SQUARE_WK+1] = def::WR;
             self.squares[def::CAS_SQUARE_WK-1] = 0;
             self.squares[def::CAS_SQUARE_WK] = 0;
         } else if to == def::CAS_SQUARE_BK {
+            self.b_castled = false;
             self.squares[def::CAS_SQUARE_BK-2] = def::BK;
             self.squares[def::CAS_SQUARE_BK+1] = def::BR;
             self.squares[def::CAS_SQUARE_BK-1] = 0;
             self.squares[def::CAS_SQUARE_BK] = 0;
         } else if to == def::CAS_SQUARE_WQ {
+            self.w_castled = false;
             self.squares[def::CAS_SQUARE_WQ+2] = def::WK;
             self.squares[def::CAS_SQUARE_WQ-2] = def::WR;
             self.squares[def::CAS_SQUARE_WQ+1] = 0;
             self.squares[def::CAS_SQUARE_WQ] = 0;
         } else if to == def::CAS_SQUARE_BQ {
+            self.b_castled = false;
             self.squares[def::CAS_SQUARE_BQ+2] = def::BK;
             self.squares[def::CAS_SQUARE_BQ-2] = def::BR;
             self.squares[def::CAS_SQUARE_BQ+1] = 0;

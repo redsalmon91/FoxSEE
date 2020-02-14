@@ -42,8 +42,7 @@ pub struct BitMask {
     pub bk_protect_masks: [u64; def::BOARD_SIZE],
     pub wp_forward_masks: [u64; def::BOARD_SIZE],
     pub bp_forward_masks: [u64; def::BOARD_SIZE],
-    pub wp_nearby_masks: [u64; def::BOARD_SIZE],
-    pub bp_nearby_masks: [u64; def::BOARD_SIZE],
+    pub nearby_masks: [u64; def::BOARD_SIZE],
 }
 
 impl BitMask {
@@ -56,8 +55,7 @@ impl BitMask {
             bk_protect_masks,
             wp_forward_masks,
             bp_forward_masks,
-            wp_nearby_masks,
-            bp_nearby_masks,
+            nearby_masks,
         ) = gen_masks();
 
         BitMask {
@@ -68,8 +66,7 @@ impl BitMask {
             bk_protect_masks,
             wp_forward_masks,
             bp_forward_masks,
-            wp_nearby_masks,
-            bp_nearby_masks,
+            nearby_masks,
         }
     }
 }
@@ -82,7 +79,6 @@ pub fn gen_masks() -> (
     [u64; def::BOARD_SIZE], 
     [u64; def::BOARD_SIZE], 
     [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
     [u64; def::BOARD_SIZE]) {
 
     let mut index_masks = [0; def::BOARD_SIZE];
@@ -92,8 +88,7 @@ pub fn gen_masks() -> (
     let mut bk_protect_masks = [0; def::BOARD_SIZE];
     let mut wp_forward_masks = [0; def::BOARD_SIZE];
     let mut bp_forward_masks = [0; def::BOARD_SIZE];
-    let mut wp_nearby_masks = [0; def::BOARD_SIZE];
-    let mut bp_nearby_masks = [0; def::BOARD_SIZE];
+    let mut nearby_masks = [0; def::BOARD_SIZE];
 
     let mut index = 0;
 
@@ -160,26 +155,43 @@ pub fn gen_masks() -> (
             index += 8;
         }
 
+        let mut nearby_mask = 0;
+        for index_change in vec![1, -1, 15, -15, 17, -17] {
+            let nearby_index = index as isize + index_change;
+            if nearby_index >= 0 {
+                let nearby_index = nearby_index as usize;
+                if def::is_index_valid(nearby_index) {
+                    nearby_mask |= index_masks[nearby_index];
+                }
+            }
+        }
+
+        nearby_masks[index] = nearby_mask;
+
+        index += 1;
+    }
+
+    index = 0;
+    while index < def::BOARD_SIZE {
+        if !def::is_index_valid(index) {
+            index += 8;
+        }
+
         let mut wp_forward_mask = file_masks[index];
         let mut bp_forward_mask = file_masks[index];
-        let mut nearby_mask = 0;
 
         if index as isize - 1 >= 16 && def::is_index_valid(index - 1) {
             wp_forward_mask |= file_masks[index - 1];
             bp_forward_mask |= file_masks[index - 1];
-            nearby_mask |= file_masks[index - 1];
         }
 
         if index + 1 <= 103 && def::is_index_valid(index + 1) {
             wp_forward_mask |= file_masks[index + 1];
             bp_forward_mask |= file_masks[index + 1];
-            nearby_mask |= file_masks[index + 1];
         }
 
         wp_forward_masks[index] = wp_forward_mask;
         bp_forward_masks[index] = bp_forward_mask;
-        wp_nearby_masks[index] = nearby_mask;
-        bp_nearby_masks[index] = nearby_mask;
 
         index += 1;
     }
@@ -192,21 +204,11 @@ pub fn gen_masks() -> (
 
         let mut wp_forward_mask = wp_forward_masks[index];
         let mut bp_forward_mask = bp_forward_masks[index];
-        let mut wp_nearby_mask = wp_nearby_masks[index];
-        let mut bp_nearby_mask = bp_nearby_masks[index];
 
         let mut mask_index = 0;
         while mask_index < def::BOARD_SIZE {
             if !def::is_index_valid(mask_index) {
                 mask_index += 8;
-            }
-
-            if mask_index > index + 1 {
-                wp_nearby_mask &= !index_masks[mask_index];
-            }
-
-            if index > 1 && mask_index < index - 1 {
-                bp_nearby_mask &= !index_masks[mask_index];
             }
 
             if mask_index < index || mask_index - index < 15 {
@@ -222,8 +224,6 @@ pub fn gen_masks() -> (
 
         wp_forward_masks[index] = wp_forward_mask;
         bp_forward_masks[index] = bp_forward_mask;
-        wp_nearby_masks[index] = wp_nearby_mask;
-        bp_nearby_masks[index] = bp_nearby_mask;
 
         index += 1;
     }
@@ -235,9 +235,8 @@ pub fn gen_masks() -> (
         wk_protect_masks, 
         bk_protect_masks, 
         wp_forward_masks, 
-        bp_forward_masks, 
-        wp_nearby_masks, 
-        bp_nearby_masks,
+        bp_forward_masks,
+        nearby_masks,
     )
 }
 
@@ -255,8 +254,7 @@ mod tests {
             bk_protect_masks, 
             wp_forward_masks, 
             bp_forward_masks,
-            wp_nearby_masks,
-            bp_nearby_masks,
+            nearby_masks,
         ) = gen_masks();
 
         assert_eq!(0b1, index_masks[0]);
@@ -280,7 +278,7 @@ mod tests {
         assert_eq!(0b00000011_00000011_00000011_00000011_00000011_00000000_00000000_00000000, wp_forward_masks[32]);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000111_00000111, bp_forward_masks[33]);
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00101000_00101000_00101000_00101000, wp_nearby_masks[52]);
-        assert_eq!(0b00101000_00101000_00101000_00101000_00000000_00000000_00000000_00000000, bp_nearby_masks[68]);
+        assert_eq!(0b00000000_00000000_00000000_00101000_00101000_00101000_00000000_00000000, nearby_masks[52]);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_01000000_01000000_01000000, nearby_masks[23]);
     }
 }
