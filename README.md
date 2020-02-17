@@ -1,7 +1,7 @@
 # 🦊 FoxSEE Chess Engine
 UCI chess engine written in Rust!  
 
-**Current Version** 2.1.1
+**Current Version** 2.1.2
 
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 
@@ -11,6 +11,7 @@ UCI chess engine written in Rust!
 - 0x88 Board
 - Minimax Search with Alpha-Beta Pruning
 - Quiescence Search
+- Iterative Deepening
 - Check Extension
 - Static Exchange Evaluation
 - History Heuristic

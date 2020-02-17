@@ -1,5 +1,5 @@
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "2.1.1";
+pub static VERSION: &str = "2.1.2";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -64,8 +64,13 @@ pub const fn on_same_side(player: u8, piece_code: u8) -> bool {
 }
 
 #[inline]
-pub const fn get_rank(index: usize) -> usize {
-    index / 16 + 1
+pub const fn get_w_rank(index: usize) -> usize {
+    index / 16
+}
+
+#[inline]
+pub const fn get_b_rank(index: usize) -> usize {
+    7 - index / 16
 }
 
 #[inline]
