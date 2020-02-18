@@ -33,7 +33,7 @@ pub struct State<'state> {
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
     pub history_mov_stack: Vec<(usize, u8)>,
-    pub history_pos_stack: Vec<u64>,
+    pub history_pos_stack: Vec<(u64, u8)>,
     pub non_cap_mov_count_stack: Vec<u16>,
     pub wk_index_stack: Vec<usize>,
     pub bk_index_stack: Vec<usize>,
@@ -86,7 +86,8 @@ impl <'state> State<'state> {
 
         let mut dup_count = 0;
         for check_index in 1..=check_range {
-            if self.history_pos_stack[history_len-check_index] == self.hash_key {
+            let (pos_hash, player) = self.history_pos_stack[history_len-check_index];
+            if pos_hash == self.hash_key && player == self.player {
                 dup_count += 1;
             }
 
@@ -102,7 +103,7 @@ impl <'state> State<'state> {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
         self.history_mov_stack.push((to, self.squares[to]));
-        self.history_pos_stack.push(self.hash_key);
+        self.history_pos_stack.push((self.hash_key, self.player));
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.wk_index_stack.push(self.wk_index);
         self.bk_index_stack.push(self.bk_index);
@@ -127,7 +128,7 @@ impl <'state> State<'state> {
         self.non_cap_mov_count = self.non_cap_mov_count_stack.pop().unwrap();
         self.wk_index = self.wk_index_stack.pop().unwrap();
         self.bk_index = self.bk_index_stack.pop().unwrap();
-        self.hash_key = self.history_pos_stack.pop().unwrap();
+        self.hash_key = self.history_pos_stack.pop().unwrap().0;
         self.bitboard = self.bitboard_stack.pop().unwrap();
         self.history_mov_stack.pop();
 
