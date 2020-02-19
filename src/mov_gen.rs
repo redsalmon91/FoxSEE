@@ -260,10 +260,7 @@ impl MoveGenerator {
 
                     if taken_piece == 0 {
                         add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
+                    } else if !def::on_same_side(player, taken_piece) {
                         add_cap(from_index, to_index, def::MOV_REG, 0);
                     }
                 }
@@ -547,10 +544,7 @@ impl MoveGenerator {
 
                     if taken_piece == 0 {
                         add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
+                    } else if !def::on_same_side(player, taken_piece) {
                         add_cap(from_index, to_index, def::MOV_REG, 0);
                     }
                 }
@@ -1465,6 +1459,173 @@ impl MoveGenerator {
 
         (w_attacker_list, b_attacker_list)
     }
+
+    pub fn count_rook_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
+        let squares = state.squares;
+        let mut mob_score = 0;
+
+        let mov_index_list = &self.up_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        let mov_index_list = &self.right_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        let mov_index_list = &self.down_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        let mov_index_list = &self.left_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        mob_score
+    }
+
+    pub fn count_bishop_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
+        let squares = state.squares;
+        let mut mob_score = 0;
+
+        let mov_index_list = &self.up_left_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        let mov_index_list = &self.up_right_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        let mov_index_list = &self.down_right_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        let mov_index_list = &self.down_left_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if taken_piece == 0 {
+                mob_score += 1;
+                continue
+            }
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+
+            break
+        }
+
+        mob_score
+    }
+
+    pub fn count_knight_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
+        let squares = state.squares;
+        let mut mob_score = 0;
+
+        let mov_index_list = &self.n_mov_table[index];
+        for to_index in mov_index_list {
+            let to_index = *to_index;
+            let taken_piece = squares[to_index];
+
+            if !def::on_same_side(player, taken_piece) {
+                mob_score += 1;
+            }
+        }
+
+        mob_score
+    }
 }
 
 #[cfg(test)]
@@ -1723,5 +1884,38 @@ mod tests {
         let mov_generator = MoveGenerator::new();
 
         assert!(mov_generator.is_in_check(&state));
+    }
+
+    #[test]
+    fn test_count_rook_mobility() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/2pP1n2/1PP1R3/P1NB4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
+        let mov_generator = MoveGenerator::new();
+
+        assert_eq!(7, mov_generator.count_rook_mobility(&state, util::map_sqr_notation_to_index("e4"), def::PLAYER_W));
+        assert_eq!(1, mov_generator.count_rook_mobility(&state, util::map_sqr_notation_to_index("f7"), def::PLAYER_B));
+    }
+
+    #[test]
+    fn test_count_bishop_mobility() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/2pP1n2/1PP1R3/P1NB4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
+        let mov_generator = MoveGenerator::new();
+
+        assert_eq!(2, mov_generator.count_bishop_mobility(&state, util::map_sqr_notation_to_index("d3"), def::PLAYER_W));
+        assert_eq!(6, mov_generator.count_bishop_mobility(&state, util::map_sqr_notation_to_index("d7"), def::PLAYER_B));
+    }
+
+    #[test]
+    fn test_count_knight_mobility() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/1NpP1n2/1PP1R3/P2B4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
+        let mov_generator = MoveGenerator::new();
+
+        assert_eq!(5, mov_generator.count_knight_mobility(&state, util::map_sqr_notation_to_index("b5"), def::PLAYER_W));
+        assert_eq!(2, mov_generator.count_knight_mobility(&state, util::map_sqr_notation_to_index("h6"), def::PLAYER_B));
     }
 }

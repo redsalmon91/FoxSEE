@@ -626,7 +626,7 @@ impl SearchEngine {
             *seldepth = ply;
         }
 
-        let score = eval::eval_state(state);
+        let score = eval::eval_state(state, &self.mov_generator);
 
         if score * player_sign >= beta * player_sign {
             return score
@@ -794,7 +794,7 @@ mod tests {
         let state = State::new("4q1kr/ppn1rp1p/n1p1PB2/5P2/2B1Q2P/2N3p1/PPP1b1P1/4R2K b - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new(65536);
 
-        assert_eq!(145, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
+        assert_eq!(150, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
         assert_eq!(-100, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BP));
         assert_eq!(325, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BR));
     }
@@ -806,9 +806,9 @@ mod tests {
         let state = State::new("r5kr/1b1pR1p1/ppq1N2p/5P1n/3Q4/B6B/P5PP/5RK1 w - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-555, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
+        assert_eq!(-550, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WN));
-        assert_eq!(-80, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WR));
+        assert_eq!(-75, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WR));
     }
 
     #[test]
@@ -819,8 +819,8 @@ mod tests {
         let search_engine = SearchEngine::new(65536);
 
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WN));
-        assert_eq!(95, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WB));
-        assert_eq!(-19555, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
+        assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WB));
+        assert_eq!(-19550, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
     }
 
     #[test]
@@ -830,7 +830,7 @@ mod tests {
         let state = State::new("r4kn1/p2bprb1/Bp1p1ppP/2pP4/1PP1Pn2/PRNB2K1/2QN1PPq/5R2 w - - 0 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-19655, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
+        assert_eq!(-19650, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
     }
 
     #[test]
@@ -850,7 +850,7 @@ mod tests {
         let mut state = State::new("r5kr/1b1pR1p1/p1q1N2p/5P1n/3Q4/B7/P5PP/5RK1 w - - 1 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(220, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(169, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -860,7 +860,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(5, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(31, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
@@ -880,7 +880,7 @@ mod tests {
         let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-965, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-959, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -890,7 +890,7 @@ mod tests {
         let mut state = State::new("2r4k/1R5p/8/p1p5/P1Pp1p2/3R3P/KP3r2/8 w - - 0 40", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-260, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-275, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -1093,14 +1093,14 @@ mod tests {
     fn test_search_puzzle_15() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("2b1k2r/2p2ppp/1qp4n/7B/1p2P3/5Q2/PPPr2PP/R2N1R1K b k - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("2r2rk1/1bqnbpp1/1p1ppn1p/pP6/N1P1P3/P2B1N1P/1B2QPP1/R2R2K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
         let best_mov = search_engine.search(&mut state, 15500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("e8"));
-        assert_eq!(to, util::map_sqr_notation_to_index("g8"));
+        assert_eq!(from, util::map_sqr_notation_to_index("b7"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e4"));
     }
 
     #[test]

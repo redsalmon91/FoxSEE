@@ -177,21 +177,18 @@ pub fn gen_masks() -> (
             index += 8;
         }
 
-        let mut wp_forward_mask = file_masks[index];
-        let mut bp_forward_mask = file_masks[index];
+        let mut forward_files_mask = file_masks[index];
 
         if index as isize - 1 >= 16 && def::is_index_valid(index - 1) {
-            wp_forward_mask |= file_masks[index - 1];
-            bp_forward_mask |= file_masks[index - 1];
+            forward_files_mask |= file_masks[index - 1];
         }
 
         if index + 1 <= 103 && def::is_index_valid(index + 1) {
-            wp_forward_mask |= file_masks[index + 1];
-            bp_forward_mask |= file_masks[index + 1];
+            forward_files_mask |= file_masks[index + 1];
         }
 
-        wp_forward_masks[index] = wp_forward_mask;
-        bp_forward_masks[index] = bp_forward_mask;
+        wp_forward_masks[index] = forward_files_mask;
+        bp_forward_masks[index] = forward_files_mask;
 
         index += 1;
     }
