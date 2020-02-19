@@ -1,7 +1,7 @@
 use crate::{
     def,
     eval,
-    hashtable::{RegHashTable, RegLookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA},
+    hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA},
     mov_gen::MoveGenerator,
     state::State,
     util,
@@ -23,11 +23,13 @@ pub enum SearchMovResult {
 }
 
 use SearchMovResult::*;
+use LookupResult::*;
 use std::time::Instant;
 
 pub struct SearchEngine {
     mov_generator: MoveGenerator,
-    reg_hash_table: RegHashTable,
+    depth_preferred_hash_table: DepthPreferredHashTable,
+    always_replace_hash_table: AlwaysReplaceHashTable,
     killer_table: [((i32, u32), (i32, u32)); KILLER_TABLE_LENGTH],
     w_history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
     b_history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
@@ -43,7 +45,8 @@ impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
             mov_generator: MoveGenerator::new(),
-            reg_hash_table: RegHashTable::new(hash_size),
+            depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
+            always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
             killer_table: [((0, 0), (0, 0)); KILLER_TABLE_LENGTH],
             w_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
             b_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
@@ -57,11 +60,13 @@ impl SearchEngine {
     }
 
     pub fn set_hash_size(&mut self, hash_size: usize) {
-        self.reg_hash_table = RegHashTable::new(hash_size);
+        self.depth_preferred_hash_table = DepthPreferredHashTable::new(hash_size >> 1);
+        self.always_replace_hash_table = AlwaysReplaceHashTable::new(hash_size >> 1);
     }
 
     pub fn reset(&mut self) {
-        self.reg_hash_table.clear();
+        self.depth_preferred_hash_table.clear();
+        self.always_replace_hash_table.clear();
     }
 
     pub fn search(&mut self, state: &mut State, max_time_millis: u128) -> u32 {
@@ -224,7 +229,7 @@ impl SearchEngine {
                 pv_table[0] = mov;
                 pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
 
-                self.reg_hash_table.set(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, HASH_TYPE_ALPHA, score, mov);
+                self.set_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, HASH_TYPE_ALPHA, score, mov);
             }
 
             self.root_node_mov_list[mov_index] = (score * player_sign, mov);
@@ -295,8 +300,8 @@ impl SearchEngine {
         }
 
         let mut hash_mov = 0;
-        match self.reg_hash_table.get(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square) {
-            RegLookupResult::Match(flag, score, mov) => {
+        match self.get_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square) {
+            Match(flag, score, mov) => {
                 hash_mov = mov;
 
                 if !on_pv {
@@ -315,7 +320,7 @@ impl SearchEngine {
                     }
                 }
             },
-            RegLookupResult::MovOnly(mov) => {
+            MovOnly(mov) => {
                 hash_mov = mov;
             },
             _ => (),
@@ -539,7 +544,7 @@ impl SearchEngine {
                 }
             }
 
-            self.reg_hash_table.set(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, HASH_TYPE_BETA, score, mov);
+            self.set_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, HASH_TYPE_BETA, score, mov);
 
             return Beta(score)
         }
@@ -566,12 +571,29 @@ impl SearchEngine {
                 }
             }
 
-            self.reg_hash_table.set(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, HASH_TYPE_ALPHA, score, mov);
+            self.set_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, HASH_TYPE_ALPHA, score, mov);
 
             return Alpha(score)
         }
 
         Noop
+    }
+
+    #[inline]
+    pub fn get_hash(&self, hash_key: u64, bitmask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {        
+        match self.depth_preferred_hash_table.get(hash_key, bitmask, player, depth, cas_rights, enp_sqr) {
+            NoMatch => {
+                self.always_replace_hash_table.get(hash_key, bitmask, player, depth, cas_rights, enp_sqr)
+            },
+            matched => matched
+        }
+    }
+
+    #[inline]
+    pub fn set_hash(&mut self, hash_key: u64, bitmask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, hash_flag: u8, score: i32, mov: u32) {
+        if !self.depth_preferred_hash_table.set(hash_key, bitmask, player, depth, cas_rights, enp_sqr, hash_flag, score, mov) {
+            self.always_replace_hash_table.set(hash_key, bitmask, player, depth, cas_rights, enp_sqr, hash_flag, score, mov);
+        }
     }
 
     #[inline]
@@ -794,7 +816,7 @@ mod tests {
         let state = State::new("4q1kr/ppn1rp1p/n1p1PB2/5P2/2B1Q2P/2N3p1/PPP1b1P1/4R2K b - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new(65536);
 
-        assert_eq!(150, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
+        assert_eq!(145, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BN));
         assert_eq!(-100, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BP));
         assert_eq!(325, search_engine.see(&state, util::map_sqr_notation_to_index("e6"), def::BR));
     }
@@ -806,9 +828,9 @@ mod tests {
         let state = State::new("r5kr/1b1pR1p1/ppq1N2p/5P1n/3Q4/B6B/P5PP/5RK1 w - - 1 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-550, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
+        assert_eq!(-555, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WQ));
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WN));
-        assert_eq!(-75, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WR));
+        assert_eq!(-80, search_engine.see(&state, util::map_sqr_notation_to_index("g7"), def::WR));
     }
 
     #[test]
@@ -819,8 +841,8 @@ mod tests {
         let search_engine = SearchEngine::new(65536);
 
         assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WN));
-        assert_eq!(100, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WB));
-        assert_eq!(-19550, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
+        assert_eq!(95, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WB));
+        assert_eq!(-19555, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
     }
 
     #[test]
@@ -830,7 +852,7 @@ mod tests {
         let state = State::new("r4kn1/p2bprb1/Bp1p1ppP/2pP4/1PP1Pn2/PRNB2K1/2QN1PPq/5R2 w - - 0 1", &zob_keys, &bitmask);
         let search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-19650, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
+        assert_eq!(-19655, search_engine.see(&state, util::map_sqr_notation_to_index("f4"), def::WK));
     }
 
     #[test]
@@ -860,7 +882,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(31, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(26, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
@@ -880,7 +902,7 @@ mod tests {
         let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-959, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-964, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
