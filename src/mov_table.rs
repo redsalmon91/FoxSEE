@@ -1,6 +1,5 @@
 use crate::{
     def,
-    mov_tbl,
     state::State,
     util,
 };
@@ -10,7 +9,354 @@ static CAS_WQ_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_0000000
 static CAS_BK_MASK: u64 = 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
 static CAS_BQ_MASK: u64 = 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
 
-pub struct MoveGenerator {
+const N_MOVS: [isize; 8] = [14, 18, 31, 33, -14, -18, -31, -33];
+const K_MOVS: [isize; 8] = [1, 15, 16, 17, -1, -15, -16, -17];
+
+const VERTICAL_SLIDE_MOVS: [isize; 7] = [16, 32, 48, 64, 80, 96, 112];
+const HORIZONTAL_SLIDE_MOVS: [isize; 7] = [1, 2, 3, 4, 5, 6, 7];
+
+const DESC_DIAGNOL_SLIDE_MOVS: [isize; 7] = [15, 30, 45, 60, 75, 90, 105];
+const ASC_DIAGNOL_SLIDE_MOVS: [isize; 7] = [17, 34, 51, 68, 85, 102, 119];
+
+fn gen_n_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..8 {
+            let mov = N_MOVS[mov_index];
+            let to_index = from_index as isize + mov;
+            if to_index < 0 {
+                continue
+            }
+
+            let to_index = to_index as usize;
+
+            if def::is_index_valid(to_index) {
+                mov_list_on_index.push(to_index);
+            }
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_k_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..8 {
+            let mov = K_MOVS[mov_index];
+            let to_index = from_index as isize + mov;
+            if to_index < 0 {
+                continue
+            }
+
+            let to_index = to_index as usize;
+
+            if def::is_index_valid(to_index) {
+                mov_list_on_index.push(to_index);
+            }
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_up_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = VERTICAL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize + mov;
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_down_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = VERTICAL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize - mov;
+
+            if to_index < 0 {
+                break
+            }
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_right_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = HORIZONTAL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize + mov;
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_left_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = HORIZONTAL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize - mov;
+
+            if to_index < 0 {
+                break
+            }
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_up_left_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = DESC_DIAGNOL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize + mov;
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_down_right_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = DESC_DIAGNOL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize - mov;
+
+            if to_index < 0 {
+                break
+            }
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_up_right_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = ASC_DIAGNOL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize + mov;
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+fn gen_down_left_slide_mov_table() -> Vec<Vec<usize>> {
+    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
+
+    let mut from_index = 0;
+
+    while from_index < def::BOARD_SIZE {
+        if !def::is_index_valid(from_index) {
+            from_index += 8;
+        }
+
+        let mut mov_list_on_index = Vec::new();
+
+        for mov_index in 0..7 {
+            let mov = ASC_DIAGNOL_SLIDE_MOVS[mov_index];
+            let to_index = from_index as isize - mov;
+
+            if to_index < 0 {
+                break
+            }
+
+            let to_index = to_index as usize;
+
+            if !def::is_index_valid(to_index) {
+                break
+            }
+
+            mov_list_on_index.push(to_index);
+        }
+
+        mov_table[from_index] = mov_list_on_index;
+        from_index += 1;
+    }
+
+    mov_table
+}
+
+pub struct MoveTable {
     k_mov_table: Vec<Vec<usize>>,
     n_mov_table: Vec<Vec<usize>>,
 
@@ -25,21 +371,21 @@ pub struct MoveGenerator {
     down_left_mov_table: Vec<Vec<usize>>,
 }
 
-impl MoveGenerator {
+impl MoveTable {
     pub fn new() -> Self {
-        MoveGenerator {
-            k_mov_table: mov_tbl::gen_k_mov_table(),
-            n_mov_table: mov_tbl::gen_n_mov_table(),
+        MoveTable {
+            k_mov_table: gen_k_mov_table(),
+            n_mov_table: gen_n_mov_table(),
 
-            up_mov_table: mov_tbl::gen_up_slide_mov_table(),
-            down_mov_table: mov_tbl::gen_down_slide_mov_table(),
-            left_mov_table: mov_tbl::gen_left_slide_mov_table(),
-            right_mov_table: mov_tbl::gen_right_slide_mov_table(),
+            up_mov_table: gen_up_slide_mov_table(),
+            down_mov_table: gen_down_slide_mov_table(),
+            left_mov_table: gen_left_slide_mov_table(),
+            right_mov_table: gen_right_slide_mov_table(),
 
-            up_left_mov_table: mov_tbl::gen_up_left_slide_mov_table(),
-            up_right_mov_table: mov_tbl::gen_up_right_slide_mov_table(),
-            down_right_mov_table: mov_tbl::gen_down_right_slide_mov_table(),
-            down_left_mov_table: mov_tbl::gen_down_left_slide_mov_table(),
+            up_left_mov_table: gen_up_left_slide_mov_table(),
+            up_right_mov_table: gen_up_right_slide_mov_table(),
+            down_right_mov_table: gen_down_right_slide_mov_table(),
+            down_left_mov_table: gen_down_left_slide_mov_table(),
         }
     }
 
@@ -1643,7 +1989,7 @@ mod tests {
         let bitmask = BitMask::new();
         let state = State::new(fen, &zob_keys, &bitmask);
 
-        let (cap_list, non_cap_list) = MoveGenerator::new().gen_reg_mov_list(&state);
+        let (cap_list, non_cap_list) = MoveTable::new().gen_reg_mov_list(&state);
 
         if debug {
             println!("Captures:");
@@ -1680,7 +2026,7 @@ mod tests {
         let bitmask = BitMask::new();
         let state = State::new(fen, &zob_keys, &bitmask);
 
-        let cas_list = MoveGenerator::new().gen_castle_mov_list(&state);
+        let cas_list = MoveTable::new().gen_castle_mov_list(&state);
 
         if debug {
             println!("Castles:");
@@ -1829,11 +2175,11 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert!(mov_generator.is_under_attack(&state, util::map_sqr_notation_to_index("f6")));
-        assert!(mov_generator.is_under_attack(&state, util::map_sqr_notation_to_index("c7")));
-        assert!(mov_generator.is_under_attack(&state, util::map_sqr_notation_to_index("a6")));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("f6")));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("c7")));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("a6")));
     }
 
     #[test]
@@ -1841,9 +2187,9 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("3rr1k1/2pq2p1/p2p1pnp/8/2BBPP2/1PQ5/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert!(mov_generator.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state));
     }
 
     #[test]
@@ -1851,9 +2197,9 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("3rr1k1/2pq2p1/p2pNpnp/8/2QBPP2/1P1B4/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert!(!mov_generator.is_in_check(&state));
+        assert!(!mov_table.is_in_check(&state));
     }
 
     #[test]
@@ -1861,9 +2207,9 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("r2qnkn1/p2b2br/1p1p1pp1/2pPpp2/1PP1P2K/PRNBB3/3QNPPP/5R2 w - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert!(mov_generator.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state));
     }
 
     #[test]
@@ -1871,9 +2217,9 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("r2q1kn1/p2b1rb1/1p1p1pp1/2pPpn2/1PP1P3/PRNBB1K1/3QNPPP/5R2 w - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert!(mov_generator.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state));
     }
 
     #[test]
@@ -1881,9 +2227,9 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("r2q1k2/p2bPrbR/1p1p1ppn/2pPpn2/1PP1P3/P1NBB3/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert!(mov_generator.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state));
     }
 
     #[test]
@@ -1891,10 +2237,10 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/2pP1n2/1PP1R3/P1NB4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert_eq!(7, mov_generator.count_rook_mobility(&state, util::map_sqr_notation_to_index("e4"), def::PLAYER_W));
-        assert_eq!(1, mov_generator.count_rook_mobility(&state, util::map_sqr_notation_to_index("f7"), def::PLAYER_B));
+        assert_eq!(7, mov_table.count_rook_mobility(&state, util::map_sqr_notation_to_index("e4"), def::PLAYER_W));
+        assert_eq!(1, mov_table.count_rook_mobility(&state, util::map_sqr_notation_to_index("f7"), def::PLAYER_B));
     }
 
     #[test]
@@ -1902,10 +2248,10 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/2pP1n2/1PP1R3/P1NB4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert_eq!(2, mov_generator.count_bishop_mobility(&state, util::map_sqr_notation_to_index("d3"), def::PLAYER_W));
-        assert_eq!(6, mov_generator.count_bishop_mobility(&state, util::map_sqr_notation_to_index("d7"), def::PLAYER_B));
+        assert_eq!(2, mov_table.count_bishop_mobility(&state, util::map_sqr_notation_to_index("d3"), def::PLAYER_W));
+        assert_eq!(6, mov_table.count_bishop_mobility(&state, util::map_sqr_notation_to_index("d7"), def::PLAYER_B));
     }
 
     #[test]
@@ -1913,9 +2259,9 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/1NpP1n2/1PP1R3/P2B4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
-        assert_eq!(5, mov_generator.count_knight_mobility(&state, util::map_sqr_notation_to_index("b5"), def::PLAYER_W));
-        assert_eq!(2, mov_generator.count_knight_mobility(&state, util::map_sqr_notation_to_index("h6"), def::PLAYER_B));
+        assert_eq!(5, mov_table.count_knight_mobility(&state, util::map_sqr_notation_to_index("b5"), def::PLAYER_W));
+        assert_eq!(2, mov_table.count_knight_mobility(&state, util::map_sqr_notation_to_index("h6"), def::PLAYER_B));
     }
 }

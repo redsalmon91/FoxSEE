@@ -1,7 +1,7 @@
 use crate::{
     def,
     state::State,
-    mov_gen::MoveGenerator,
+    mov_table::MoveTable,
 };
 
 pub static MATE_VAL: i32 = 20000;
@@ -158,8 +158,8 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
-pub fn eval_state(state: &State, mov_generator: &MoveGenerator) -> i32 {
-    let (w_features_map, b_features_map) = extract_features(state, mov_generator);
+pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
+    let (w_features_map, b_features_map) = extract_features(state, mov_table);
     let w_piece_count = w_features_map.queen_count + w_features_map.rook_count + w_features_map.bishop_count + w_features_map.knight_count;
     let b_piece_count = b_features_map.queen_count + b_features_map.rook_count + b_features_map.bishop_count + b_features_map.knight_count;
 
@@ -269,7 +269,7 @@ pub fn eval_state(state: &State, mov_generator: &MoveGenerator) -> i32 {
     return midgame_score
 }
 
-pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (FeatureMap, FeatureMap) {
+pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
     let index_masks = state.bitmask.index_masks;
     let file_masks = state.bitmask.file_masks;
@@ -363,7 +363,7 @@ pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (Featur
 
             def::WN => {
                 w_feature_map.knight_count += 1;
-                w_feature_map.knight_mobility += mov_generator.count_knight_mobility(state, index, def::PLAYER_W);
+                w_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_W);
 
                 if index_mask & WN_COMF_MASK != 0 {
                     w_feature_map.comf_sqr_occupied += 1;
@@ -377,7 +377,7 @@ pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (Featur
             },
             def::BN => {
                 b_feature_map.knight_count += 1;
-                b_feature_map.knight_mobility += mov_generator.count_knight_mobility(state, index, def::PLAYER_B);
+                b_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_B);
 
                 if index_mask & BN_COMF_MASK != 0 {
                     b_feature_map.comf_sqr_occupied += 1;
@@ -392,7 +392,7 @@ pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (Featur
 
             def::WB => {
                 w_feature_map.bishop_count += 1;
-                w_feature_map.bishop_mobility += mov_generator.count_bishop_mobility(state, index, def::PLAYER_W);
+                w_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_W);
 
                 if index_mask & WB_COMF_MASK != 0 {
                     w_feature_map.comf_sqr_occupied += 1;
@@ -402,7 +402,7 @@ pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (Featur
             },
             def::BB => {
                 b_feature_map.bishop_count += 1;
-                b_feature_map.bishop_mobility += mov_generator.count_bishop_mobility(state, index, def::PLAYER_B);
+                b_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_B);
 
                 if index_mask & BB_COMF_MASK != 0 {
                     b_feature_map.comf_sqr_occupied += 1;
@@ -413,7 +413,7 @@ pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (Featur
 
             def::WR => {
                 w_feature_map.rook_count += 1;
-                w_feature_map.rook_mobility += mov_generator.count_rook_mobility(state, index, def::PLAYER_W);
+                w_feature_map.rook_mobility += mov_table.count_rook_mobility(state, index, def::PLAYER_W);
 
                 if index_mask & WR_COMF_MASK != 0 {
                     w_feature_map.comf_sqr_occupied += 1;
@@ -445,7 +445,7 @@ pub fn extract_features(state: &State, mov_generator: &MoveGenerator) -> (Featur
             },
             def::BR => {
                 b_feature_map.rook_count += 1;
-                b_feature_map.rook_mobility += mov_generator.count_rook_mobility(state, index, def::PLAYER_B);
+                b_feature_map.rook_mobility += mov_table.count_rook_mobility(state, index, def::PLAYER_B);
 
                 if index_mask & BR_COMF_MASK != 0 {
                     b_feature_map.comf_sqr_occupied += 1;
@@ -541,7 +541,7 @@ mod tests {
     use super::*;
     use crate::{
         bitboard::BitMask,
-        mov_gen::MoveGenerator,
+        mov_table::MoveTable,
         state::State,
         prng::XorshiftPrng,
     };
@@ -550,10 +550,10 @@ mod tests {
     fn test_extract_features_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
         let state = State::new("1kr2r2/pp2nppp/1bn2q2/3pp3/3P4/1BN1P3/PPP1NP1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state, &mov_generator);
+        let (w_features, b_features) = extract_features(&state, &mov_table);
 
         assert_eq!(FeatureMap {
             pawn_count: 7,
@@ -618,10 +618,10 @@ mod tests {
     fn test_extract_features_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mov_generator = MoveGenerator::new();
+        let mov_table = MoveTable::new();
 
         let state = State::new("1kr2r2/1p4pp/1p1P1qn1/p2pp3/3P4/RB2P3/P1P1NP1P/3Q1RK1 b - - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state, &mov_generator);
+        let (w_features, b_features) = extract_features(&state, &mov_table);
 
         assert_eq!(FeatureMap {
             pawn_count: 7,

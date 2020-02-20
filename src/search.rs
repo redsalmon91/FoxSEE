@@ -2,7 +2,7 @@ use crate::{
     def,
     eval,
     hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA},
-    mov_gen::MoveGenerator,
+    mov_table::MoveTable,
     state::State,
     util,
 };
@@ -27,7 +27,7 @@ use LookupResult::*;
 use std::time::Instant;
 
 pub struct SearchEngine {
-    mov_generator: MoveGenerator,
+    mov_table: MoveTable,
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
     killer_table: [((i32, u32), (i32, u32)); KILLER_TABLE_LENGTH],
@@ -44,7 +44,7 @@ pub struct SearchEngine {
 impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
-            mov_generator: MoveGenerator::new(),
+            mov_table: MoveTable::new(),
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
             killer_table: [((0, 0), (0, 0)); KILLER_TABLE_LENGTH],
@@ -179,7 +179,7 @@ impl SearchEngine {
         };
 
         if self.root_node_mov_list.is_empty() {
-            let (cap_list, non_cap_list) = self.mov_generator.gen_reg_mov_list(state);
+            let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
 
             let squares = state.squares;
 
@@ -202,7 +202,7 @@ impl SearchEngine {
             }
 
             if (player_sign > 0 && (state.cas_rights & 0b1100 != 0)) || (player_sign < 0 && (state.cas_rights & 0b0011 != 0)) {
-                let cas_mov_list = self.mov_generator.gen_castle_mov_list(state);
+                let cas_mov_list = self.mov_table.gen_castle_mov_list(state);
                 for cas_mov in cas_mov_list {
                     self.root_node_mov_list.push((0, cas_mov));
                 }
@@ -264,7 +264,7 @@ impl SearchEngine {
             -1
         };
 
-        let in_check = self.mov_generator.is_in_check(state);
+        let in_check = self.mov_table.is_in_check(state);
 
         if in_check {
             depth += 1;
@@ -346,7 +346,7 @@ impl SearchEngine {
             }
         }
 
-        let (cap_list, non_cap_list) = self.mov_generator.gen_reg_mov_list(state);
+        let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
 
         let mut scored_cap_list = Vec::new();
 
@@ -433,7 +433,7 @@ impl SearchEngine {
         }
 
         if (player_sign > 0 && (state.cas_rights & 0b1100 != 0)) || (player_sign < 0 && (state.cas_rights & 0b0011 != 0)) {
-            let castle_list = self.mov_generator.gen_castle_mov_list(state);
+            let castle_list = self.mov_table.gen_castle_mov_list(state);
             for cas_mov in castle_list {
                 if cas_mov == pv_mov || cas_mov == hash_mov && cas_mov != killer_mov {
                     continue
@@ -612,14 +612,14 @@ impl SearchEngine {
 
     #[inline]
     pub fn in_stale_mate(&self, state: &mut State) -> bool {
-        let (cap_list, non_cap_list) = self.mov_generator.gen_reg_mov_list(state);
+        let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
 
         for cap in cap_list {
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
             state.do_mov(from, to, tp, promo);
             state.player = def::get_opposite_player(state.player);
 
-            if !self.mov_generator.is_in_check(state) {
+            if !self.mov_table.is_in_check(state) {
                 state.player = def::get_opposite_player(state.player);
                 state.undo_mov(from, to, tp);
                 return false
@@ -634,7 +634,7 @@ impl SearchEngine {
             state.do_mov(from, to, tp, promo);
             state.player = def::get_opposite_player(state.player);
 
-            if !self.mov_generator.is_in_check(state) {
+            if !self.mov_table.is_in_check(state) {
                 state.player = def::get_opposite_player(state.player);
                 state.undo_mov(from, to, tp);
                 return false
@@ -662,7 +662,7 @@ impl SearchEngine {
             *seldepth = ply;
         }
 
-        let score = eval::eval_state(state, &self.mov_generator);
+        let score = eval::eval_state(state, &self.mov_table);
 
         if score * player_sign >= beta * player_sign {
             return score
@@ -672,7 +672,7 @@ impl SearchEngine {
             alpha = score;
         }
 
-        let cap_list = self.mov_generator.gen_capture_list(state);
+        let cap_list = self.mov_table.gen_capture_list(state);
 
         if cap_list.is_empty() {
             return alpha
@@ -716,7 +716,7 @@ impl SearchEngine {
 
     pub fn see(&self, state: &State, index: usize, initial_attacker: u8) -> i32 {
         let (generated_w_attacker_list, generated_b_attacker_list) =
-            self.mov_generator.find_attacker_list(state, index);
+            self.mov_table.find_attacker_list(state, index);
 
         let player_sign = if state.player == def::PLAYER_W {
             1
