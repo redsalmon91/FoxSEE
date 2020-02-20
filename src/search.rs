@@ -9,7 +9,7 @@ use crate::{
 
 use std::u64;
 
-const PV_TRACK_LENGTH: usize = 16;
+const PV_TRACK_LENGTH: usize = 32;
 const MAX_DEPTH: u8 = 32;
 const KILLER_TABLE_LENGTH: usize = 256;
 const MIN_BRANCHING_FACTOR: u64 = 2;
@@ -69,6 +69,10 @@ impl SearchEngine {
         self.always_replace_hash_table.clear();
     }
 
+    pub fn stop(&mut self) {
+        self.abort = true;
+    }
+
     pub fn search(&mut self, state: &mut State, max_time_millis: u128) -> u32 {
         self.time_tracker = Instant::now();
         self.max_time_millis = max_time_millis;
@@ -85,7 +89,7 @@ impl SearchEngine {
             -1
         };
 
-        let max_score = eval::K_VAL * player_sign;
+        let max_score = eval::MATE_VAL * player_sign;
         let mut alpha = -max_score;
         let mut beta = max_score;
 
@@ -113,7 +117,7 @@ impl SearchEngine {
 
                 if checkmate {
                     println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}",
-                        (eval::K_VAL - score.abs() + 1) / 2, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
+                        (eval::MATE_VAL - score.abs() + 1) / 2, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
                 } else {
                     println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}",
                     score * player_sign, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
@@ -276,7 +280,7 @@ impl SearchEngine {
 
         let mut mov_count = 0;
 
-        let mut best_score = -eval::K_VAL * player_sign;
+        let mut best_score = -eval::MATE_VAL * player_sign;
 
         let mut pv_mov = 0;
         if on_pv && self.master_pv_table.len() > ply as usize {
@@ -400,9 +404,19 @@ impl SearchEngine {
         if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
             killer_mov = saved_killer_mov;
         } else {
-            let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize].0;
+            let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize].1;
             if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
                 killer_mov = saved_killer_mov;
+            }  else if ply > 2 {
+                let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize - 2].0;
+                if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
+                    killer_mov = saved_killer_mov;
+                } else {
+                    let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize - 2].1;
+                    if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
+                        killer_mov = saved_killer_mov;
+                    }
+                }
             }
         }
 
@@ -498,7 +512,7 @@ impl SearchEngine {
             let captured_piece = state.squares[to];
             if def::is_k(captured_piece) {
                 pv_table[0] = 0;
-                return Beta(player_sign * (eval::K_VAL - ply as i32))
+                return Beta(player_sign * (eval::MATE_VAL - ply as i32))
             }
         }
 
@@ -681,7 +695,7 @@ impl SearchEngine {
 
             let captured_piece = state.squares[to];
             if def::is_k(captured_piece) {
-                return player_sign * (eval::K_VAL - ply as i32)
+                return player_sign * (eval::MATE_VAL - ply as i32)
             }
 
             state.do_mov(from, to, tp, promo);
@@ -882,7 +896,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(26, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(14, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
@@ -902,7 +916,7 @@ mod tests {
         let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-964, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-971, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -912,7 +926,7 @@ mod tests {
         let mut state = State::new("2r4k/1R5p/8/p1p5/P1Pp1p2/3R3P/KP3r2/8 w - - 0 40", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-275, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-250, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]

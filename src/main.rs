@@ -98,7 +98,9 @@ fn main() {
                 io::stdout().flush().ok();
             },
             UciProcessResult::Ready => {},
-            UciProcessResult::Stop => {},
+            UciProcessResult::Stop => {
+                search_engine.stop();
+            },
             UciProcessResult::Noop => {},
             UciProcessResult::Reset => {
                 search_engine.reset();
