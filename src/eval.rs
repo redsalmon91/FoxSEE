@@ -32,8 +32,9 @@ static QUEEN_OPEN_LINE_VAL: i32 = 20;
 static COMF_SQR_VAL: i32 = 10;
 static PREF_SQR_VAL: i32 = 20;
 static DANGER_SQR_VAL: i32 = 20;
-static INVASION_SQR_VAL: i32 = 5;
+static INVASION_SQR_VAL: i32 = 10;
 static AVOID_SQR_PEN: i32 = -20;
+static CENTER_CONTROL_VAL: i32 = 10;
 
 static ROOK_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MOB_BASE_VAL: i32 = 2;
@@ -75,6 +76,8 @@ static BP_DANGER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_0111
 static WP_AVOID_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00011000_00000000;
 static BP_AVOID_MASK: u64 = 0b00000000_00011000_00000000_00000000_00000000_00000000_00000000_00000000;
 
+static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
+
 static WK_MIDGAME_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
 static BK_MIDGAME_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
 static WK_ENDGAME_PREF_MASK: u64 = 0b00000000_00000000_00111100_00111100_00111100_00111100_00000000_00000000;
@@ -104,6 +107,7 @@ pub struct FeatureMap {
     open_rook_count: i32,
 
     open_queen_count: i32,
+    center_count: i32,
 
     comf_sqr_occupied: i32,
     pref_sqr_occupied: i32,
@@ -139,6 +143,7 @@ impl FeatureMap {
             open_rook_count: 0,
 
             open_queen_count: 0,
+            center_count: 0,
 
             comf_sqr_occupied: 0,
             pref_sqr_occupied: 0,
@@ -205,6 +210,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         + w_features_map.king_protector_count.min(MAX_KING_PROTECTOR) * KING_PROTECTED_BASE_VAL
         + w_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         + w_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
+        + w_features_map.center_count * CENTER_CONTROL_VAL
         - b_features_map.comf_sqr_occupied * COMF_SQR_VAL
         - b_features_map.pref_sqr_occupied * PREF_SQR_VAL
         - b_features_map.danger_sqr_occupied * DANGER_SQR_VAL
@@ -220,7 +226,8 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         - b_features_map.knight_mobility * KNIGHT_MOB_BASE_VAL
         - b_features_map.king_protector_count.min(MAX_KING_PROTECTOR) * KING_PROTECTED_BASE_VAL
         - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
-        - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN;
+        - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
+        - b_features_map.center_count * CENTER_CONTROL_VAL;
 
     let endgame_score = w_features_map.passed_pawn_count * PASS_PAWN_VAL
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
@@ -256,8 +263,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
     let mut w_feature_map = FeatureMap::empty();
     let mut b_feature_map = FeatureMap::empty();
 
-    w_feature_map.invasion_sqr_occupied = (bitboard.w_all & W_INVASION_MASK).count_ones() as i32;
-    b_feature_map.invasion_sqr_occupied = (bitboard.b_all & B_INVASION_MASK).count_ones() as i32;
+    let mut w_light_pieces_mask = 0;
+    let mut b_light_pieces_mask = 0;
 
     let mut index = 0;
 
@@ -278,6 +285,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
         match moving_piece {
             def::WP => {
                 w_feature_map.pawn_count += 1;
+
+                w_light_pieces_mask |= index_mask;
 
                 if index_mask & WP_COMF_MASK != 0 {
                     w_feature_map.comf_sqr_occupied += 1;
@@ -314,6 +323,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
             def::BP => {
                 b_feature_map.pawn_count += 1;
+
+                b_light_pieces_mask |= index_mask;
 
                 if index_mask & BP_COMF_MASK != 0 {
                     b_feature_map.comf_sqr_occupied += 1;
@@ -353,6 +364,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 w_feature_map.knight_count += 1;
                 w_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_W);
 
+                w_light_pieces_mask |= index_mask;
+
                 if index_mask & WN_COMF_MASK != 0 {
                     w_feature_map.comf_sqr_occupied += 1;
 
@@ -366,6 +379,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             def::BN => {
                 b_feature_map.knight_count += 1;
                 b_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_B);
+
+                b_light_pieces_mask |= index_mask;
 
                 if index_mask & BN_COMF_MASK != 0 {
                     b_feature_map.comf_sqr_occupied += 1;
@@ -382,6 +397,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 w_feature_map.bishop_count += 1;
                 w_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_W);
 
+                w_light_pieces_mask |= index_mask;
+
                 if index_mask & WB_COMF_MASK != 0 {
                     w_feature_map.comf_sqr_occupied += 1;
                 } else if index_mask & WB_AVOID_MASK != 0 {
@@ -391,6 +408,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             def::BB => {
                 b_feature_map.bishop_count += 1;
                 b_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_B);
+
+                b_light_pieces_mask |= index_mask;
 
                 if index_mask & BB_COMF_MASK != 0 {
                     b_feature_map.comf_sqr_occupied += 1;
@@ -521,6 +540,12 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
         index += 1;
     }
 
+    w_feature_map.invasion_sqr_occupied = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
+    b_feature_map.invasion_sqr_occupied = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
+
+    w_feature_map.center_count = (w_light_pieces_mask & CENTER_CONTROL_MASK).count_ones() as i32;
+    b_feature_map.center_count = (b_light_pieces_mask & CENTER_CONTROL_MASK).count_ones() as i32;
+
     (w_feature_map, b_feature_map)
 }
 
@@ -563,6 +588,7 @@ mod tests {
             open_rook_count: 0,
 
             open_queen_count: 0,
+            center_count: 1,
 
             comf_sqr_occupied: 10,
             pref_sqr_occupied: 1,
@@ -596,6 +622,7 @@ mod tests {
             open_rook_count: 0,
 
             open_queen_count: 0,
+            center_count: 2,
 
             comf_sqr_occupied: 12,
             pref_sqr_occupied: 2,
@@ -639,6 +666,7 @@ mod tests {
             open_rook_count: 0,
 
             open_queen_count: 0,
+            center_count: 1,
 
             comf_sqr_occupied: 9,
             pref_sqr_occupied: 2,
@@ -672,6 +700,7 @@ mod tests {
             open_rook_count: 0,
 
             open_queen_count: 0,
+            center_count: 2,
 
             comf_sqr_occupied: 9,
             pref_sqr_occupied: 2,
@@ -715,6 +744,7 @@ mod tests {
             open_rook_count: 0,
 
             open_queen_count: 0,
+            center_count: 1,
 
             comf_sqr_occupied: 10,
             pref_sqr_occupied: 1,
@@ -748,6 +778,7 @@ mod tests {
             open_rook_count: 0,
 
             open_queen_count: 1,
+            center_count: 1,
 
             comf_sqr_occupied: 10,
             pref_sqr_occupied: 1,
