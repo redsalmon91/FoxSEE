@@ -1,7 +1,7 @@
 # 🦊 FoxSEE Chess Engine
 UCI chess engine written in Rust!  
 
-**Current Version** 2.4.0
+**Current Version** 2.5.1
 
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 
@@ -26,9 +26,7 @@ UCI chess engine written in Rust!
 - Late Move Reduction
 - Killer Heuristic
 - Aspiration Window
-
-**Expected 3.x**
-- NN-based Evaluator
+- Linear Evaluation
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/)
