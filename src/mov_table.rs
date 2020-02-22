@@ -401,9 +401,9 @@ impl MoveTable {
                 if squares[def::CAS_SQUARE_WK - 2] == def::WK
                 && squares[def::CAS_SQUARE_WK + 1] == def::WR
                 && all_mask & CAS_WK_MASK == 0
-                && !self.is_under_attack(state, def::CAS_SQUARE_WK)
-                && !self.is_under_attack(state, def::CAS_SQUARE_WK - 1)
-                && !self.is_under_attack(state, def::CAS_SQUARE_WK - 2) {
+                && !self.is_under_attack(state, def::CAS_SQUARE_WK, def::PLAYER_W)
+                && !self.is_under_attack(state, def::CAS_SQUARE_WK - 1, def::PLAYER_W)
+                && !self.is_under_attack(state, def::CAS_SQUARE_WK - 2, def::PLAYER_W) {
                     mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_WK - 2, def::CAS_SQUARE_WK, def::MOV_CAS, 0));
                 }
             }
@@ -412,9 +412,9 @@ impl MoveTable {
                 if squares[def::CAS_SQUARE_WQ + 2] == def::WK
                 && squares[def::CAS_SQUARE_WQ - 2] == def::WR
                 && all_mask & CAS_WQ_MASK == 0
-                && !self.is_under_attack(state, def::CAS_SQUARE_WQ)
-                && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 1)
-                && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 2) {
+                && !self.is_under_attack(state, def::CAS_SQUARE_WQ, def::PLAYER_W)
+                && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 1, def::PLAYER_W)
+                && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 2, def::PLAYER_W) {
                     mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_WQ + 2, def::CAS_SQUARE_WQ, def::MOV_CAS, 0));
                 }
             }
@@ -423,9 +423,9 @@ impl MoveTable {
                 if squares[def::CAS_SQUARE_BK - 2] == def::BK
                 && squares[def::CAS_SQUARE_BK + 1] == def::BR
                 && all_mask & CAS_BK_MASK == 0
-                && !self.is_under_attack(state, def::CAS_SQUARE_BK)
-                && !self.is_under_attack(state, def::CAS_SQUARE_BK - 1)
-                && !self.is_under_attack(state, def::CAS_SQUARE_BK - 2) {
+                && !self.is_under_attack(state, def::CAS_SQUARE_BK, def::PLAYER_B)
+                && !self.is_under_attack(state, def::CAS_SQUARE_BK - 1, def::PLAYER_B)
+                && !self.is_under_attack(state, def::CAS_SQUARE_BK - 2, def::PLAYER_B) {
                     mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_BK - 2, def::CAS_SQUARE_BK, def::MOV_CAS, 0));
                 }
             }
@@ -434,9 +434,9 @@ impl MoveTable {
                 if squares[def::CAS_SQUARE_BQ + 2] == def::BK
                 && squares[def::CAS_SQUARE_BQ - 2] == def::BR
                 && all_mask & CAS_BQ_MASK == 0
-                && !self.is_under_attack(state, def::CAS_SQUARE_BQ)
-                && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 1)
-                && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 2) {
+                && !self.is_under_attack(state, def::CAS_SQUARE_BQ, def::PLAYER_B)
+                && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 1, def::PLAYER_B)
+                && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 2, def::PLAYER_B) {
                     mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_BQ + 2, def::CAS_SQUARE_BQ, def::MOV_CAS, 0));
                 }
             }
@@ -1309,11 +1309,10 @@ impl MoveTable {
             state.bk_index
         };
 
-        self.is_under_attack(state, k_index)
+        self.is_under_attack(state, k_index, state.player)
     }
 
-    pub fn is_under_attack(&self, state: &State, index: usize) -> bool {
-        let player = state.player;
+    pub fn is_under_attack(&self, state: &State, index: usize, player: u8) -> bool {
         let squares = state.squares;
 
         let mov_index_list = &self.n_mov_table[index];
@@ -1982,7 +1981,7 @@ impl MoveTable {
             let to_index = *to_index;
             let taken_piece = squares[to_index];
 
-            if !def::on_same_side(player, taken_piece) {
+            if !def::on_same_side(player, taken_piece) && !self.is_under_attack(state, to_index, player) {
                 mob_score += 1;
             }
         }
@@ -2194,9 +2193,11 @@ mod tests {
         let state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("f6")));
-        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("c7")));
-        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("a6")));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("f6"), def::PLAYER_B));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("c7"), def::PLAYER_B));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("a6"), def::PLAYER_B));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("e4"), def::PLAYER_W));
+        assert!(!mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("d4"), def::PLAYER_W));
     }
 
     #[test]
@@ -2290,6 +2291,6 @@ mod tests {
         let mov_table = MoveTable::new();
 
         assert_eq!(1, mov_table.count_king_mobility(&state, util::map_sqr_notation_to_index("g1"), def::PLAYER_W));
-        assert_eq!(3, mov_table.count_king_mobility(&state, util::map_sqr_notation_to_index("f8"), def::PLAYER_B));
+        assert_eq!(2, mov_table.count_king_mobility(&state, util::map_sqr_notation_to_index("f8"), def::PLAYER_B));
     }
 }

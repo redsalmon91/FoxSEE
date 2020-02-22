@@ -39,7 +39,7 @@ static CENTER_CONTROL_VAL: i32 = 10;
 static ROOK_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MOB_BASE_VAL: i32 = 2;
 static KNIGHT_MOB_BASE_VAL: i32 = 1;
-static KING_MOB_BASE_VAL: i32 = 5;
+static KING_MOB_BASE_VAL: i32 = 10;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
@@ -705,7 +705,7 @@ mod tests {
             knight_mobility: 4,
             bishop_mobility: 0,
             rook_mobility: 13,
-            king_mobility: 3,
+            king_mobility: 2,
 
             semi_open_rook_count: 1,
             open_rook_count: 0,
@@ -833,7 +833,7 @@ mod tests {
         let mov_table = MoveTable::new();
 
         let state = State::new("1kr5/1p4pp/1p6/p2ppN2/2pP4/4P3/P4P1P/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(51, eval_state(&state, &mov_table));
+        assert_eq!(47, eval_state(&state, &mov_table));
     }
 
     #[test]
@@ -843,6 +843,6 @@ mod tests {
         let mov_table = MoveTable::new();
 
         let state = State::new("5rk1/p4p1p/4p3/2Pp4/P2PPn2/1P6/1P4PP/1KR5 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-51, eval_state(&state, &mov_table));
+        assert_eq!(-47, eval_state(&state, &mov_table));
     }
 }
