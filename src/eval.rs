@@ -17,7 +17,8 @@ static MAX_KING_PROTECTOR: i32 = 3;
 static KING_PROTECTED_BASE_VAL: i32 = 10;
 static KING_EXPOSED_BASE_PEN: i32 = -30;
 static KING_MIDGAME_SQR_VAL: i32 = 30;
-static KING_ENDGAME_SQR_VAL: i32 = 50;
+static KING_ENDGAME_SQR_VAL: i32 = 20;
+static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
 static PASS_PAWN_VAL: i32 = 20;
 static DUP_PAWN_PEN: i32 = -50;
@@ -39,7 +40,6 @@ static CENTER_CONTROL_VAL: i32 = 10;
 static ROOK_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MOB_BASE_VAL: i32 = 2;
 static KNIGHT_MOB_BASE_VAL: i32 = 1;
-static KING_MOB_BASE_VAL: i32 = 10;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
@@ -81,8 +81,9 @@ static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000
 
 static WK_MIDGAME_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
 static BK_MIDGAME_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
-static WK_ENDGAME_PREF_MASK: u64 = 0b00000000_00000000_00111100_00111100_00111100_00111100_00000000_00000000;
-static BK_ENDGAME_PREF_MASK: u64 = 0b00000000_00000000_00111100_00111100_00111100_00111100_00000000_00000000;
+
+static K_ENDGAME_PREF_MASK: u64 = 0b00000000_00000000_00111100_00111100_00111100_00111100_00000000_00000000;
+static K_ENDGAME_AVOID_MASK: u64 = 0b11100111_11000011_10000001_00000000_00000000_10000001_11000011_11100111;
 
 static W_INVASION_MASK: u64 = 0b11111111_01111110_01111110_00011000_00000000_00000000_00000000_00000000;
 static B_INVASION_MASK: u64 = 0b00000000_00000000_00000000_00000000_00011000_01111110_01111110_11111111;
@@ -103,7 +104,6 @@ pub struct FeatureMap {
     knight_mobility: i32,
     bishop_mobility: i32,
     rook_mobility: i32,
-    king_mobility: i32,
 
     semi_open_rook_count: i32,
     open_rook_count: i32,
@@ -121,6 +121,7 @@ pub struct FeatureMap {
     king_protector_count: i32,
     king_midgame_safe_sqr_count: i32,
     king_endgame_pref_sqr_count: i32,
+    king_endgame_avoid_sqr_count: i32,
 }
 
 impl FeatureMap {
@@ -140,7 +141,6 @@ impl FeatureMap {
             knight_mobility: 0,
             bishop_mobility: 0,
             rook_mobility: 0,
-            king_mobility: 0,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -158,6 +158,7 @@ impl FeatureMap {
             king_protector_count: 0,
             king_midgame_safe_sqr_count: 0,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 0,
         }
     }
 }
@@ -235,11 +236,11 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
     let endgame_score = w_features_map.passed_pawn_count * PASS_PAWN_VAL
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         + w_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
-        + w_features_map.king_mobility * KING_MOB_BASE_VAL
+        + w_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
-        - b_features_map.king_mobility * KING_MOB_BASE_VAL;
+        - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
     + w_features_map.rook_count * R_PHASE_WEIGHT
@@ -489,8 +490,10 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     w_feature_map.king_midgame_safe_sqr_count = 1;
                 }
 
-                if index_mask & WK_ENDGAME_PREF_MASK != 0 {
+                if index_mask & K_ENDGAME_PREF_MASK != 0 {
                     w_feature_map.king_endgame_pref_sqr_count = 1;
+                } else if index_mask & K_ENDGAME_AVOID_MASK != 0 {
+                    w_feature_map.king_endgame_avoid_sqr_count = 1;
                 }
 
                 if file_mask & protect_mask & bitboard.w_all == 0 {
@@ -501,7 +504,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     w_feature_map.king_expose_count += 1;
                 }
 
-                w_feature_map.king_mobility = mov_table.count_king_mobility(index);
                 w_feature_map.king_protector_count += (protect_mask & bitboard.w_all).count_ones() as i32;
             },
             def::BK => {
@@ -512,8 +514,10 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     b_feature_map.king_midgame_safe_sqr_count = 1;
                 }
 
-                if index_mask & BK_ENDGAME_PREF_MASK != 0 {
+                if index_mask & K_ENDGAME_PREF_MASK != 0 {
                     b_feature_map.king_endgame_pref_sqr_count = 1;
+                } else if index_mask & K_ENDGAME_AVOID_MASK != 0 {
+                    b_feature_map.king_endgame_avoid_sqr_count = 1;
                 }
 
                 if file_mask & protect_mask & bitboard.b_all == 0 {
@@ -524,7 +528,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     b_feature_map.king_expose_count += 1;
                 }
 
-                b_feature_map.king_mobility = mov_table.count_king_mobility(index);
                 b_feature_map.king_protector_count += (protect_mask & bitboard.b_all).count_ones() as i32;
             },
             _ => {},
@@ -588,7 +591,6 @@ mod tests {
             knight_mobility: 8,
             bishop_mobility: 3,
             rook_mobility: 3,
-            king_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -606,6 +608,7 @@ mod tests {
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 1,
         }, w_features);
 
         assert_eq!(FeatureMap {
@@ -623,7 +626,6 @@ mod tests {
             knight_mobility: 7,
             bishop_mobility: 5,
             rook_mobility: 7,
-            king_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -641,6 +643,7 @@ mod tests {
             king_protector_count: 4,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 1,
         }, b_features);
     }
 
@@ -668,7 +671,6 @@ mod tests {
             knight_mobility: 4,
             bishop_mobility: 3,
             rook_mobility: 3,
-            king_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -686,6 +688,7 @@ mod tests {
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 1,
         }, w_features);
 
         assert_eq!(FeatureMap {
@@ -703,7 +706,6 @@ mod tests {
             knight_mobility: 4,
             bishop_mobility: 0,
             rook_mobility: 13,
-            king_mobility: 5,
 
             semi_open_rook_count: 1,
             open_rook_count: 0,
@@ -721,6 +723,7 @@ mod tests {
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 1,
         }, b_features);
     }
 
@@ -748,7 +751,6 @@ mod tests {
             knight_mobility: 11,
             bishop_mobility: 3,
             rook_mobility: 3,
-            king_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -766,6 +768,7 @@ mod tests {
             king_protector_count: 3,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 1,
         }, w_features);
 
         assert_eq!(FeatureMap {
@@ -783,7 +786,6 @@ mod tests {
             knight_mobility: 12,
             bishop_mobility: 5,
             rook_mobility: 7,
-            king_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -801,6 +803,7 @@ mod tests {
             king_protector_count: 4,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
+            king_endgame_avoid_sqr_count: 1,
         }, b_features);
     }
 

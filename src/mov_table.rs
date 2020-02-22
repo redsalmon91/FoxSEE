@@ -1999,10 +1999,6 @@ impl MoveTable {
 
         mob_score
     }
-
-    pub fn count_king_mobility(&self, index : usize) -> i32 {
-        self.k_mov_table[index].len() as i32
-    }
 }
 
 #[cfg(test)]
@@ -2296,14 +2292,5 @@ mod tests {
 
         assert_eq!(5, mov_table.count_knight_mobility(&state, util::map_sqr_notation_to_index("b5"), def::PLAYER_W));
         assert_eq!(2, mov_table.count_knight_mobility(&state, util::map_sqr_notation_to_index("h6"), def::PLAYER_B));
-    }
-
-    #[test]
-    fn test_count_king_mobility() {
-        let mov_table = MoveTable::new();
-
-        assert_eq!(5, mov_table.count_king_mobility(util::map_sqr_notation_to_index("g1")));
-        assert_eq!(3, mov_table.count_king_mobility(util::map_sqr_notation_to_index("h8")));
-        assert_eq!(5, mov_table.count_king_mobility(util::map_sqr_notation_to_index("f8")));
     }
 }
