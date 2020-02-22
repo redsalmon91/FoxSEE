@@ -289,8 +289,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
         match moving_piece {
             def::WP => {
-                w_feature_map.pawn_count += 1;
-
                 w_light_pieces_mask |= index_mask;
 
                 if index_mask & WP_COMF_MASK != 0 {
@@ -327,8 +325,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
             },
             def::BP => {
-                b_feature_map.pawn_count += 1;
-
                 b_light_pieces_mask |= index_mask;
 
                 if index_mask & BP_COMF_MASK != 0 {
@@ -366,7 +362,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
 
             def::WN => {
-                w_feature_map.knight_count += 1;
                 w_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_W);
 
                 w_light_pieces_mask |= index_mask;
@@ -382,7 +377,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
             },
             def::BN => {
-                b_feature_map.knight_count += 1;
                 b_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_B);
 
                 b_light_pieces_mask |= index_mask;
@@ -399,7 +393,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
 
             def::WB => {
-                w_feature_map.bishop_count += 1;
                 w_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_W);
 
                 w_light_pieces_mask |= index_mask;
@@ -411,7 +404,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
             },
             def::BB => {
-                b_feature_map.bishop_count += 1;
                 b_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_B);
 
                 b_light_pieces_mask |= index_mask;
@@ -424,7 +416,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
 
             def::WR => {
-                w_feature_map.rook_count += 1;
                 w_feature_map.rook_mobility += mov_table.count_rook_mobility(state, index, def::PLAYER_W);
 
                 if index_mask & WR_COMF_MASK != 0 {
@@ -451,7 +442,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
             },
             def::BR => {
-                b_feature_map.rook_count += 1;
                 b_feature_map.rook_mobility += mov_table.count_rook_mobility(state, index, def::PLAYER_B);
 
                 if index_mask & BR_COMF_MASK != 0 {
@@ -479,16 +469,12 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
 
             def::WQ => {
-                w_feature_map.queen_count += 1;
-
                 let file_mask = file_masks[index];
                 if file_mask & ((bitboard.w_all | bitboard.b_all) ^ index_mask) == 0 {
                     w_feature_map.open_queen_count += 1;
                 }
             },
             def::BQ => {
-                b_feature_map.queen_count += 1;
-
                 let file_mask = file_masks[index];
                 if file_mask & ((bitboard.w_all | bitboard.b_all) ^ index_mask) == 0 {
                     b_feature_map.open_queen_count += 1;
@@ -546,6 +532,18 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
         index += 1;
     }
+
+    w_feature_map.queen_count = state.w_piece_list.queen as i32;
+    w_feature_map.rook_count = state.w_piece_list.rook as i32;
+    w_feature_map.bishop_count = state.w_piece_list.bishop as i32;
+    w_feature_map.knight_count = state.w_piece_list.knight as i32;
+    w_feature_map.pawn_count = state.w_piece_list.pawn as i32;
+
+    b_feature_map.queen_count = state.b_piece_list.queen as i32;
+    b_feature_map.rook_count = state.b_piece_list.rook as i32;
+    b_feature_map.bishop_count = state.b_piece_list.bishop as i32;
+    b_feature_map.knight_count = state.b_piece_list.knight as i32;
+    b_feature_map.pawn_count = state.b_piece_list.pawn as i32;
 
     w_feature_map.invasion_sqr_occupied = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_sqr_occupied = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;

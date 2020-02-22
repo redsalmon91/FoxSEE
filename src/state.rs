@@ -12,6 +12,14 @@ const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 
+pub struct PieceList {
+    pub queen: u8,
+    pub rook: u8,
+    pub bishop: u8,
+    pub knight: u8,
+    pub pawn: u8,
+}
+
 pub struct State<'state> {
     pub squares: [u8; def::BOARD_SIZE],
     pub player: u8,
@@ -26,6 +34,9 @@ pub struct State<'state> {
     pub bitboard: BitBoard,
     pub bitboard_stack: Vec<BitBoard>,
     pub bitmask: &'state BitMask,
+
+    pub w_piece_list: PieceList,
+    pub b_piece_list: PieceList,
 
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
@@ -42,25 +53,28 @@ pub struct State<'state> {
 impl <'state> State<'state> {
     pub fn new(fen_string: &str, zob_keys: &'state Vec<Vec<u64>>, bitmask: &'state BitMask) -> Self {
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
-        let (squares, hash_key, wk_index, bk_index, bitboard) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], zob_keys, bitmask);
+        let (squares, hash_key, wk_index, bk_index, bitboard, w_piece_list, b_piece_list) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], zob_keys, bitmask);
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
-        let enp_sqr = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
+        let enp_square = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
         let non_cap_mov_count = fen_segment_list[FEN_HALF_MOV_INDEX].parse::<u16>().unwrap();
 
         State {
-            squares: squares,
-            player: player,
-            cas_rights: cas_rights,
-            enp_square: enp_sqr,
-            non_cap_mov_count: non_cap_mov_count,
-            hash_key: hash_key,
+            squares,
+            player,
+            cas_rights,
+            enp_square,
+            non_cap_mov_count,
+            hash_key,
 
-            wk_index: wk_index,
-            bk_index: bk_index,
+            wk_index,
+            bk_index,
 
-            bitboard: bitboard,
+            bitboard,
             bitboard_stack: Vec::new(),
+
+            w_piece_list,
+            b_piece_list,
 
             taken_piece_stack: Vec::new(),
             enp_sqr_stack: Vec::new(),
@@ -71,8 +85,8 @@ impl <'state> State<'state> {
             wk_index_stack: Vec::new(),
             bk_index_stack: Vec::new(),
 
-            zob_keys: zob_keys,
-            bitmask: bitmask,
+            zob_keys,
+            bitmask,
         }
     }
 
@@ -143,6 +157,40 @@ impl <'state> State<'state> {
     fn do_reg_mov(&mut self, from: usize, to: usize) {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
+
+        match taken_piece {
+            def::WP => {
+                self.w_piece_list.pawn -= 1;
+            },
+            def::BP => {
+                self.b_piece_list.pawn -= 1;
+            },
+            def::WN => {
+                self.w_piece_list.knight -= 1;
+            },
+            def::BN => {
+                self.b_piece_list.knight -= 1;
+            },
+            def::WB => {
+                self.w_piece_list.bishop -= 1;
+            },
+            def::BB => {
+                self.b_piece_list.bishop -= 1;
+            },
+            def::WR => {
+                self.w_piece_list.rook -= 1;
+            },
+            def::BR => {
+                self.b_piece_list.rook -= 1;
+            },
+            def::WQ => {
+                self.w_piece_list.queen -= 1;
+            },
+            def::BQ => {
+                self.b_piece_list.queen -= 1;
+            },
+            _ => ()
+        }
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
@@ -235,6 +283,40 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[to];
         let taken_piece = self.taken_piece_stack.pop().unwrap();
 
+        match taken_piece {
+            def::WP => {
+                self.w_piece_list.pawn += 1;
+            },
+            def::BP => {
+                self.b_piece_list.pawn += 1;
+            },
+            def::WN => {
+                self.w_piece_list.knight += 1;
+            },
+            def::BN => {
+                self.b_piece_list.knight += 1;
+            },
+            def::WB => {
+                self.w_piece_list.bishop += 1;
+            },
+            def::BB => {
+                self.b_piece_list.bishop += 1;
+            },
+            def::WR => {
+                self.w_piece_list.rook += 1;
+            },
+            def::BR => {
+                self.b_piece_list.rook += 1;
+            },
+            def::WQ => {
+                self.w_piece_list.queen += 1;
+            },
+            def::BQ => {
+                self.b_piece_list.queen += 1;
+            },
+            _ => ()
+        }
+
         self.squares[to] = taken_piece;
         self.squares[from] = moving_piece;
     }
@@ -242,6 +324,62 @@ impl <'state> State<'state> {
     fn do_promo_mov(&mut self, from: usize, to: usize, promo: u8) {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
+
+        match taken_piece {
+            def::WN => {
+                self.w_piece_list.knight -= 1;
+            },
+            def::BN => {
+                self.b_piece_list.knight -= 1;
+            },
+            def::WB => {
+                self.w_piece_list.bishop -= 1;
+            },
+            def::BB => {
+                self.b_piece_list.bishop -= 1;
+            },
+            def::WR => {
+                self.w_piece_list.rook -= 1;
+            },
+            def::BR => {
+                self.b_piece_list.rook -= 1;
+            },
+            def::WQ => {
+                self.w_piece_list.queen -= 1;
+            },
+            def::BQ => {
+                self.b_piece_list.queen -= 1;
+            },
+            _ => ()
+        }
+
+        match promo {
+            def::WN => {
+                self.w_piece_list.knight += 1;
+            },
+            def::BN => {
+                self.b_piece_list.knight += 1;
+            },
+            def::WB => {
+                self.w_piece_list.bishop += 1;
+            },
+            def::BB => {
+                self.b_piece_list.bishop += 1;
+            },
+            def::WR => {
+                self.w_piece_list.rook += 1;
+            },
+            def::BR => {
+                self.b_piece_list.rook += 1;
+            },
+            def::WQ => {
+                self.w_piece_list.queen += 1;
+            },
+            def::BQ => {
+                self.b_piece_list.queen += 1;
+            },
+            _ => ()
+        }
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][promo as usize];
@@ -297,6 +435,63 @@ impl <'state> State<'state> {
             def::BP
         };
         let taken_piece = self.taken_piece_stack.pop().unwrap();
+        let promo = self.squares[to];
+
+        match promo {
+            def::WN => {
+                self.w_piece_list.knight -= 1;
+            },
+            def::BN => {
+                self.b_piece_list.knight -= 1;
+            },
+            def::WB => {
+                self.w_piece_list.bishop -= 1;
+            },
+            def::BB => {
+                self.b_piece_list.bishop -= 1;
+            },
+            def::WR => {
+                self.w_piece_list.rook -= 1;
+            },
+            def::BR => {
+                self.b_piece_list.rook -= 1;
+            },
+            def::WQ => {
+                self.w_piece_list.queen -= 1;
+            },
+            def::BQ => {
+                self.b_piece_list.queen -= 1;
+            },
+            _ => ()
+        }
+
+        match taken_piece {
+            def::WN => {
+                self.w_piece_list.knight += 1;
+            },
+            def::BN => {
+                self.b_piece_list.knight += 1;
+            },
+            def::WB => {
+                self.w_piece_list.bishop += 1;
+            },
+            def::BB => {
+                self.b_piece_list.bishop += 1;
+            },
+            def::WR => {
+                self.w_piece_list.rook += 1;
+            },
+            def::BR => {
+                self.b_piece_list.rook += 1;
+            },
+            def::WQ => {
+                self.w_piece_list.queen += 1;
+            },
+            def::BQ => {
+                self.b_piece_list.queen += 1;
+            },
+            _ => ()
+        }
 
         self.squares[to] = taken_piece;
         self.squares[from] = moving_piece;
@@ -440,6 +635,16 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[taken_index];
 
+        match taken_piece {
+            def::WP => {
+                self.w_piece_list.pawn -= 1;
+            },
+            def::BP => {
+                self.b_piece_list.pawn -= 1;
+            },
+            _ => ()
+        }
+
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
         self.hash_key ^= self.zob_keys[taken_index][taken_piece as usize];
@@ -477,6 +682,16 @@ impl <'state> State<'state> {
 
         let moving_piece = self.squares[to];
         let taken_piece = self.taken_piece_stack.pop().unwrap();
+
+        match taken_piece {
+            def::WP => {
+                self.w_piece_list.pawn += 1;
+            },
+            def::BP => {
+                self.b_piece_list.pawn += 1;
+            },
+            _ => ()
+        }
 
         self.squares[taken_index] = taken_piece;
         self.squares[from] = moving_piece;
@@ -544,7 +759,7 @@ impl <'state> fmt::Display for State <'state> {
     }
 }
 
-fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, bitmask: &BitMask) -> ([u8; def::BOARD_SIZE], u64, usize, usize, BitBoard) {
+fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, bitmask: &BitMask) -> ([u8; def::BOARD_SIZE], u64, usize, usize, BitBoard, PieceList, PieceList) {
     let mut squares = [0; def::BOARD_SIZE];
     let mut hash_key = 0;
     let mut wk_index = 0;
@@ -556,6 +771,22 @@ fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, b
         b_all: 0,
         b_rook: 0,
         b_pawn: 0,
+    };
+
+    let mut w_piece_list = PieceList {
+        queen: 0,
+        rook: 0,
+        bishop: 0,
+        knight: 0,
+        pawn: 0,
+    };
+
+    let mut b_piece_list = PieceList {
+        queen: 0,
+        rook: 0,
+        bishop: 0,
+        knight: 0,
+        pawn: 0,
     };
 
     let rank_string_list: Vec<&str> = fen_squares_string.split("/").collect();
@@ -576,18 +807,48 @@ fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, b
                 squares[index] = piece;
                 hash_key ^= zob_keys[index][piece as usize];
 
-                if piece == def::WP {
-                    bitboard.w_pawn ^= bitmask.index_masks[index];
-                } else if piece == def::BP {
-                    bitboard.b_pawn ^= bitmask.index_masks[index];
-                } else if piece == def::WR {
-                    bitboard.w_rook ^= bitmask.index_masks[index];
-                } else if piece == def::BR {
-                    bitboard.b_rook ^= bitmask.index_masks[index];
-                } else if piece == def::WK {
-                    wk_index = index;
-                } else if piece == def::BK {
-                    bk_index = index;
+                match piece {
+                    def::WP => {
+                        bitboard.w_pawn ^= bitmask.index_masks[index];
+                        w_piece_list.pawn += 1;
+                    },
+                    def::BP => {
+                        bitboard.b_pawn ^= bitmask.index_masks[index];
+                        b_piece_list.pawn += 1;
+                    },
+                    def::WN => {
+                        w_piece_list.knight += 1;
+                    },
+                    def::BN => {
+                        b_piece_list.knight += 1;
+                    },
+                    def::WB => {
+                        w_piece_list.bishop += 1;
+                    },
+                    def::BB => {
+                        b_piece_list.bishop += 1;
+                    },
+                    def::WR => {
+                        bitboard.w_rook ^= bitmask.index_masks[index];
+                        w_piece_list.rook += 1;
+                    },
+                    def::BR => {
+                        bitboard.b_rook ^= bitmask.index_masks[index];
+                        b_piece_list.rook += 1;
+                    },
+                    def::WQ => {
+                        w_piece_list.queen += 1;
+                    },
+                    def::BQ => {
+                        b_piece_list.queen += 1;
+                    },
+                    def::WK => {
+                        wk_index = index;
+                    },
+                    def::BK => {
+                        bk_index = index;
+                    },
+                    _ => ()
                 }
 
                 if def::on_same_side(def::PLAYER_W, piece) {
@@ -607,7 +868,7 @@ fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, b
         index -= 24;
     }
 
-    (squares, hash_key, wk_index, bk_index, bitboard)
+    (squares, hash_key, wk_index, bk_index, bitboard, w_piece_list, b_piece_list)
 }
 
 fn get_player_from_fen(fen_player_string: &str) -> u8 {

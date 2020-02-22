@@ -1315,184 +1315,212 @@ impl MoveTable {
     pub fn is_under_attack(&self, state: &State, index: usize, player: u8) -> bool {
         let squares = state.squares;
 
-        let mov_index_list = &self.n_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+        let opponent_n_count = if player == def::PLAYER_W {
+            state.b_piece_list.knight
+        } else {
+            state.w_piece_list.knight
+        };
 
-            if taken_piece != 0 {
-                if !def::on_same_side(player, taken_piece) && def::is_n(taken_piece) {
-                    return true
+        if opponent_n_count > 0 {
+            let mov_index_list = &self.n_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
+
+                if taken_piece != 0 {
+                    if !def::on_same_side(player, taken_piece) && def::is_n(taken_piece) {
+                        return true
+                    }
                 }
             }
         }
 
-        let mov_index_list = &self.up_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+        let opponent_bq_count = if player == def::PLAYER_W {
+            state.b_piece_list.queen + state.b_piece_list.bishop
+        } else {
+            state.w_piece_list.queen + state.w_piece_list.bishop
+        };
 
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
+        let opponent_rq_count = if player == def::PLAYER_W {
+            state.b_piece_list.queen + state.b_piece_list.rook
+        } else {
+            state.w_piece_list.queen + state.w_piece_list.rook
+        };
+
+        if opponent_rq_count > 0 {
+            let mov_index_list = &self.up_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
+
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
                     break
                 }
+            }
 
-                if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                    return true
+            let mov_index_list = &self.down_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
+
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
+                    break
                 }
+            }
 
-                break
+            let mov_index_list = &self.left_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
+
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
+                    break
+                }
+            }
+
+            let mov_index_list = &self.right_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
+
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
+                    break
+                }
             }
         }
 
-        let mov_index_list = &self.down_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+        if opponent_bq_count > 0 {
+            let mov_index_list = &self.up_left_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
 
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
                     break
                 }
-
-                if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
             }
-        }
 
-        let mov_index_list = &self.left_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+            let mov_index_list = &self.up_right_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
 
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
                     break
                 }
-
-                if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
             }
-        }
 
-        let mov_index_list = &self.right_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+            let mov_index_list = &self.down_right_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
 
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
                     break
                 }
-
-                if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
             }
-        }
 
-        let mov_index_list = &self.up_left_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+            let mov_index_list = &self.down_left_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
 
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
+                if taken_piece != 0 {
+                    if def::on_same_side(player, taken_piece) {
+                        break
+                    }
+
+                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                        return true
+                    }
+
                     break
                 }
-
-                if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
-            }
-        }
-
-        let mov_index_list = &self.up_right_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
-
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
-                    break
-                }
-
-                if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
-            }
-        }
-
-        let mov_index_list = &self.down_right_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
-
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
-                    break
-                }
-
-                if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
-            }
-        }
-
-        let mov_index_list = &self.down_left_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
-
-            if taken_piece != 0 {
-                if def::on_same_side(player, taken_piece) {
-                    break
-                }
-
-                if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                    return true
-                }
-
-                break
             }
         }
 
         if player == def::PLAYER_W {
-            if index < 105 {
-                let potential_pawn_attacker = squares[index + 15];
-
-                if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                    return true
+            if state.b_piece_list.pawn > 0 {
+                if index < 105 {
+                    let potential_pawn_attacker = squares[index + 15];
+    
+                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
+                        return true
+                    }
                 }
-            }
-
-            if index < 103 {
-                let potential_pawn_attacker = squares[index + 17];
-
-                if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                    return true
+    
+                if index < 103 {
+                    let potential_pawn_attacker = squares[index + 17];
+    
+                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
+                        return true
+                    }
                 }
             }
         } else {
-            if index as isize >= 15 {
-                let potential_pawn_attacker = squares[index - 15];
-
-                if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                    return true
+            if state.w_piece_list.pawn > 0 {
+                if index as isize >= 15 {
+                    let potential_pawn_attacker = squares[index - 15];
+    
+                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
+                        return true
+                    }
                 }
-            }
-
-
-            if index as isize >= 17 {
-                let potential_pawn_attacker = squares[index - 17];
-
-                if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                    return true
+    
+    
+                if index as isize >= 17 {
+                    let potential_pawn_attacker = squares[index - 17];
+    
+                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
+                        return true
+                    }
                 }
             }
         }
