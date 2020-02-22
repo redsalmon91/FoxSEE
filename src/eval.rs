@@ -39,6 +39,7 @@ static CENTER_CONTROL_VAL: i32 = 10;
 static ROOK_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MOB_BASE_VAL: i32 = 2;
 static KNIGHT_MOB_BASE_VAL: i32 = 1;
+static KING_MOB_BASE_VAL: i32 = 5;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
@@ -102,6 +103,7 @@ pub struct FeatureMap {
     knight_mobility: i32,
     bishop_mobility: i32,
     rook_mobility: i32,
+    king_mobility: i32,
 
     semi_open_rook_count: i32,
     open_rook_count: i32,
@@ -138,6 +140,7 @@ impl FeatureMap {
             knight_mobility: 0,
             bishop_mobility: 0,
             rook_mobility: 0,
+            king_mobility: 0,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -232,9 +235,11 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
     let endgame_score = w_features_map.passed_pawn_count * PASS_PAWN_VAL
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         + w_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
+        + w_features_map.king_mobility * KING_MOB_BASE_VAL
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
-        - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL;
+        - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
+        - b_features_map.king_mobility * KING_MOB_BASE_VAL;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
     + w_features_map.rook_count * R_PHASE_WEIGHT
@@ -510,6 +515,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     w_feature_map.king_expose_count += 1;
                 }
 
+                w_feature_map.king_mobility = mov_table.count_king_mobility(state, index, def::PLAYER_W);
                 w_feature_map.king_protector_count += (protect_mask & bitboard.w_all).count_ones() as i32;
             },
             def::BK => {
@@ -532,6 +538,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     b_feature_map.king_expose_count += 1;
                 }
 
+                b_feature_map.king_mobility = mov_table.count_king_mobility(state, index, def::PLAYER_B);
                 b_feature_map.king_protector_count += (protect_mask & bitboard.b_all).count_ones() as i32;
             },
             _ => {},
@@ -583,6 +590,7 @@ mod tests {
             knight_mobility: 8,
             bishop_mobility: 3,
             rook_mobility: 3,
+            king_mobility: 2,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -617,6 +625,7 @@ mod tests {
             knight_mobility: 7,
             bishop_mobility: 5,
             rook_mobility: 7,
+            king_mobility: 2,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -661,6 +670,7 @@ mod tests {
             knight_mobility: 4,
             bishop_mobility: 3,
             rook_mobility: 3,
+            king_mobility: 2,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -695,6 +705,7 @@ mod tests {
             knight_mobility: 4,
             bishop_mobility: 0,
             rook_mobility: 13,
+            king_mobility: 3,
 
             semi_open_rook_count: 1,
             open_rook_count: 0,
@@ -739,6 +750,7 @@ mod tests {
             knight_mobility: 11,
             bishop_mobility: 3,
             rook_mobility: 3,
+            king_mobility: 2,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -773,6 +785,7 @@ mod tests {
             knight_mobility: 12,
             bishop_mobility: 5,
             rook_mobility: 7,
+            king_mobility: 2,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -820,7 +833,7 @@ mod tests {
         let mov_table = MoveTable::new();
 
         let state = State::new("1kr5/1p4pp/1p6/p2ppN2/2pP4/4P3/P4P1P/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(55, eval_state(&state, &mov_table));
+        assert_eq!(51, eval_state(&state, &mov_table));
     }
 
     #[test]
@@ -830,6 +843,6 @@ mod tests {
         let mov_table = MoveTable::new();
 
         let state = State::new("5rk1/p4p1p/4p3/2Pp4/P2PPn2/1P6/1P4PP/1KR5 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-55, eval_state(&state, &mov_table));
+        assert_eq!(-51, eval_state(&state, &mov_table));
     }
 }
