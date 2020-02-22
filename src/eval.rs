@@ -812,4 +812,24 @@ mod tests {
         let state = State::new("r2q1rk1/ppp2p1p/1bn3n1/1p1p4/1P1P4/1BN2N2/PP2QPP1/1KR2R2 b - - 0 1", &zob_keys, &bitmask);
         assert_eq!(-4, eval_state(&state, &mov_table));
     }
+
+    #[test]
+    fn test_eval_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mov_table = MoveTable::new();
+
+        let state = State::new("1kr5/1p4pp/1p6/p2ppN2/2pP4/4P3/P4P1P/5RK1 b - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(55, eval_state(&state, &mov_table));
+    }
+
+    #[test]
+    fn test_eval_4() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mov_table = MoveTable::new();
+
+        let state = State::new("5rk1/p4p1p/4p3/2Pp4/P2PPn2/1P6/1P4PP/1KR5 w - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(-55, eval_state(&state, &mov_table));
+    }
 }
