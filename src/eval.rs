@@ -437,8 +437,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
 
                 let file_mask = file_masks[index];
-                if file_mask & bitboard.w_pawn == 0 {
-                    if file_mask & bitboard.b_pawn == 0 {
+                if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
+                    if file_mask & bitboard.b_all == 0 {
                         w_feature_map.open_rook_count += 1;
                     } else {
                         w_feature_map.semi_open_rook_count += 1;
@@ -464,8 +464,8 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
 
                 let file_mask = file_masks[index];
-                if file_mask & bitboard.b_pawn == 0 {
-                    if file_mask & bitboard.w_pawn == 0 {
+                if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
+                    if file_mask & bitboard.w_all == 0 {
                         b_feature_map.open_rook_count += 1;
                     } else {
                         b_feature_map.semi_open_rook_count += 1;
@@ -618,7 +618,7 @@ mod tests {
             bishop_mobility: 5,
             rook_mobility: 7,
 
-            semi_open_rook_count: 1,
+            semi_open_rook_count: 0,
             open_rook_count: 0,
 
             open_queen_count: 0,
@@ -696,7 +696,7 @@ mod tests {
             bishop_mobility: 0,
             rook_mobility: 13,
 
-            semi_open_rook_count: 2,
+            semi_open_rook_count: 1,
             open_rook_count: 0,
 
             open_queen_count: 0,
@@ -774,7 +774,7 @@ mod tests {
             bishop_mobility: 5,
             rook_mobility: 7,
 
-            semi_open_rook_count: 1,
+            semi_open_rook_count: 0,
             open_rook_count: 0,
 
             open_queen_count: 1,
@@ -791,5 +791,25 @@ mod tests {
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
         }, b_features);
+    }
+
+    #[test]
+    fn test_eval_1() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mov_table = MoveTable::new();
+
+        let state = State::new("1kr2r2/pp2qpp1/1bn2n2/1p1p4/1P1P4/1BN3N1/PPP2P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
+        assert_eq!(4, eval_state(&state, &mov_table));
+    }
+
+    #[test]
+    fn test_eval_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mov_table = MoveTable::new();
+
+        let state = State::new("r2q1rk1/ppp2p1p/1bn3n1/1p1p4/1P1P4/1BN2N2/PP2QPP1/1KR2R2 b - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(-4, eval_state(&state, &mov_table));
     }
 }
