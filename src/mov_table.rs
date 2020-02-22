@@ -2000,21 +2000,8 @@ impl MoveTable {
         mob_score
     }
 
-    pub fn count_king_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
-        let squares = state.squares;
-        let mut mob_score = 0;
-
-        let mov_index_list = &self.k_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if !def::on_same_side(player, taken_piece) && !self.is_under_attack(state, to_index, player) {
-                mob_score += 1;
-            }
-        }
-
-        mob_score
+    pub fn count_king_mobility(&self, index : usize) -> i32 {
+        self.k_mov_table[index].len() as i32
     }
 }
 
@@ -2313,12 +2300,10 @@ mod tests {
 
     #[test]
     fn test_count_king_mobility() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let state = State::new("r2q1k2/p2bPrb1/1p1p1ppn/1NpP1n2/1PP1R3/P2B4/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert_eq!(1, mov_table.count_king_mobility(&state, util::map_sqr_notation_to_index("g1"), def::PLAYER_W));
-        assert_eq!(2, mov_table.count_king_mobility(&state, util::map_sqr_notation_to_index("f8"), def::PLAYER_B));
+        assert_eq!(5, mov_table.count_king_mobility(util::map_sqr_notation_to_index("g1")));
+        assert_eq!(3, mov_table.count_king_mobility(util::map_sqr_notation_to_index("h8")));
+        assert_eq!(5, mov_table.count_king_mobility(util::map_sqr_notation_to_index("f8")));
     }
 }

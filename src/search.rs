@@ -878,7 +878,7 @@ mod tests {
         let mut state = State::new("r5kr/1b1pR1p1/p1q1N2p/5P1n/3Q4/B7/P5PP/5RK1 w - - 1 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(210, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(209, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -908,7 +908,7 @@ mod tests {
         let mut state = State::new("2k5/pp2b3/1np1p3/2NpP2p/3P2p1/2PN4/PP4PP/5q1K w - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-1007, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-1001, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -918,7 +918,7 @@ mod tests {
         let mut state = State::new("2r4k/1R5p/8/p1p5/P1Pp1p2/3R3P/KP3r2/8 w - - 0 40", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-210, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
+        assert_eq!(-217, search_engine.q_search(&mut state, -20000, 20000, 0, &mut 0));
     }
 
     #[test]
@@ -1135,14 +1135,14 @@ mod tests {
     fn test_search_endgame_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("8/2k5/2pR4/1pPp4/p7/P1PK1P2/1P6/8 w - - 5 52", &zob_keys, &bitmask);
+        let mut state = State::new("8/2k5/8/4R3/3K4/8/8/8 w - - 5 52", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 25500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("f3"));
-        assert_eq!(to, util::map_sqr_notation_to_index("f4"));
+        assert_eq!(from, util::map_sqr_notation_to_index("d4"));
+        assert_eq!(to, util::map_sqr_notation_to_index("c5"));
     }
 
     #[test]
