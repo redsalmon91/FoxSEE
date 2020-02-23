@@ -281,6 +281,7 @@ impl SearchEngine {
             state.player = def::get_opposite_player(state.player);
 
             if scout_score * player_sign >= beta * player_sign {
+                pv_table[0..PV_TRACK_LENGTH].copy_from_slice(&EMPTY_PV_TABLE[0..PV_TRACK_LENGTH]);
                 return beta
             }
         }
@@ -901,7 +902,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        assert_eq!(-18, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
+        assert_eq!(-62, search_engine.q_search(&mut state, 20000, -20000, 0, &mut 0));
     }
 
     #[test]
