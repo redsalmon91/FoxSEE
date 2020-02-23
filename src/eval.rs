@@ -13,9 +13,9 @@ static B_VAL: i32 = 350;
 static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
-static MAX_KING_PROTECTOR: i32 = 2;
+static MAX_KING_PROTECTOR: i32 = 3;
 static KING_PROTECTED_BASE_VAL: i32 = 30;
-static KING_EXPOSED_BASE_PEN: i32 = -50;
+static KING_EXPOSED_BASE_PEN: i32 = -100;
 static KING_MIDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
