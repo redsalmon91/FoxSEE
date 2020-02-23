@@ -218,7 +218,17 @@ impl SearchEngine {
 
             state.do_mov(from, to, tp, promo);
 
-            let score = self.ab_search(state, mov_index == 0, 0, &mut next_pv_table, beta, alpha, depth - 1, false, ply + 1, node_count, seldepth);
+            let score = if mov_index == 0 {
+                self.ab_search(state, true, 0, &mut next_pv_table, beta, alpha, depth - 1, false, ply + 1, node_count, seldepth)
+            } else {
+                let score = self.ab_search(state, false, 0, &mut next_pv_table, alpha + player_sign, alpha, depth - 1, false, ply + 1, node_count, seldepth);
+
+                if score * player_sign > alpha * player_sign {
+                    self.ab_search(state, false, 0, &mut next_pv_table, beta, alpha, depth - 1, false, ply + 1, node_count, seldepth)
+                } else {
+                    score
+                }
+            };
 
             state.undo_mov(from, to, tp);
 
