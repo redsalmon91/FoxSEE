@@ -518,7 +518,6 @@ impl SearchEngine {
         if is_capture {
             let captured_piece = state.squares[to];
             if def::is_k(captured_piece) {
-                pv_table[0] = 0;
                 return Beta(player_sign * (eval::MATE_VAL - ply as i32))
             }
         }
@@ -543,9 +542,6 @@ impl SearchEngine {
         let signed_score = score * player_sign;
 
         if signed_score >= beta * player_sign {
-            pv_table[0] = mov;
-            pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
-
             if !is_capture {
                 let (killer_score, _killer_mov) = self.killer_table[ply as usize].0;
                 if score * player_sign > killer_score * player_sign || killer_score == 0 {
@@ -1147,5 +1143,19 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b7"));
         assert_eq!(to, util::map_sqr_notation_to_index("e4"));
+    }
+
+    #[test]
+    fn test_search_16() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("1rb2r1k/4n1pp/p2p2q1/1pp1P3/4Pp2/Q1P2N1P/PP1B1PP1/2RR2K1 b - - 0 22", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(65536);
+
+        let best_mov = search_engine.search(&mut state, 15500);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c8"));
+        assert_eq!(to, util::map_sqr_notation_to_index("h3"));
     }
 }
