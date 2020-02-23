@@ -35,7 +35,7 @@ impl DepthPreferredHashTable {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
         if k == key && p == player && c == cas_rights && e == enp_sqr as u32 && bm == bit_mask {
-            if d == depth {
+            if d >= depth {
                 LookupResult::Match(f, s, m)
             } else {
                 LookupResult::MovOnly(m)
@@ -78,7 +78,7 @@ impl AlwaysReplaceHashTable {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
         if k == key && p == player && c == cas_rights && e == enp_sqr as u32 && bm == bit_mask {
-            if d == depth {
+            if d >= depth {
                 LookupResult::Match(f, s, m)
             } else {
                 LookupResult::MovOnly(m)
@@ -108,21 +108,21 @@ mod tests {
         table.set(10012, 101, 2, 10, 0, 0, 1, -100, 123);
         assert_eq!(LookupResult::Match(1, -100, 123), table.get(10012, 101, 2, 10, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 1, 10, 0, 0));
-        assert_eq!(LookupResult::MovOnly(123), table.get(10012, 101, 2, 5, 0, 0));
+        assert_eq!(LookupResult::Match(1, -100, 123), table.get(10012, 101, 2, 5, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 10, 2, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 10, 0, 99));
 
         table.set(10012, 101, 2, 5, 0, 0, 1, 300, 999);
         assert_eq!(LookupResult::Match(1, -100, 123), table.get(10012, 101, 2, 10, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 1, 10, 0, 0));
-        assert_eq!(LookupResult::MovOnly(123), table.get(10012, 101, 2, 5, 0, 0));
+        assert_eq!(LookupResult::Match(1, -100, 123), table.get(10012, 101, 2, 5, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 10, 2, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 10, 0, 99));
 
         table.set(10012, 101, 2, 11, 0, 0, 1, 101, 223);
         assert_eq!(LookupResult::Match(1, 101, 223), table.get(10012, 101, 2, 11, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 1, 11, 0, 0));
-        assert_eq!(LookupResult::MovOnly(223), table.get(10012, 101, 2, 10, 0, 0));
+        assert_eq!(LookupResult::Match(1, 101, 223), table.get(10012, 101, 2, 10, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 11, 2, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 11, 0, 99));
     }
@@ -134,7 +134,7 @@ mod tests {
         table.set(10012, 101, 2, 10, 0, 0, 1, -100, 123);
         assert_eq!(LookupResult::Match(1, -100, 123), table.get(10012, 101, 2, 10, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 1, 10, 0, 0));
-        assert_eq!(LookupResult::MovOnly(123), table.get(10012, 101, 2, 5, 0, 0));
+        assert_eq!(LookupResult::Match(1, -100, 123), table.get(10012, 101, 2, 5, 0, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 10, 2, 0));
         assert_eq!(LookupResult::NoMatch, table.get(10012, 101, 2, 10, 0, 99));
 
