@@ -11,6 +11,7 @@ const FEN_PLAYER_INDEX: usize = 1;
 const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
+const LAST_MOV_POS_INDEX: usize = 4;
 
 pub struct PieceList {
     pub queen: u8,
@@ -93,6 +94,15 @@ impl <'state> State<'state> {
     pub fn is_draw(&self) -> bool {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize);
+
+        if check_range < LAST_MOV_POS_INDEX {
+            return false
+        }
+
+        let (pos_hash, _player) = self.history_pos_stack[history_len - LAST_MOV_POS_INDEX];
+        if pos_hash == self.hash_key {
+            return true
+        }
 
         let mut dup_count = 0;
         for check_index in 1..=check_range {

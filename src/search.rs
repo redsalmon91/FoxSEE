@@ -1020,14 +1020,14 @@ mod tests {
     fn test_search_10() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("r2qnrnk/p2b2b1/1p1p2pp/2pPpp2/1PP1P3/PRNBB3/3QNPPP/5RK1 w - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("1r4k1/7p/5np1/3p3n/8/2NB4/7P/3N1RK1 w - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
         let best_mov = search_engine.search(&mut state, 7500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("f2"));
-        assert_eq!(to, util::map_sqr_notation_to_index("f3"));
+        assert_eq!(from, util::map_sqr_notation_to_index("c3"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d5"));
     }
 
     #[test]
@@ -1098,19 +1098,5 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b7"));
         assert_eq!(to, util::map_sqr_notation_to_index("e4"));
-    }
-
-    #[test]
-    fn test_search_18() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let mut state = State::new("1rb2r1k/4n1pp/p2p2q1/1pp1P3/4Pp2/Q1P2N1P/PP1B1PP1/2RR2K1 b - - 0 22", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
-
-        let best_mov = search_engine.search(&mut state, 55500);
-
-        let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("c4"));
-        assert_eq!(to, util::map_sqr_notation_to_index("e3"));
     }
 }
