@@ -20,13 +20,13 @@ static KING_MIDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
-static PASS_PAWN_VAL: i32 = 30;
+static PASS_PAWN_VAL: i32 = 20;
 static DUP_PAWN_PEN: i32 = -50;
-static ISOLATE_PAWN_PEN: i32 = -20;
-static OPEN_ISOLATE_PAWN_PEN: i32 = -50;
+static ISOLATE_PAWN_PEN: i32 = -10;
+static OPEN_ISOLATE_PAWN_PEN: i32 = -30;
 
-static ROOK_SEMI_OPEN_LINE_VAL: i32 = 30;
-static ROOK_OPEN_LINE_VAL: i32 = 50;
+static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
+static ROOK_OPEN_LINE_VAL: i32 = 30;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
 
@@ -636,45 +636,5 @@ mod tests {
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
         }, b_features);
-    }
-
-    #[test]
-    fn test_eval_1() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
-
-        let state = State::new("1kr2r2/pp2qpp1/1bn2n2/1p1p4/1P1P4/1BN3N1/PPP2P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        assert_eq!(22, eval_state(&state, &mov_table));
-    }
-
-    #[test]
-    fn test_eval_2() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
-
-        let state = State::new("r2q1rk1/ppp2p1p/1bn3n1/1p1p4/1P1P4/1BN2N2/PP2QPP1/1KR2R2 b - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-22, eval_state(&state, &mov_table));
-    }
-
-    #[test]
-    fn test_eval_3() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
-
-        let state = State::new("1kr5/1p4pp/1p6/p2ppN2/2pP4/4P3/P4P1P/5RK1 b - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(26, eval_state(&state, &mov_table));
-    }
-
-    #[test]
-    fn test_eval_4() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
-
-        let state = State::new("5rk1/p4p1p/4p3/2Pp4/P2PPn2/1P6/1P4PP/1KR5 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(-26, eval_state(&state, &mov_table));
     }
 }
