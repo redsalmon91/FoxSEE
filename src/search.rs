@@ -320,11 +320,15 @@ impl SearchEngine {
                         HASH_TYPE_ALPHA => {
                             if score * player_sign <= alpha * player_sign {
                                 return alpha
+                            } else {
+                                alpha = score;
                             }
                         },
                         HASH_TYPE_BETA => {
                             if score * player_sign >= beta * player_sign {
                                 return beta
+                            } else {
+                                alpha = score;
                             }
                         },
                         _ => (),
