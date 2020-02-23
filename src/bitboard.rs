@@ -206,8 +206,8 @@ pub fn gen_masks() -> (
 
         wp_forward_masks[index] = wp_forward_mask;
         bp_forward_masks[index] = bp_forward_mask;
-        wp_behind_masks[index] = surround_files_mask ^ wp_forward_mask ^ index_masks[index];
-        bp_behind_masks[index] = surround_files_mask ^ bp_forward_mask ^ index_masks[index];
+        wp_behind_masks[index] = (surround_files_mask ^ wp_forward_mask) & !file_masks[index];
+        bp_behind_masks[index] = (surround_files_mask ^ bp_forward_mask) & !file_masks[index];
 
         index += 1;
     }
@@ -264,7 +264,7 @@ mod tests {
         assert_eq!(0b00000011_00000011_00000011_00000011_00000011_00000000_00000000_00000000, wp_forward_masks[32]);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000111_00000111, bp_forward_masks[33]);
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00101000_00111000_00111000_00111000, wp_behind_masks[52]);
-        assert_eq!(0b00000011_00000011_00000010_00000000_00000000_00000000_00000000_00000000, bp_behind_masks[80]);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00101000_00101000_00101000_00101000, wp_behind_masks[52]);
+        assert_eq!(0b00000010_00000010_00000010_00000000_00000000_00000000_00000000_00000000, bp_behind_masks[80]);
     }
 }
