@@ -158,40 +158,6 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
 
-        match taken_piece {
-            def::WP => {
-                self.w_piece_list.pawn -= 1;
-            },
-            def::BP => {
-                self.b_piece_list.pawn -= 1;
-            },
-            def::WN => {
-                self.w_piece_list.knight -= 1;
-            },
-            def::BN => {
-                self.b_piece_list.knight -= 1;
-            },
-            def::WB => {
-                self.w_piece_list.bishop -= 1;
-            },
-            def::BB => {
-                self.b_piece_list.bishop -= 1;
-            },
-            def::WR => {
-                self.w_piece_list.rook -= 1;
-            },
-            def::BR => {
-                self.b_piece_list.rook -= 1;
-            },
-            def::WQ => {
-                self.w_piece_list.queen -= 1;
-            },
-            def::BQ => {
-                self.b_piece_list.queen -= 1;
-            },
-            _ => ()
-        }
-
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
 
@@ -246,6 +212,40 @@ impl <'state> State<'state> {
                     self.bitboard.b_rook ^= self.bitmask.index_masks[to];
                 }
             }
+
+            match taken_piece {
+                def::WP => {
+                    self.w_piece_list.pawn -= 1;
+                },
+                def::BP => {
+                    self.b_piece_list.pawn -= 1;
+                },
+                def::WN => {
+                    self.w_piece_list.knight -= 1;
+                },
+                def::BN => {
+                    self.b_piece_list.knight -= 1;
+                },
+                def::WB => {
+                    self.w_piece_list.bishop -= 1;
+                },
+                def::BB => {
+                    self.b_piece_list.bishop -= 1;
+                },
+                def::WR => {
+                    self.w_piece_list.rook -= 1;
+                },
+                def::BR => {
+                    self.b_piece_list.rook -= 1;
+                },
+                def::WQ => {
+                    self.w_piece_list.queen -= 1;
+                },
+                def::BQ => {
+                    self.b_piece_list.queen -= 1;
+                },
+                _ => ()
+            }
         }
 
         self.taken_piece_stack.push(taken_piece);
@@ -283,38 +283,40 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[to];
         let taken_piece = self.taken_piece_stack.pop().unwrap();
 
-        match taken_piece {
-            def::WP => {
-                self.w_piece_list.pawn += 1;
-            },
-            def::BP => {
-                self.b_piece_list.pawn += 1;
-            },
-            def::WN => {
-                self.w_piece_list.knight += 1;
-            },
-            def::BN => {
-                self.b_piece_list.knight += 1;
-            },
-            def::WB => {
-                self.w_piece_list.bishop += 1;
-            },
-            def::BB => {
-                self.b_piece_list.bishop += 1;
-            },
-            def::WR => {
-                self.w_piece_list.rook += 1;
-            },
-            def::BR => {
-                self.b_piece_list.rook += 1;
-            },
-            def::WQ => {
-                self.w_piece_list.queen += 1;
-            },
-            def::BQ => {
-                self.b_piece_list.queen += 1;
-            },
-            _ => ()
+        if taken_piece != 0 {
+            match taken_piece {
+                def::WP => {
+                    self.w_piece_list.pawn += 1;
+                },
+                def::BP => {
+                    self.b_piece_list.pawn += 1;
+                },
+                def::WN => {
+                    self.w_piece_list.knight += 1;
+                },
+                def::BN => {
+                    self.b_piece_list.knight += 1;
+                },
+                def::WB => {
+                    self.w_piece_list.bishop += 1;
+                },
+                def::BB => {
+                    self.b_piece_list.bishop += 1;
+                },
+                def::WR => {
+                    self.w_piece_list.rook += 1;
+                },
+                def::BR => {
+                    self.b_piece_list.rook += 1;
+                },
+                def::WQ => {
+                    self.w_piece_list.queen += 1;
+                },
+                def::BQ => {
+                    self.b_piece_list.queen += 1;
+                },
+                _ => ()
+            }
         }
 
         self.squares[to] = taken_piece;
@@ -324,34 +326,6 @@ impl <'state> State<'state> {
     fn do_promo_mov(&mut self, from: usize, to: usize, promo: u8) {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
-
-        match taken_piece {
-            def::WN => {
-                self.w_piece_list.knight -= 1;
-            },
-            def::BN => {
-                self.b_piece_list.knight -= 1;
-            },
-            def::WB => {
-                self.w_piece_list.bishop -= 1;
-            },
-            def::BB => {
-                self.b_piece_list.bishop -= 1;
-            },
-            def::WR => {
-                self.w_piece_list.rook -= 1;
-            },
-            def::BR => {
-                self.b_piece_list.rook -= 1;
-            },
-            def::WQ => {
-                self.w_piece_list.queen -= 1;
-            },
-            def::BQ => {
-                self.b_piece_list.queen -= 1;
-            },
-            _ => ()
-        }
 
         match promo {
             def::WN => {
@@ -419,6 +393,34 @@ impl <'state> State<'state> {
                     self.bitboard.b_rook ^= self.bitmask.index_masks[to];
                 }
             }
+
+            match taken_piece {
+                def::WN => {
+                    self.w_piece_list.knight -= 1;
+                },
+                def::BN => {
+                    self.b_piece_list.knight -= 1;
+                },
+                def::WB => {
+                    self.w_piece_list.bishop -= 1;
+                },
+                def::BB => {
+                    self.b_piece_list.bishop -= 1;
+                },
+                def::WR => {
+                    self.w_piece_list.rook -= 1;
+                },
+                def::BR => {
+                    self.b_piece_list.rook -= 1;
+                },
+                def::WQ => {
+                    self.w_piece_list.queen -= 1;
+                },
+                def::BQ => {
+                    self.b_piece_list.queen -= 1;
+                },
+                _ => ()
+            }
         }
 
         self.taken_piece_stack.push(taken_piece);
@@ -465,32 +467,34 @@ impl <'state> State<'state> {
             _ => ()
         }
 
-        match taken_piece {
-            def::WN => {
-                self.w_piece_list.knight += 1;
-            },
-            def::BN => {
-                self.b_piece_list.knight += 1;
-            },
-            def::WB => {
-                self.w_piece_list.bishop += 1;
-            },
-            def::BB => {
-                self.b_piece_list.bishop += 1;
-            },
-            def::WR => {
-                self.w_piece_list.rook += 1;
-            },
-            def::BR => {
-                self.b_piece_list.rook += 1;
-            },
-            def::WQ => {
-                self.w_piece_list.queen += 1;
-            },
-            def::BQ => {
-                self.b_piece_list.queen += 1;
-            },
-            _ => ()
+        if taken_piece != 0 {
+            match taken_piece {
+                def::WN => {
+                    self.w_piece_list.knight += 1;
+                },
+                def::BN => {
+                    self.b_piece_list.knight += 1;
+                },
+                def::WB => {
+                    self.w_piece_list.bishop += 1;
+                },
+                def::BB => {
+                    self.b_piece_list.bishop += 1;
+                },
+                def::WR => {
+                    self.w_piece_list.rook += 1;
+                },
+                def::BR => {
+                    self.b_piece_list.rook += 1;
+                },
+                def::WQ => {
+                    self.w_piece_list.queen += 1;
+                },
+                def::BQ => {
+                    self.b_piece_list.queen += 1;
+                },
+                _ => ()
+            }
         }
 
         self.squares[to] = taken_piece;

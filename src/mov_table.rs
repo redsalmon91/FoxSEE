@@ -2198,7 +2198,7 @@ mod tests {
     }
 
     #[test]
-    fn test_attack_check() {
+    fn test_attack_check_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
@@ -2209,6 +2209,17 @@ mod tests {
         assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("a6"), def::PLAYER_B));
         assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("e4"), def::PLAYER_W));
         assert!(!mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("d4"), def::PLAYER_W));
+    }
+
+    #[test]
+    fn test_attack_check_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("8/8/1k6/8/1R6/3K4/8/8 w - - 0 1", &zob_keys, &bitmask);
+        let mov_table = MoveTable::new();
+
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("b6"), def::PLAYER_B));
+        assert!(mov_table.is_under_attack(&state, util::map_sqr_notation_to_index("c7"), def::PLAYER_W));
     }
 
     #[test]
