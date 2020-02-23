@@ -29,6 +29,8 @@ fn main() {
         match uci_cmd_process_result {
             UciProcessResult::SetHashSize(hash_size) => {
                 search_engine.set_hash_size(hash_size);
+                println!("uciok");
+                io::stdout().flush().ok();
             },
             UciProcessResult::Position(fen_str, mov_list) => {
                 state = State::new(fen_str, &zob_keys, &bitmask);
@@ -96,13 +98,20 @@ fn main() {
                 println!("bestmove {}", util::format_mov(best_mov));
                 io::stdout().flush().ok();
             },
-            UciProcessResult::Ready => {},
             UciProcessResult::Stop => {
                 search_engine.stop();
+                println!("uciok");
+                io::stdout().flush().ok();
+            },
+            UciProcessResult::IgnoredOption => {
+                println!("uciok");
+                io::stdout().flush().ok();
             },
             UciProcessResult::Noop => {},
             UciProcessResult::Reset => {
                 search_engine.reset();
+                println!("uciok");
+                io::stdout().flush().ok();
             },
             UciProcessResult::Quit => {
                 println!("quit");

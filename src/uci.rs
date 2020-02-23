@@ -24,8 +24,8 @@ pub struct TimeInfo {
 
 pub enum UciProcessResult {
     Noop,
-    Ready,
     Reset,
+    IgnoredOption,
     SetHashSize(usize),
     Position(&'static str, Vec<Rawmov>),
     StartSearchWithTime(u128),
@@ -43,7 +43,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             println!("option name Hash type spin default {} min {} max {}", def::DEFAULT_HASH_SIZE_MB, def::MIN_HASH_SIZE_MB, def::MAX_HASH_SIZE_MB);
             println!("uciok");
             io::stdout().flush().ok();
-            UciProcessResult::Ready
+            UciProcessResult::Noop
         }
         "debug" => UciProcessResult::Noop,
         "isready" => {
@@ -63,12 +63,12 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
                     let hash_ratio = hash_size_mb / def::MIN_HASH_SIZE_MB;
                     if hash_ratio < 2 || hash_ratio % 2 != 0 {
                         println!("hash size {} is not supported", hash_size_mb);
-                        return UciProcessResult::Noop
+                        return UciProcessResult::IgnoredOption
                     }
 
                     UciProcessResult::SetHashSize(hash_ratio * def::MIN_HASH_SIZE_UNIT)
                 },
-                _ => UciProcessResult::Noop,
+                _ => UciProcessResult::IgnoredOption,
             }
         },
         "register" => UciProcessResult::Noop,
