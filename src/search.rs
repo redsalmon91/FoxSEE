@@ -322,11 +322,11 @@ impl SearchEngine {
         }
 
         let mut hash_mov = 0;
-        match self.get_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square) {
-            Match(flag, score, mov) => {
-                hash_mov = mov;
+        if !on_pv {
+            match self.get_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square) {
+                Match(flag, score, mov) => {
+                    hash_mov = mov;
 
-                if !on_pv {
                     match flag {
                         HASH_TYPE_ALPHA => {
                             if score * player_sign <= alpha * player_sign {
@@ -344,17 +344,17 @@ impl SearchEngine {
                         },
                         _ => (),
                     }
-                }
-            },
-            MovOnly(mov) => {
-                hash_mov = mov;
-            },
-            _ => (),
+                },
+                MovOnly(mov) => {
+                    hash_mov = mov;
+                },
+                _ => (),
+            }
         }
 
         let squares = state.squares;
 
-        if hash_mov != 0 && hash_mov != pv_mov {
+        if hash_mov != 0 {
             let (from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
 
             if def::on_same_side(state.player, squares[from]) && !def::on_same_side(state.player, squares[to]) {
@@ -615,7 +615,7 @@ impl SearchEngine {
     }
 
     #[inline]
-    pub fn get_hash(&self, hash_key: u64, bitmask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {        
+    pub fn get_hash(&self, hash_key: u64, bitmask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
         match self.depth_preferred_hash_table.get(hash_key, bitmask, player, depth, cas_rights, enp_sqr) {
             NoMatch => {
                 self.always_replace_hash_table.get(hash_key, bitmask, player, depth, cas_rights, enp_sqr)
