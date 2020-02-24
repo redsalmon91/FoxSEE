@@ -14,24 +14,25 @@ static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
 static MAX_KING_PROTECTOR: i32 = 3;
-static KING_PROTECTED_BASE_VAL: i32 = 30;
-static KING_EXPOSED_BASE_PEN: i32 = -50;
-static KING_MIDGAME_SQR_VAL: i32 = 30;
+static KING_PROTECTED_BASE_VAL: i32 = 20;
+static KING_EXPOSED_BASE_PEN: i32 = -20;
+static KING_CASTLED_VAL: i32 = 50;
+static KING_MIDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
 static PASS_PAWN_VAL: i32 = 20;
 static DUP_PAWN_PEN: i32 = -50;
 static ISOLATE_PAWN_PEN: i32 = -10;
-static OPEN_ISOLATE_PAWN_PEN: i32 = -30;
+static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 
 static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
-static ROOK_OPEN_LINE_VAL: i32 = 30;
+static ROOK_OPEN_LINE_VAL: i32 = 20;
 
-static QUEEN_OPEN_LINE_VAL: i32 = 20;
+static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
-static CENTER_CONTROL_VAL: i32 = 30;
-static INVASION_VAL: i32 = 20;
+static CENTER_CONTROL_VAL: i32 = 20;
+static INVASION_VAL: i32 = 10;
 
 static ROOK_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MOB_BASE_VAL: i32 = 2;
@@ -80,6 +81,7 @@ pub struct FeatureMap {
 
     king_expose_count: i32,
     king_protector_count: i32,
+    king_caslted: i32,
     king_midgame_safe_sqr_count: i32,
     king_endgame_pref_sqr_count: i32,
     king_endgame_avoid_sqr_count: i32,
@@ -112,6 +114,7 @@ impl FeatureMap {
 
             king_expose_count: 0,
             king_protector_count: 0,
+            king_caslted: 0,
             king_midgame_safe_sqr_count: 0,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 0,
@@ -163,6 +166,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         + w_features_map.rook_mobility * ROOK_MOB_BASE_VAL
         + w_features_map.bishop_mobility * BISHOP_MOB_BASE_VAL
         + w_features_map.knight_mobility * KNIGHT_MOB_BASE_VAL
+        + w_features_map.king_caslted * KING_CASTLED_VAL
         + w_features_map.king_protector_count.min(MAX_KING_PROTECTOR) * KING_PROTECTED_BASE_VAL
         + w_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         + w_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
@@ -176,6 +180,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         - b_features_map.rook_mobility * ROOK_MOB_BASE_VAL
         - b_features_map.bishop_mobility * BISHOP_MOB_BASE_VAL
         - b_features_map.knight_mobility * KNIGHT_MOB_BASE_VAL
+        - b_features_map.king_caslted * KING_CASTLED_VAL
         - b_features_map.king_protector_count.min(MAX_KING_PROTECTOR) * KING_PROTECTED_BASE_VAL
         - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
@@ -357,12 +362,36 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     w_feature_map.king_endgame_avoid_sqr_count = 1;
                 }
 
-                if file_mask & protect_mask & bitboard.w_all == 0 {
+                if file_mask & protect_mask & bitboard.w_pawn == 0 {
                     w_feature_map.king_expose_count += 1;
                 }
 
                 if file_mask & bitboard.b_pawn == 0 {
                     w_feature_map.king_expose_count += 1;
+                }
+
+                if def::is_index_valid(index + 1) {
+                    let right_file_mask = file_masks[index + 1];
+
+                    if right_file_mask & bitboard.w_pawn == 0 {
+                        w_feature_map.king_expose_count += 1;
+                    }
+
+                    if right_file_mask & bitboard.b_pawn == 0 {
+                        w_feature_map.king_expose_count += 1;
+                    }
+                }
+
+                if index > 0 && def::is_index_valid(index - 1) {
+                    let left_file_mask = file_masks[index - 1];
+
+                    if left_file_mask & bitboard.w_pawn == 0 {
+                        w_feature_map.king_expose_count += 1;
+                    }
+
+                    if left_file_mask & bitboard.b_pawn == 0 {
+                        w_feature_map.king_expose_count += 1;
+                    }
                 }
 
                 w_feature_map.king_protector_count += (protect_mask & bitboard.w_all).count_ones() as i32;
@@ -381,12 +410,35 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     b_feature_map.king_endgame_avoid_sqr_count = 1;
                 }
 
-                if file_mask & protect_mask & bitboard.b_all == 0 {
+                if file_mask & protect_mask & bitboard.b_pawn == 0 {
                     b_feature_map.king_expose_count += 1;
                 }
 
                 if file_mask & bitboard.w_pawn == 0 {
                     b_feature_map.king_expose_count += 1;
+                }
+
+                if def::is_index_valid(index + 1) {
+                    let right_file_mask = file_masks[index + 1];
+                    if right_file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.king_expose_count += 1;
+                    }
+
+                    if right_file_mask & bitboard.w_pawn == 0 {
+                        b_feature_map.king_expose_count += 1;
+                    }
+                }
+
+                if index > 0 && def::is_index_valid(index - 1) {
+                    let left_file_mask = file_masks[index - 1];
+
+                    if left_file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.king_expose_count += 1;
+                    }
+
+                    if left_file_mask & bitboard.w_pawn == 0 {
+                        b_feature_map.king_expose_count += 1;
+                    }
                 }
 
                 b_feature_map.king_protector_count += (protect_mask & bitboard.b_all).count_ones() as i32;
@@ -414,6 +466,14 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
     w_feature_map.invasion_count = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_count = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
+
+    if state.wk_castled || state.cas_rights & 0b1100 != 0 {
+        w_feature_map.king_caslted = 1;
+    }
+
+    if state.bk_castled || state.cas_rights & 0b0011 != 0 {
+        b_feature_map.king_caslted = 1;
+    }
 
     (w_feature_map, b_feature_map)
 }
@@ -462,6 +522,7 @@ mod tests {
 
             king_expose_count: 1,
             king_protector_count: 2,
+            king_caslted: 1,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
@@ -490,8 +551,9 @@ mod tests {
             center_count: 2,
             invasion_count: 0,
 
-            king_expose_count: 0,
+            king_expose_count: 1,
             king_protector_count: 4,
+            king_caslted: 0,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
@@ -530,8 +592,9 @@ mod tests {
             center_count: 1,
             invasion_count: 1,
 
-            king_expose_count: 1,
+            king_expose_count: 2,
             king_protector_count: 2,
+            king_caslted: 0,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
@@ -560,8 +623,9 @@ mod tests {
             center_count: 2,
             invasion_count: 0,
 
-            king_expose_count: 1,
+            king_expose_count: 2,
             king_protector_count: 2,
+            king_caslted: 0,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
@@ -600,8 +664,9 @@ mod tests {
             center_count: 1,
             invasion_count: 0,
 
-            king_expose_count: 0,
+            king_expose_count: 2,
             king_protector_count: 3,
+            king_caslted: 1,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
@@ -630,8 +695,9 @@ mod tests {
             center_count: 1,
             invasion_count: 0,
 
-            king_expose_count: 0,
+            king_expose_count: 1,
             king_protector_count: 4,
+            king_caslted: 0,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,

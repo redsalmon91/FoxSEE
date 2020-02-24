@@ -1,5 +1,5 @@
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "2.7.5";
+pub static VERSION: &str = "2.8.2";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -157,6 +157,9 @@ mod tests {
 
     #[test]
     fn test_checkside() {
+        assert!(!on_same_side(PLAYER_W, 0));
+        assert!(!on_same_side(PLAYER_B, 0));
+
         assert!(on_same_side(PLAYER_W, WK));
         assert!(on_same_side(PLAYER_W, WQ));
         assert!(on_same_side(PLAYER_W, WR));

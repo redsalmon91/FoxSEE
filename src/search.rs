@@ -77,6 +77,50 @@ impl SearchEngine {
         self.abort = true;
     }
 
+    #[allow(dead_code)]
+    pub fn perft(&self, state: &mut State, depth: u8) -> usize {
+        if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
+            return 0
+        }
+
+        if depth == 0 {
+            return 1
+        }
+
+        let mut node_count = 0;
+
+        let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
+        let cas_mov_list = self.mov_table.gen_castle_mov_list(state);
+
+        for cap in cap_list {
+            let (from, to, tp, promo) = util::decode_u32_mov(cap);
+
+            if def::is_k(state.squares[to]) {
+                return 0
+            }
+
+            state.do_mov(from, to, tp, promo);
+            node_count += self.perft(state, depth - 1);
+            state.undo_mov(from, to, tp);
+        }
+
+        for non_cap in non_cap_list {
+            let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
+            state.do_mov(from, to, tp, promo);
+            node_count += self.perft(state, depth - 1);
+            state.undo_mov(from, to, tp);
+        }
+
+        for cas_mov in cas_mov_list {
+            let (from, to, tp, promo) = util::decode_u32_mov(cas_mov);
+            state.do_mov(from, to, tp, promo);
+            node_count += self.perft(state, depth - 1);
+            state.undo_mov(from, to, tp);
+        }
+
+        node_count
+    }
+
     pub fn search(&mut self, state: &mut State, max_time_millis: u128) -> u32 {
         self.time_tracker = Instant::now();
         self.max_time_millis = max_time_millis;
@@ -261,7 +305,7 @@ impl SearchEngine {
             return 0
         }
 
-        if state.is_draw() {
+        if state.is_draw(ply) {
             return 0
         }
 
@@ -271,7 +315,15 @@ impl SearchEngine {
             -1
         };
 
-        let in_check = self.mov_table.is_in_check(state);
+        if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
+            if null_mov_count == 0 {
+                pv_table[0..PV_TRACK_LENGTH].copy_from_slice(&EMPTY_PV_TABLE[0..PV_TRACK_LENGTH]);
+            }
+
+            return (eval::MATE_VAL - ply as i32) * player_sign
+        }
+
+        let in_check = self.mov_table.is_in_check(state, state.player);
 
         if in_check {
             depth += 1;
@@ -286,12 +338,11 @@ impl SearchEngine {
         }
 
         if !on_pv && !in_check && depth >= MIN_NM_DEPTH {
-            state.player = def::get_opposite_player(state.player);
+            state.do_null_mov();
             let scout_score = self.ab_search(state, false, null_mov_count + 1, &mut NM_PV_TABLE, beta, beta - player_sign, depth - NM_DEPTH_REDUCTION - 1, false, ply + 1, node_count, seldepth);
-            state.player = def::get_opposite_player(state.player);
+            state.undo_null_mov();
 
             if scout_score * player_sign >= beta * player_sign {
-                pv_table[0..PV_TRACK_LENGTH].copy_from_slice(&EMPTY_PV_TABLE[0..PV_TRACK_LENGTH]);
                 return beta
             }
         }
@@ -322,27 +373,29 @@ impl SearchEngine {
         }
 
         let mut hash_mov = 0;
-        if !on_pv {
+        if pv_mov == 0 {
             match self.get_hash(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square) {
                 Match(flag, score, mov) => {
                     hash_mov = mov;
 
-                    match flag {
-                        HASH_TYPE_ALPHA => {
-                            if score * player_sign <= alpha * player_sign {
-                                return alpha
-                            } else {
-                                alpha = score;
-                            }
-                        },
-                        HASH_TYPE_BETA => {
-                            if score * player_sign >= beta * player_sign {
-                                return beta
-                            } else {
-                                alpha = score;
-                            }
-                        },
-                        _ => (),
+                    if score != 0 && score.abs() < eval::TERM_VAL {
+                        match flag {
+                            HASH_TYPE_ALPHA => {
+                                if score * player_sign <= alpha * player_sign {
+                                    return alpha
+                                } else {
+                                    alpha = score;
+                                }
+                            },
+                            HASH_TYPE_BETA => {
+                                if score * player_sign >= beta * player_sign {
+                                    return beta
+                                } else {
+                                    alpha = score;
+                                }
+                            },
+                            _ => (),
+                        }
                     }
                 },
                 MovOnly(mov) => {
@@ -520,22 +573,11 @@ impl SearchEngine {
 
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
-        if is_capture {
-            let captured_piece = state.squares[to];
-            if def::is_k(captured_piece) {
-                if null_mov_count == 0 {
-                    pv_table[0..PV_TRACK_LENGTH].copy_from_slice(&EMPTY_PV_TABLE[0..PV_TRACK_LENGTH]);
-                }
-
-                return Beta(player_sign * (eval::MATE_VAL - ply as i32))
-            }
-        }
-
         let mut next_pv_table = [0; PV_TRACK_LENGTH];
 
         state.do_mov(from, to, tp, promo);
 
-        let score = if !in_check && !on_pv &&!is_capture && depth > 1 && *mov_count > 2 && !def::is_p(state.squares[from]) {
+        let score = if !in_check && !on_pv && !is_capture && depth > 1 && *mov_count > 2 && !def::is_p(state.squares[from]) {
             let score = self.ab_search(state, on_pv, null_mov_count, &mut next_pv_table, beta, alpha, depth - 2, true, ply + 1, node_count, seldepth);
             if score * player_sign > alpha * player_sign {
                 self.ab_search(state, on_pv, null_mov_count, &mut next_pv_table, beta, alpha, depth - 1, false, ply + 1, node_count, seldepth)
@@ -552,7 +594,8 @@ impl SearchEngine {
 
         if signed_score >= beta * player_sign {
             if null_mov_count == 0 {
-                pv_table[0..PV_TRACK_LENGTH].copy_from_slice(&EMPTY_PV_TABLE[0..PV_TRACK_LENGTH]);
+                pv_table[0] = mov;
+                pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
             }
 
             if !is_capture {
@@ -633,35 +676,30 @@ impl SearchEngine {
 
     #[inline]
     pub fn in_stale_mate(&self, state: &mut State) -> bool {
+        let player = state.player;
         let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
 
         for cap in cap_list {
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
             state.do_mov(from, to, tp, promo);
-            state.player = def::get_opposite_player(state.player);
 
-            if !self.mov_table.is_in_check(state) {
-                state.player = def::get_opposite_player(state.player);
+            if !self.mov_table.is_in_check(state, player) {
                 state.undo_mov(from, to, tp);
                 return false
             }
 
-            state.player = def::get_opposite_player(state.player);
             state.undo_mov(from, to, tp);
         }
 
         for non_cap in non_cap_list {
             let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
             state.do_mov(from, to, tp, promo);
-            state.player = def::get_opposite_player(state.player);
 
-            if !self.mov_table.is_in_check(state) {
-                state.player = def::get_opposite_player(state.player);
+            if !self.mov_table.is_in_check(state, player) {
                 state.undo_mov(from, to, tp);
                 return false
             }
 
-            state.player = def::get_opposite_player(state.player);
             state.undo_mov(from, to, tp);
         }
 
@@ -1108,5 +1146,86 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b7"));
         assert_eq!(to, util::map_sqr_notation_to_index("e4"));
+    }
+
+    #[test]
+    fn test_search_perft_1() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
+        let search_engine = SearchEngine::new(65536);
+
+        assert_eq!(20, search_engine.perft(&mut state, 1));
+        assert_eq!(400, search_engine.perft(&mut state, 2));
+        assert_eq!(8902, search_engine.perft(&mut state, 3));
+    }
+
+    #[test]
+    fn test_search_perft_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &zob_keys, &bitmask);
+        let search_engine = SearchEngine::new(65536);
+
+        assert_eq!(14, search_engine.perft(&mut state, 1));
+        assert_eq!(191, search_engine.perft(&mut state, 2));
+        assert_eq!(2812, search_engine.perft(&mut state, 3));
+        assert_eq!(43238, search_engine.perft(&mut state, 4));
+        assert_eq!(674624, search_engine.perft(&mut state, 5));
+        assert_eq!(11030083, search_engine.perft(&mut state, 6));
+        assert_eq!(178633661, search_engine.perft(&mut state, 7));
+    }
+
+    #[test]
+    fn test_search_perft_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", &zob_keys, &bitmask);
+        let search_engine = SearchEngine::new(65536);
+
+        assert_eq!(44, search_engine.perft(&mut state, 1));
+        assert_eq!(1486, search_engine.perft(&mut state, 2));
+        assert_eq!(62379, search_engine.perft(&mut state, 3));
+        assert_eq!(2103487, search_engine.perft(&mut state, 4));
+        assert_eq!(89941194, search_engine.perft(&mut state, 5));
+    }
+
+    #[test]
+    fn test_search_perft_4() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", &zob_keys, &bitmask);
+        let search_engine = SearchEngine::new(65536);
+
+        assert_eq!(46, search_engine.perft(&mut state, 1));
+        assert_eq!(2079, search_engine.perft(&mut state, 2));
+        assert_eq!(89890, search_engine.perft(&mut state, 3));
+        assert_eq!(3894594, search_engine.perft(&mut state, 4));
+        assert_eq!(164075551, search_engine.perft(&mut state, 5));
+    }
+
+    #[test]
+    fn test_search_perft_5() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", &zob_keys, &bitmask);
+        let search_engine = SearchEngine::new(65536);
+
+        assert_eq!(6, search_engine.perft(&mut state, 1));
+        assert_eq!(264, search_engine.perft(&mut state, 2));
+        assert_eq!(9467, search_engine.perft(&mut state, 3));
+        assert_eq!(422333, search_engine.perft(&mut state, 4));
+        assert_eq!(15833292, search_engine.perft(&mut state, 5));
+        assert_eq!(706045033, search_engine.perft(&mut state, 6));
+    }
+
+    #[test]
+    fn test_search_perft_6() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/P1k5/K7/8/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
+        let search_engine = SearchEngine::new(65536);
+
+        assert_eq!(92683, search_engine.perft(&mut state, 6));
     }
 }

@@ -1302,14 +1302,14 @@ impl MoveTable {
         cap_list
     }
 
-    pub fn is_in_check(&self, state: &State) -> bool {
-        let k_index = if state.player == def::PLAYER_W {
+    pub fn is_in_check(&self, state: &State, player: u8) -> bool {
+        let k_index = if player == def::PLAYER_W {
             state.wk_index
         } else {
             state.bk_index
         };
 
-        self.is_under_attack(state, k_index, state.player)
+        self.is_under_attack(state, k_index, player)
     }
 
     pub fn is_under_attack(&self, state: &State, index: usize, player: u8) -> bool {
@@ -2229,7 +2229,7 @@ mod tests {
         let state = State::new("3rr1k1/2pq2p1/p2p1pnp/8/2BBPP2/1PQ5/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert!(mov_table.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state, def::PLAYER_B));
     }
 
     #[test]
@@ -2239,7 +2239,7 @@ mod tests {
         let state = State::new("3rr1k1/2pq2p1/p2pNpnp/8/2QBPP2/1P1B4/P5PP/4RRK1 b - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert!(!mov_table.is_in_check(&state));
+        assert!(!mov_table.is_in_check(&state, def::PLAYER_B));
     }
 
     #[test]
@@ -2249,7 +2249,8 @@ mod tests {
         let state = State::new("r2qnkn1/p2b2br/1p1p1pp1/2pPpp2/1PP1P2K/PRNBB3/3QNPPP/5R2 w - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert!(mov_table.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state, def::PLAYER_W));
+        assert!(!mov_table.is_in_check(&state, def::PLAYER_B));
     }
 
     #[test]
@@ -2259,7 +2260,8 @@ mod tests {
         let state = State::new("r2q1kn1/p2b1rb1/1p1p1pp1/2pPpn2/1PP1P3/PRNBB1K1/3QNPPP/5R2 w - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert!(mov_table.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state, def::PLAYER_W));
+        assert!(!mov_table.is_in_check(&state, def::PLAYER_B));
     }
 
     #[test]
@@ -2269,7 +2271,19 @@ mod tests {
         let state = State::new("r2q1k2/p2bPrbR/1p1p1ppn/2pPpn2/1PP1P3/P1NBB3/3QNPPP/5RK1 b - - 0 1", &zob_keys, &bitmask);
         let mov_table = MoveTable::new();
 
-        assert!(mov_table.is_in_check(&state));
+        assert!(mov_table.is_in_check(&state, def::PLAYER_B));
+        assert!(!mov_table.is_in_check(&state, def::PLAYER_W));
+    }
+
+    #[test]
+    fn test_king_check_6() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("r1bqkbnr/pppppppp/3n1n2/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
+        let mov_table = MoveTable::new();
+
+        assert!(!mov_table.is_in_check(&state, def::PLAYER_W));
+        assert!(!mov_table.is_in_check(&state, def::PLAYER_B));
     }
 
     #[test]
