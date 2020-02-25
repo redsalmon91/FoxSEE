@@ -34,7 +34,7 @@ impl DepthPreferredHashTable {
     pub fn get(&self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
-        if k == key && p == player && c == cas_rights && e == enp_sqr as u32 && bm == bit_mask {
+        if k == key && bm == bit_mask && p == player && c == cas_rights && e == enp_sqr as u32 {
             if d >= depth {
                 LookupResult::Match(f, s, m)
             } else {
@@ -77,7 +77,7 @@ impl AlwaysReplaceHashTable {
     pub fn get(&self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
-        if k == key && p == player && c == cas_rights && e == enp_sqr as u32 && bm == bit_mask {
+        if k == key && bm == bit_mask && p == player && c == cas_rights && e == enp_sqr as u32 {
             if d >= depth {
                 LookupResult::Match(f, s, m)
             } else {

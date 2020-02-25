@@ -1314,14 +1314,16 @@ impl MoveTable {
 
     pub fn is_under_attack(&self, state: &State, index: usize, player: u8) -> bool {
         let squares = state.squares;
+        let bitboard = state.bitboard;
+        let bitmask = state.bitmask;
 
-        let opponent_n_count = if player == def::PLAYER_W {
-            state.b_piece_list.knight
+        let opponent_n_mask = if player == def::PLAYER_W {
+            bitboard.b_knight
         } else {
-            state.w_piece_list.knight
+            bitboard.w_knight
         };
 
-        if opponent_n_count > 0 {
+        if opponent_n_mask != 0 && opponent_n_mask & bitmask.n_attack_masks[index] != 0 {
             let mov_index_list = &self.n_mov_table[index];
             for to_index in mov_index_list {
                 let taken_piece = squares[*to_index];
@@ -1334,190 +1336,206 @@ impl MoveTable {
             }
         }
 
-        let opponent_bq_count = if player == def::PLAYER_W {
-            state.b_piece_list.queen + state.b_piece_list.bishop
+        let opponent_rq_mask = if player == def::PLAYER_W {
+            bitboard.b_rook | bitboard.b_queen
         } else {
-            state.w_piece_list.queen + state.w_piece_list.bishop
+            bitboard.w_rook | bitboard.w_queen
         };
 
-        let opponent_rq_count = if player == def::PLAYER_W {
-            state.b_piece_list.queen + state.b_piece_list.rook
-        } else {
-            state.w_piece_list.queen + state.w_piece_list.rook
-        };
+        if opponent_rq_mask != 0 && opponent_rq_mask & bitmask.r_attack_masks[index] != 0 {
+            if opponent_rq_mask & bitmask.up_attack_masks[index] != 0 {
+                let mov_index_list = &self.up_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-        if opponent_rq_count > 0 {
-            let mov_index_list = &self.up_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
 
-            let mov_index_list = &self.down_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+            if opponent_rq_mask & bitmask.down_attack_masks[index] != 0 {
+                let mov_index_list = &self.down_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
 
-            let mov_index_list = &self.left_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+            if opponent_rq_mask & bitmask.left_attack_masks[index] != 0 {
+                let mov_index_list = &self.left_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
 
-            let mov_index_list = &self.right_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+            if opponent_rq_mask & bitmask.right_attack_masks[index] != 0 {
+                let mov_index_list = &self.right_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
         }
 
-        if opponent_bq_count > 0 {
-            let mov_index_list = &self.up_left_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+        let opponent_bq_mask = if player == def::PLAYER_W {
+            bitboard.b_bishop | bitboard.b_queen
+        } else {
+            bitboard.w_bishop | bitboard.w_queen
+        };
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+        if opponent_bq_mask != 0 && opponent_bq_mask & bitmask.b_attack_masks[index] != 0 {
+            if opponent_bq_mask & bitmask.up_left_attack_masks[index] != 0 {
+                let mov_index_list = &self.up_left_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
+
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
 
-            let mov_index_list = &self.up_right_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+            if opponent_bq_mask & bitmask.up_right_attack_masks[index] != 0 {
+                let mov_index_list = &self.up_right_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
 
-            let mov_index_list = &self.down_right_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+            if opponent_bq_mask & bitmask.down_right_attack_masks[index] != 0 {
+                let mov_index_list = &self.down_right_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
 
-            let mov_index_list = &self.down_left_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
+            if opponent_bq_mask & bitmask.down_left_attack_masks[index] != 0 {
+                let mov_index_list = &self.down_left_mov_table[index];
+                for to_index in mov_index_list {
+                    let taken_piece = squares[*to_index];
 
-                if taken_piece != 0 {
-                    if def::on_same_side(player, taken_piece) {
+                    if taken_piece != 0 {
+                        if def::on_same_side(player, taken_piece) {
+                            break
+                        }
+
+                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
+                            return true
+                        }
+
                         break
                     }
-
-                    if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                        return true
-                    }
-
-                    break
                 }
             }
         }
 
         if player == def::PLAYER_W {
-            if state.b_piece_list.pawn > 0 {
+            if bitboard.b_pawn & bitmask.wp_attack_masks[index] != 0 {
                 if index < 105 {
                     let potential_pawn_attacker = squares[index + 15];
-    
+
                     if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
                         return true
                     }
                 }
-    
+
                 if index < 103 {
                     let potential_pawn_attacker = squares[index + 17];
-    
+
                     if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
                         return true
                     }
                 }
             }
         } else {
-            if state.w_piece_list.pawn > 0 {
+            if bitboard.w_pawn & bitmask.bp_attack_masks[index] != 0 {
                 if index as isize >= 15 {
                     let potential_pawn_attacker = squares[index - 15];
-    
+
                     if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
                         return true
                     }
                 }
-    
-    
+
+
                 if index as isize >= 17 {
                     let potential_pawn_attacker = squares[index - 17];
-    
+
                     if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
                         return true
                     }
@@ -1525,13 +1543,21 @@ impl MoveTable {
             }
         }
 
-        let mov_index_list = &self.k_mov_table[index];
-        for to_index in mov_index_list {
-            let taken_piece = squares[*to_index];
+        let opponent_k_mask = if player == def::PLAYER_W {
+            bitmask.index_masks[state.bk_index]
+        } else {
+            bitmask.index_masks[state.wk_index]
+        };
 
-            if taken_piece != 0 {
-                if !def::on_same_side(player, taken_piece) && def::is_k(taken_piece) {
-                    return true
+        if opponent_k_mask & bitmask.k_attack_masks[index] != 0 {
+            let mov_index_list = &self.k_mov_table[index];
+            for to_index in mov_index_list {
+                let taken_piece = squares[*to_index];
+
+                if taken_piece != 0 {
+                    if !def::on_same_side(player, taken_piece) && def::is_k(taken_piece) {
+                        return true
+                    }
                 }
             }
         }
@@ -1831,6 +1857,68 @@ impl MoveTable {
         }
 
         (w_attacker_list, b_attacker_list)
+    }
+
+    pub fn is_mov_valid(&self, state: &State, from: usize, to: usize) -> bool {
+        let squares = state.squares;
+
+        if !def::on_same_side(state.player, squares[from]) {
+            return false
+        }
+
+        if def::on_same_side(state.player, squares[to]) {
+            return false
+        }
+
+        let moving_piece = squares[from];
+        let bitmask = state.bitmask;
+        let to_index_mask = bitmask.index_masks[to];
+
+        if def::is_n(moving_piece) {
+            if bitmask.n_attack_masks[from] & to_index_mask != 0 {
+                return true
+            }
+        } else if def::is_b(moving_piece) {
+            if bitmask.b_attack_masks[from] & to_index_mask != 0 {
+                return true
+            }
+        } else if def::is_r(moving_piece) {
+            if bitmask.r_attack_masks[from] & to_index_mask != 0 {
+                return true
+            }
+        } else if def::is_q(moving_piece) {
+            if (bitmask.b_attack_masks[from] | bitmask.r_attack_masks[from]) & to_index_mask != 0 {
+                return true
+            }
+        } else if def::is_k(moving_piece) {
+            if bitmask.k_attack_masks[from] & to_index_mask != 0 {
+                return true
+            }
+        } else if def::is_p(moving_piece) {
+            if moving_piece == def::WP {
+                if from + 16 == to && squares[to] == 0 {
+                    return true
+                } else if from + 32 == to && squares[to] == 0 && squares[from + 16] == 0 {
+                    return true
+                } else if bitmask.wp_attack_masks[from] & to_index_mask != 0 && (squares[to] != 0 || to == state.enp_square) {
+                    return true
+                }
+
+                return false
+            } else if moving_piece == def::BP {
+                if to + 16 == from && squares[to] == 0 {
+                    return true
+                } else if to + 32 == from && squares[to] == 0 && squares[to + 16] == 0 {
+                    return true
+                } else if bitmask.bp_attack_masks[from] & to_index_mask != 0 && (squares[to] != 0 || to == state.enp_square) {
+                    return true
+                }
+
+                return false
+            }
+        }
+
+        false
     }
 
     pub fn count_rook_mobility(&self, state: &State, index: usize, player: u8) -> i32 {

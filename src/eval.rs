@@ -16,7 +16,7 @@ static P_VAL: i32 = 100;
 static MAX_KING_PROTECTOR: i32 = 3;
 static KING_PROTECTED_BASE_VAL: i32 = 20;
 static KING_EXPOSED_BASE_PEN: i32 = -20;
-static KING_CASTLED_VAL: i32 = 50;
+static KING_CASTLED_VAL: i32 = 90;
 static KING_MIDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
@@ -33,6 +33,7 @@ static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
 static CENTER_CONTROL_VAL: i32 = 20;
 static INVASION_VAL: i32 = 10;
+static EDGE_TRAPPED_PEN: i32 = -20;
 
 static ROOK_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MOB_BASE_VAL: i32 = 2;
@@ -45,6 +46,7 @@ static B_PHASE_WEIGHT: i32 = 4;
 static N_PHASE_WEIGHT: i32 = 4;
 
 static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
+static EDGE_MASK: u64 = 0b00000000_10000001_10000001_10000001_10000001_10000001_10000001_00000000;
 
 static W_INVASION_MASK: u64 = 0b01111110_01111110_01111110_01111110_00000000_00000000_00000000_00000000;
 static B_INVASION_MASK: u64 = 0b00000000_00000000_00000000_00000000_01111110_01111110_01111110_01111110;
@@ -78,6 +80,7 @@ pub struct FeatureMap {
 
     center_count: i32,
     invasion_count: i32,
+    trapped_count: i32,
 
     king_expose_count: i32,
     king_protector_count: i32,
@@ -111,6 +114,7 @@ impl FeatureMap {
 
             center_count: 0,
             invasion_count: 0,
+            trapped_count: 0,
 
             king_expose_count: 0,
             king_protector_count: 0,
@@ -172,6 +176,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         + w_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
         + w_features_map.center_count * CENTER_CONTROL_VAL
         + w_features_map.invasion_count * INVASION_VAL
+        + w_features_map.trapped_count * EDGE_TRAPPED_PEN
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         - b_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
@@ -185,7 +190,8 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
         - b_features_map.center_count * CENTER_CONTROL_VAL
-        - b_features_map.invasion_count * INVASION_VAL;
+        - b_features_map.invasion_count * INVASION_VAL
+        - b_features_map.trapped_count * EDGE_TRAPPED_PEN;
 
     let endgame_score = w_features_map.passed_pawn_count * PASS_PAWN_VAL
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
@@ -223,9 +229,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
     let mut w_feature_map = FeatureMap::empty();
     let mut b_feature_map = FeatureMap::empty();
 
-    let mut w_light_pieces_mask = 0;
-    let mut b_light_pieces_mask = 0;
-
     let mut index = 0;
 
     while index < def::BOARD_SIZE {
@@ -244,8 +247,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
         match moving_piece {
             def::WP => {
-                w_light_pieces_mask |= index_mask;
-
                 let file_mask = file_masks[index];
                 let rank = def::get_w_rank(index) as i32;
 
@@ -266,8 +267,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
             },
             def::BP => {
-                b_light_pieces_mask |= index_mask;
-
                 let file_mask = file_masks[index];
                 let rank = def::get_b_rank(index);
 
@@ -290,24 +289,16 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
             def::WN => {
                 w_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_W);
-
-                w_light_pieces_mask |= index_mask;
             },
             def::BN => {
                 b_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_B);
-
-                b_light_pieces_mask |= index_mask;
             },
 
             def::WB => {
                 w_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_W);
-
-                w_light_pieces_mask |= index_mask;
             },
             def::BB => {
                 b_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_B);
-
-                b_light_pieces_mask |= index_mask;
             },
 
             def::WR => {
@@ -449,23 +440,29 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
         index += 1;
     }
 
-    w_feature_map.queen_count = state.w_piece_list.queen as i32;
-    w_feature_map.rook_count = state.w_piece_list.rook as i32;
-    w_feature_map.bishop_count = state.w_piece_list.bishop as i32;
-    w_feature_map.knight_count = state.w_piece_list.knight as i32;
-    w_feature_map.pawn_count = state.w_piece_list.pawn as i32;
+    w_feature_map.pawn_count = bitboard.w_pawn.count_ones() as i32;
+    w_feature_map.knight_count = bitboard.w_knight.count_ones() as i32;
+    w_feature_map.bishop_count = bitboard.w_bishop.count_ones() as i32;
+    w_feature_map.rook_count = bitboard.w_rook.count_ones() as i32;
+    w_feature_map.queen_count = bitboard.w_queen.count_ones() as i32;
 
-    b_feature_map.queen_count = state.b_piece_list.queen as i32;
-    b_feature_map.rook_count = state.b_piece_list.rook as i32;
-    b_feature_map.bishop_count = state.b_piece_list.bishop as i32;
-    b_feature_map.knight_count = state.b_piece_list.knight as i32;
-    b_feature_map.pawn_count = state.b_piece_list.pawn as i32;
+    b_feature_map.pawn_count = bitboard.b_pawn.count_ones() as i32;
+    b_feature_map.knight_count = bitboard.b_knight.count_ones() as i32;
+    b_feature_map.bishop_count = bitboard.b_bishop.count_ones() as i32;
+    b_feature_map.rook_count = bitboard.b_rook.count_ones() as i32;
+    b_feature_map.queen_count = bitboard.b_queen.count_ones() as i32;
+
+    let w_light_pieces_mask = bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop;
+    let b_light_pieces_mask = bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop;
 
     w_feature_map.center_count = (w_light_pieces_mask & CENTER_CONTROL_MASK).count_ones() as i32;
     b_feature_map.center_count = (b_light_pieces_mask & CENTER_CONTROL_MASK).count_ones() as i32;
 
     w_feature_map.invasion_count = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_count = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
+
+    w_feature_map.trapped_count = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & EDGE_MASK).count_ones() as i32;
+    b_feature_map.trapped_count = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & EDGE_MASK).count_ones() as i32;
 
     if state.wk_castled || state.cas_rights & 0b1100 != 0 {
         w_feature_map.king_caslted = 1;
@@ -519,6 +516,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
+            trapped_count: 0,
 
             king_expose_count: 1,
             king_protector_count: 2,
@@ -550,6 +548,7 @@ mod tests {
 
             center_count: 2,
             invasion_count: 0,
+            trapped_count: 0,
 
             king_expose_count: 1,
             king_protector_count: 4,
@@ -591,6 +590,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 1,
+            trapped_count: 1,
 
             king_expose_count: 2,
             king_protector_count: 2,
@@ -622,6 +622,7 @@ mod tests {
             
             center_count: 2,
             invasion_count: 0,
+            trapped_count: 0,
 
             king_expose_count: 2,
             king_protector_count: 2,
@@ -663,6 +664,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
+            trapped_count: 0,
 
             king_expose_count: 2,
             king_protector_count: 3,
@@ -694,6 +696,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
+            trapped_count: 0,
 
             king_expose_count: 1,
             king_protector_count: 4,

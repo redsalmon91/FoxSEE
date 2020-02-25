@@ -18,6 +18,11 @@ use uci::{UciProcessResult, Rawmov};
 use std::io::{self, prelude::*};
 
 fn main() {
+    if 1u8 != 0b01 {
+        println!("only litte-endian systems are supported");
+        std::process::exit(0);
+    }
+
     let mut search_engine = SearchEngine::new(def::DEFAULT_HASH_SIZE_UNIT);
     let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
     let bitmask = BitMask::new();

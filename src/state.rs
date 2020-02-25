@@ -13,14 +13,6 @@ const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const LAST_MOV_POS_INDEX: usize = 4;
 
-pub struct PieceList {
-    pub queen: u8,
-    pub rook: u8,
-    pub bishop: u8,
-    pub knight: u8,
-    pub pawn: u8,
-}
-
 pub struct State<'state> {
     pub squares: [u8; def::BOARD_SIZE],
     pub player: u8,
@@ -39,9 +31,6 @@ pub struct State<'state> {
     pub bitboard_stack: Vec<BitBoard>,
     pub bitmask: &'state BitMask,
 
-    pub w_piece_list: PieceList,
-    pub b_piece_list: PieceList,
-
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
@@ -57,7 +46,7 @@ pub struct State<'state> {
 impl <'state> State<'state> {
     pub fn new(fen_string: &str, zob_keys: &'state Vec<Vec<u64>>, bitmask: &'state BitMask) -> Self {
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
-        let (squares, hash_key, wk_index, bk_index, bitboard, w_piece_list, b_piece_list) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], zob_keys, bitmask);
+        let (squares, hash_key, wk_index, bk_index, bitboard) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], zob_keys, bitmask);
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
         let enp_square = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
@@ -79,9 +68,6 @@ impl <'state> State<'state> {
 
             bitboard,
             bitboard_stack: Vec::new(),
-
-            w_piece_list,
-            b_piece_list,
 
             taken_piece_stack: Vec::new(),
             enp_sqr_stack: Vec::new(),
@@ -184,32 +170,88 @@ impl <'state> State<'state> {
     fn do_reg_mov(&mut self, from: usize, to: usize) {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
-            self.bitboard.w_all ^= self.bitmask.index_masks[from];
-            self.bitboard.w_all ^= self.bitmask.index_masks[to];
-
-            if def::is_p(moving_piece) {
-                self.bitboard.w_pawn ^= self.bitmask.index_masks[from];
-                self.bitboard.w_pawn ^= self.bitmask.index_masks[to];
-            } else if def::is_r(moving_piece) {
-                self.bitboard.w_rook ^= self.bitmask.index_masks[from];
-                self.bitboard.w_rook ^= self.bitmask.index_masks[to];
-            }
+            self.bitboard.w_all ^= from_index_mask;
+            self.bitboard.w_all ^= to_index_mask;
         } else {
-            self.bitboard.b_all ^= self.bitmask.index_masks[from];
-            self.bitboard.b_all ^= self.bitmask.index_masks[to];
+            self.bitboard.b_all ^= from_index_mask;
+            self.bitboard.b_all ^= to_index_mask;
+        }
 
-            if def::is_p(moving_piece) {
-                self.bitboard.b_pawn ^= self.bitmask.index_masks[from];
-                self.bitboard.b_pawn ^= self.bitmask.index_masks[to];
-            } else if def::is_r(moving_piece) {
-                self.bitboard.b_rook ^= self.bitmask.index_masks[from];
-                self.bitboard.b_rook ^= self.bitmask.index_masks[to];
-            }
+        match moving_piece {
+            def::WP => {
+                self.bitboard.w_pawn ^= from_index_mask;
+                self.bitboard.w_pawn ^= to_index_mask;
+            },
+            def::WN => {
+                self.bitboard.w_knight ^= from_index_mask;
+                self.bitboard.w_knight ^= to_index_mask;
+            },
+            def::WB => {
+                self.bitboard.w_bishop ^= from_index_mask;
+                self.bitboard.w_bishop ^= to_index_mask;
+            },
+            def::WR => {
+                self.bitboard.w_rook ^= from_index_mask;
+                self.bitboard.w_rook ^= to_index_mask;
+
+                if from == 0 {
+                    self.cas_rights &= 0b1011;
+                } else if from == 7 {
+                    self.cas_rights &= 0b0111;
+                }
+            },
+            def::WQ => {
+                self.bitboard.w_queen ^= from_index_mask;
+                self.bitboard.w_queen ^= to_index_mask;
+            },
+            def::BP => {
+                self.bitboard.b_pawn ^= from_index_mask;
+                self.bitboard.b_pawn ^= to_index_mask;
+            },
+            def::BN => {
+                self.bitboard.b_knight ^= from_index_mask;
+                self.bitboard.b_knight ^= to_index_mask;
+            },
+            def::BB => {
+                self.bitboard.b_bishop ^= from_index_mask;
+                self.bitboard.b_bishop ^= to_index_mask;
+            },
+            def::BR => {
+                self.bitboard.b_rook ^= from_index_mask;
+                self.bitboard.b_rook ^= to_index_mask;
+
+                if from == 112 {
+                    self.cas_rights &= 0b1110;
+                } else if from == 119 {
+                    self.cas_rights &= 0b1101;
+                }
+            },
+            def::BQ => {
+                self.bitboard.b_queen ^= from_index_mask;
+                self.bitboard.b_queen ^= to_index_mask;
+            },
+            def::WK => {
+                if from == 4 {
+                    self.cas_rights &= 0b0011;
+                }
+    
+                self.wk_index = to;
+            },
+            def::BK => {
+                if from == 116 {
+                    self.cas_rights &= 0b1100;
+                }
+    
+                self.bk_index = to;
+            },
+            _ => (),
         }
 
         if taken_piece == 0 {
@@ -223,128 +265,54 @@ impl <'state> State<'state> {
             self.hash_key ^= self.zob_keys[to][taken_piece as usize];
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
-                self.bitboard.w_all ^= self.bitmask.index_masks[to];
-    
-                if def::is_p(taken_piece) {
-                    self.bitboard.w_pawn ^= self.bitmask.index_masks[to];
-                } else if def::is_r(taken_piece) {
-                    self.bitboard.w_rook ^= self.bitmask.index_masks[to];
-                }
+                self.bitboard.w_all ^= to_index_mask;
             } else {
-                self.bitboard.b_all ^= self.bitmask.index_masks[to];
-    
-                if def::is_p(taken_piece) {
-                    self.bitboard.b_pawn ^= self.bitmask.index_masks[to];
-                } else if def::is_r(taken_piece) {
-                    self.bitboard.b_rook ^= self.bitmask.index_masks[to];
-                }
+                self.bitboard.b_all ^= to_index_mask;
             }
 
             match taken_piece {
                 def::WP => {
-                    self.w_piece_list.pawn -= 1;
-                },
-                def::BP => {
-                    self.b_piece_list.pawn -= 1;
+                    self.bitboard.w_pawn ^= to_index_mask;
                 },
                 def::WN => {
-                    self.w_piece_list.knight -= 1;
-                },
-                def::BN => {
-                    self.b_piece_list.knight -= 1;
+                    self.bitboard.w_knight ^= to_index_mask;
                 },
                 def::WB => {
-                    self.w_piece_list.bishop -= 1;
-                },
-                def::BB => {
-                    self.b_piece_list.bishop -= 1;
+                    self.bitboard.w_bishop ^= to_index_mask;
                 },
                 def::WR => {
-                    self.w_piece_list.rook -= 1;
-                },
-                def::BR => {
-                    self.b_piece_list.rook -= 1;
+                    self.bitboard.w_rook ^= to_index_mask;
                 },
                 def::WQ => {
-                    self.w_piece_list.queen -= 1;
+                    self.bitboard.w_queen ^= to_index_mask;
+                },
+                def::BP => {
+                    self.bitboard.b_pawn ^= to_index_mask;
+                },
+                def::BN => {
+                    self.bitboard.b_knight ^= to_index_mask;
+                },
+                def::BB => {
+                    self.bitboard.b_bishop ^= to_index_mask;
+                },
+                def::BR => {
+                    self.bitboard.b_rook ^= to_index_mask;
                 },
                 def::BQ => {
-                    self.b_piece_list.queen -= 1;
+                    self.bitboard.b_queen ^= to_index_mask;
                 },
-                _ => ()
+                _ => (),
             }
         }
 
         self.taken_piece_stack.push(taken_piece);
         self.squares[to] = moving_piece;
         self.squares[from] = 0;
-
-        if moving_piece == def::WR {
-            if from == 0 {
-                self.cas_rights &= 0b1011;
-            } else if from == 7 {
-                self.cas_rights &= 0b0111;
-            }
-        } else if moving_piece == def::BR {
-            if from == 112 {
-                self.cas_rights &= 0b1110;
-            } else if from == 119 {
-                self.cas_rights &= 0b1101;
-            }
-        } else if moving_piece == def::WK {
-            if from == 4 {
-                self.cas_rights &= 0b0011;
-            }
-
-            self.wk_index = to;
-        } else if moving_piece == def::BK {
-            if from == 116 {
-                self.cas_rights &= 0b1100;
-            }
-
-            self.bk_index = to;
-        }
     }
 
     fn undo_reg_mov(&mut self, from: usize, to: usize) {
         let moving_piece = self.squares[to];
         let taken_piece = self.taken_piece_stack.pop().unwrap();
-
-        if taken_piece != 0 {
-            match taken_piece {
-                def::WP => {
-                    self.w_piece_list.pawn += 1;
-                },
-                def::BP => {
-                    self.b_piece_list.pawn += 1;
-                },
-                def::WN => {
-                    self.w_piece_list.knight += 1;
-                },
-                def::BN => {
-                    self.b_piece_list.knight += 1;
-                },
-                def::WB => {
-                    self.w_piece_list.bishop += 1;
-                },
-                def::BB => {
-                    self.b_piece_list.bishop += 1;
-                },
-                def::WR => {
-                    self.w_piece_list.rook += 1;
-                },
-                def::BR => {
-                    self.b_piece_list.rook += 1;
-                },
-                def::WQ => {
-                    self.w_piece_list.queen += 1;
-                },
-                def::BQ => {
-                    self.b_piece_list.queen += 1;
-                },
-                _ => ()
-            }
-        }
 
         self.squares[to] = taken_piece;
         self.squares[from] = moving_piece;
@@ -354,115 +322,85 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[to];
 
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
+
         if moving_piece == def::WP {
-            self.w_piece_list.pawn -= 1;
+            self.bitboard.w_pawn ^= from_index_mask;
+            self.bitboard.w_all ^= from_index_mask;
+            self.bitboard.w_all ^= to_index_mask;
         } else {
-            self.b_piece_list.pawn -= 1;
+            self.bitboard.b_pawn ^= from_index_mask;
+            self.bitboard.b_all ^= from_index_mask;
+            self.bitboard.b_all ^= to_index_mask;
         }
 
         match promo {
             def::WN => {
-                self.w_piece_list.knight += 1;
-            },
-            def::BN => {
-                self.b_piece_list.knight += 1;
+                self.bitboard.w_knight ^= to_index_mask;
             },
             def::WB => {
-                self.w_piece_list.bishop += 1;
-            },
-            def::BB => {
-                self.b_piece_list.bishop += 1;
+                self.bitboard.w_bishop ^= to_index_mask;
             },
             def::WR => {
-                self.w_piece_list.rook += 1;
-            },
-            def::BR => {
-                self.b_piece_list.rook += 1;
+                self.bitboard.w_rook ^= to_index_mask;
             },
             def::WQ => {
-                self.w_piece_list.queen += 1;
+                self.bitboard.w_queen ^= to_index_mask;
+            },
+            def::BN => {
+                self.bitboard.b_knight ^= to_index_mask;
+            },
+            def::BB => {
+                self.bitboard.b_bishop ^= to_index_mask;
+            },
+            def::BR => {
+                self.bitboard.b_rook ^= to_index_mask;
             },
             def::BQ => {
-                self.b_piece_list.queen += 1;
+                self.bitboard.b_queen ^= to_index_mask;
             },
-            _ => ()
+            _ => (),
         }
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][promo as usize];
 
-        if def::on_same_side(def::PLAYER_W, moving_piece) {
-            self.bitboard.w_all ^= self.bitmask.index_masks[from];
-            self.bitboard.w_pawn ^= self.bitmask.index_masks[from];
-
-            if def::is_r(promo) {
-                self.bitboard.w_rook ^= self.bitmask.index_masks[to];
-            }
-        } else {
-            self.bitboard.b_all ^= self.bitmask.index_masks[from];
-            self.bitboard.b_pawn ^= self.bitmask.index_masks[from];
-
-            if def::is_r(promo) {
-                self.bitboard.b_rook ^= self.bitmask.index_masks[to];
-            }
-        }
-
-        if def::on_same_side(def::PLAYER_W, promo) {
-            self.bitboard.w_all ^= self.bitmask.index_masks[to];
-
-            if def::is_r(promo) {
-                self.bitboard.w_rook ^= self.bitmask.index_masks[to];
-            }
-        } else {
-            self.bitboard.b_all ^= self.bitmask.index_masks[to];
-            if def::is_r(promo) {
-                self.bitboard.b_rook ^= self.bitmask.index_masks[to];
-            }
-        }
-
         if taken_piece != 0 {
             self.hash_key ^= self.zob_keys[to][taken_piece as usize];
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
-                self.bitboard.w_all ^= self.bitmask.index_masks[to];
-    
-                if def::is_r(taken_piece) {
-                    self.bitboard.w_rook ^= self.bitmask.index_masks[to];
-                }
+                self.bitboard.w_all ^= to_index_mask;
             } else {
-                self.bitboard.b_all ^= self.bitmask.index_masks[to];
-    
-                if def::is_r(taken_piece) {
-                    self.bitboard.b_rook ^= self.bitmask.index_masks[to];
-                }
+                self.bitboard.b_all ^= to_index_mask;
             }
 
             match taken_piece {
                 def::WN => {
-                    self.w_piece_list.knight -= 1;
-                },
-                def::BN => {
-                    self.b_piece_list.knight -= 1;
+                    self.bitboard.w_knight ^= to_index_mask;
                 },
                 def::WB => {
-                    self.w_piece_list.bishop -= 1;
-                },
-                def::BB => {
-                    self.b_piece_list.bishop -= 1;
+                    self.bitboard.w_bishop ^= to_index_mask;
                 },
                 def::WR => {
-                    self.w_piece_list.rook -= 1;
-                },
-                def::BR => {
-                    self.b_piece_list.rook -= 1;
+                    self.bitboard.w_rook ^= to_index_mask;
                 },
                 def::WQ => {
-                    self.w_piece_list.queen -= 1;
+                    self.bitboard.w_queen ^= to_index_mask;
+                },
+                def::BN => {
+                    self.bitboard.b_knight ^= to_index_mask;
+                },
+                def::BB => {
+                    self.bitboard.b_bishop ^= to_index_mask;
+                },
+                def::BR => {
+                    self.bitboard.b_rook ^= to_index_mask;
                 },
                 def::BQ => {
-                    self.b_piece_list.queen -= 1;
+                    self.bitboard.b_queen ^= to_index_mask;
                 },
-                _ => ()
+                _ => (),
             }
         }
 
@@ -479,74 +417,8 @@ impl <'state> State<'state> {
         } else {
             def::BP
         };
-        let taken_piece = self.taken_piece_stack.pop().unwrap();
-        let promo = self.squares[to];
 
-        if moving_piece == def::WP {
-            self.w_piece_list.pawn += 1;
-        } else {
-            self.b_piece_list.pawn += 1;
-        }
-
-        match promo {
-            def::WN => {
-                self.w_piece_list.knight -= 1;
-            },
-            def::BN => {
-                self.b_piece_list.knight -= 1;
-            },
-            def::WB => {
-                self.w_piece_list.bishop -= 1;
-            },
-            def::BB => {
-                self.b_piece_list.bishop -= 1;
-            },
-            def::WR => {
-                self.w_piece_list.rook -= 1;
-            },
-            def::BR => {
-                self.b_piece_list.rook -= 1;
-            },
-            def::WQ => {
-                self.w_piece_list.queen -= 1;
-            },
-            def::BQ => {
-                self.b_piece_list.queen -= 1;
-            },
-            _ => ()
-        }
-
-        if taken_piece != 0 {
-            match taken_piece {
-                def::WN => {
-                    self.w_piece_list.knight += 1;
-                },
-                def::BN => {
-                    self.b_piece_list.knight += 1;
-                },
-                def::WB => {
-                    self.w_piece_list.bishop += 1;
-                },
-                def::BB => {
-                    self.b_piece_list.bishop += 1;
-                },
-                def::WR => {
-                    self.w_piece_list.rook += 1;
-                },
-                def::BR => {
-                    self.b_piece_list.rook += 1;
-                },
-                def::WQ => {
-                    self.w_piece_list.queen += 1;
-                },
-                def::BQ => {
-                    self.b_piece_list.queen += 1;
-                },
-                _ => ()
-            }
-        }
-
-        self.squares[to] = taken_piece;
+        self.squares[to] = self.taken_piece_stack.pop().unwrap();
         self.squares[from] = moving_piece;
     }
 
@@ -696,12 +568,28 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[taken_index];
 
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
+        let taken_index_mask = self.bitmask.index_masks[taken_index];
+
         match taken_piece {
             def::WP => {
-                self.w_piece_list.pawn -= 1;
+                self.bitboard.w_pawn ^= taken_index_mask;
+                self.bitboard.w_all ^= taken_index_mask;
+
+                self.bitboard.b_pawn ^= from_index_mask;
+                self.bitboard.b_all ^= from_index_mask;
+                self.bitboard.b_pawn ^= to_index_mask;
+                self.bitboard.b_all ^= to_index_mask;
             },
             def::BP => {
-                self.b_piece_list.pawn -= 1;
+                self.bitboard.b_pawn ^= taken_index_mask;
+                self.bitboard.b_all ^= taken_index_mask;
+
+                self.bitboard.w_pawn ^= from_index_mask;
+                self.bitboard.w_all ^= from_index_mask;
+                self.bitboard.w_pawn ^= to_index_mask;
+                self.bitboard.w_all ^= to_index_mask;
             },
             _ => ()
         }
@@ -709,24 +597,6 @@ impl <'state> State<'state> {
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
         self.hash_key ^= self.zob_keys[taken_index][taken_piece as usize];
-
-        if def::on_same_side(def::PLAYER_W, moving_piece) {
-            self.bitboard.w_all ^= self.bitmask.index_masks[from];
-            self.bitboard.w_all ^= self.bitmask.index_masks[to];
-            self.bitboard.w_pawn ^= self.bitmask.index_masks[from];
-            self.bitboard.w_pawn ^= self.bitmask.index_masks[to];
-
-            self.bitboard.b_all ^= self.bitmask.index_masks[taken_index];
-            self.bitboard.b_pawn ^= self.bitmask.index_masks[taken_index];
-        } else {
-            self.bitboard.b_all ^= self.bitmask.index_masks[from];
-            self.bitboard.b_all ^= self.bitmask.index_masks[to];
-            self.bitboard.b_pawn ^= self.bitmask.index_masks[from];
-            self.bitboard.b_pawn ^= self.bitmask.index_masks[to];
-
-            self.bitboard.w_all ^= self.bitmask.index_masks[taken_index];
-            self.bitboard.w_pawn ^= self.bitmask.index_masks[taken_index];
-        }
 
         self.taken_piece_stack.push(taken_piece);
         self.squares[to] = moving_piece;
@@ -744,16 +614,6 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[to];
         let taken_piece = self.taken_piece_stack.pop().unwrap();
 
-        match taken_piece {
-            def::WP => {
-                self.w_piece_list.pawn += 1;
-            },
-            def::BP => {
-                self.b_piece_list.pawn += 1;
-            },
-            _ => ()
-        }
-
         self.squares[taken_index] = taken_piece;
         self.squares[from] = moving_piece;
         self.squares[to] = 0;
@@ -769,20 +629,22 @@ impl <'state> State<'state> {
         self.non_cap_mov_count += 1;
 
         let moving_piece = self.squares[from];
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
-            self.bitboard.w_all ^= self.bitmask.index_masks[from];
-            self.bitboard.w_all ^= self.bitmask.index_masks[to];
-            self.bitboard.w_pawn ^= self.bitmask.index_masks[from];
-            self.bitboard.w_pawn ^= self.bitmask.index_masks[to];
+            self.bitboard.w_all ^= from_index_mask;
+            self.bitboard.w_all ^= to_index_mask;
+            self.bitboard.w_pawn ^= from_index_mask;
+            self.bitboard.w_pawn ^= to_index_mask;
         } else {
-            self.bitboard.b_all ^= self.bitmask.index_masks[from];
-            self.bitboard.b_all ^= self.bitmask.index_masks[to];
-            self.bitboard.b_pawn ^= self.bitmask.index_masks[from];
-            self.bitboard.b_pawn ^= self.bitmask.index_masks[to];
+            self.bitboard.b_all ^= from_index_mask;
+            self.bitboard.b_all ^= to_index_mask;
+            self.bitboard.b_pawn ^= from_index_mask;
+            self.bitboard.b_pawn ^= to_index_mask;
         }
 
         self.squares[to] = moving_piece;
@@ -820,34 +682,25 @@ impl <'state> fmt::Display for State <'state> {
     }
 }
 
-fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, bitmask: &BitMask) -> ([u8; def::BOARD_SIZE], u64, usize, usize, BitBoard, PieceList, PieceList) {
+fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, bitmask: &BitMask) -> ([u8; def::BOARD_SIZE], u64, usize, usize, BitBoard) {
     let mut squares = [0; def::BOARD_SIZE];
     let mut hash_key = 0;
     let mut wk_index = 0;
     let mut bk_index = 0;
     let mut bitboard = BitBoard {
         w_all: 0,
-        w_rook: 0,
         w_pawn: 0,
+        w_knight: 0,
+        w_bishop: 0,
+        w_rook: 0,
+        w_queen: 0,
+
         b_all: 0,
-        b_rook: 0,
         b_pawn: 0,
-    };
-
-    let mut w_piece_list = PieceList {
-        queen: 0,
-        rook: 0,
-        bishop: 0,
-        knight: 0,
-        pawn: 0,
-    };
-
-    let mut b_piece_list = PieceList {
-        queen: 0,
-        rook: 0,
-        bishop: 0,
-        knight: 0,
-        pawn: 0,
+        b_knight: 0,
+        b_bishop: 0,
+        b_rook: 0,
+        b_queen: 0,
     };
 
     let rank_string_list: Vec<&str> = fen_squares_string.split("/").collect();
@@ -871,37 +724,33 @@ fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, b
                 match piece {
                     def::WP => {
                         bitboard.w_pawn ^= bitmask.index_masks[index];
-                        w_piece_list.pawn += 1;
                     },
                     def::BP => {
                         bitboard.b_pawn ^= bitmask.index_masks[index];
-                        b_piece_list.pawn += 1;
                     },
                     def::WN => {
-                        w_piece_list.knight += 1;
+                        bitboard.w_knight ^= bitmask.index_masks[index];
                     },
                     def::BN => {
-                        b_piece_list.knight += 1;
+                        bitboard.b_knight ^= bitmask.index_masks[index];
                     },
                     def::WB => {
-                        w_piece_list.bishop += 1;
+                        bitboard.w_bishop ^= bitmask.index_masks[index];
                     },
                     def::BB => {
-                        b_piece_list.bishop += 1;
+                        bitboard.b_bishop ^= bitmask.index_masks[index];
                     },
                     def::WR => {
                         bitboard.w_rook ^= bitmask.index_masks[index];
-                        w_piece_list.rook += 1;
                     },
                     def::BR => {
                         bitboard.b_rook ^= bitmask.index_masks[index];
-                        b_piece_list.rook += 1;
                     },
                     def::WQ => {
-                        w_piece_list.queen += 1;
+                        bitboard.w_queen ^= bitmask.index_masks[index];
                     },
                     def::BQ => {
-                        b_piece_list.queen += 1;
+                        bitboard.b_queen ^= bitmask.index_masks[index];
                     },
                     def::WK => {
                         wk_index = index;
@@ -929,7 +778,7 @@ fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, b
         index -= 24;
     }
 
-    (squares, hash_key, wk_index, bk_index, bitboard, w_piece_list, b_piece_list)
+    (squares, hash_key, wk_index, bk_index, bitboard)
 }
 
 fn get_player_from_fen(fen_player_string: &str) -> u8 {
