@@ -48,8 +48,8 @@ static N_PHASE_WEIGHT: i32 = 4;
 static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
 static EDGE_MASK: u64 = 0b00000000_10000001_10000001_10000001_10000001_10000001_10000001_00000000;
 
-static W_INVASION_MASK: u64 = 0b01111110_01111110_01111110_01111110_00000000_00000000_00000000_00000000;
-static B_INVASION_MASK: u64 = 0b00000000_00000000_00000000_00000000_01111110_01111110_01111110_01111110;
+static W_INVASION_MASK: u64 = 0b01111110_01111110_01111110_00111100_00000000_00000000_00000000_00000000;
+static B_INVASION_MASK: u64 = 0b00000000_00000000_00000000_00000000_00111100_01111110_01111110_01111110;
 
 static WK_MIDGAME_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
 static BK_MIDGAME_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
@@ -461,8 +461,11 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
     w_feature_map.invasion_count = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_count = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
 
-    w_feature_map.trapped_count = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & EDGE_MASK).count_ones() as i32;
-    b_feature_map.trapped_count = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & EDGE_MASK).count_ones() as i32;
+    let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & EDGE_MASK) | ((bitboard.w_queen | bitboard.w_rook) & CENTER_CONTROL_MASK);
+    let b_trapped_piece_mask = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & EDGE_MASK) | ((bitboard.b_queen | bitboard.b_rook) & CENTER_CONTROL_MASK);
+
+    w_feature_map.trapped_count = w_trapped_piece_mask.count_ones() as i32;
+    b_feature_map.trapped_count = b_trapped_piece_mask.count_ones() as i32;
 
     if state.wk_castled || state.cas_rights & 0b1100 != 0 {
         w_feature_map.king_caslted = 1;
