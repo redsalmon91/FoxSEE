@@ -251,7 +251,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
         match moving_piece {
             def::WP => {
                 let file_mask = file_masks[index];
-                let rank = def::get_w_rank(index) as i32;
+                let rank = def::get_rank(def::PLAYER_W, index) as i32;
 
                 if wp_forward_masks[index] & bitboard.b_pawn == 0 {
                     w_feature_map.passed_pawn_count += rank;
@@ -271,7 +271,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
             def::BP => {
                 let file_mask = file_masks[index];
-                let rank = def::get_b_rank(index);
+                let rank = def::get_rank(def::PLAYER_B, index);
 
                 if bp_forward_masks[index] & bitboard.w_pawn == 0 {
                     b_feature_map.passed_pawn_count += rank as i32;

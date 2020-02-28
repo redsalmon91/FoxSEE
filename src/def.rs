@@ -64,14 +64,14 @@ pub const fn on_same_side(player: u8, piece_code: u8) -> bool {
 }
 
 #[inline]
-pub const fn get_w_rank(index: usize) -> usize {
-    index / 16
+pub fn get_rank(player: u8, index: usize) -> usize {
+    if player == PLAYER_W {
+        index / 16
+    } else {
+        7 - index / 16
+    }
 }
 
-#[inline]
-pub const fn get_b_rank(index: usize) -> usize {
-    7 - index / 16
-}
 
 #[inline]
 pub const fn is_k(piece_code: u8) -> bool {

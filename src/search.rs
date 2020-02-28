@@ -19,6 +19,8 @@ const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
 const NM_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
 
+const RISKY_PAWN_RANK: usize = 2;
+
 pub enum SearchMovResult {
     Return(i32),
     RaiseAlpha(i32),
@@ -546,7 +548,7 @@ impl SearchEngine {
         alpha
     }
 
-    fn search_mov(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mov: u32, mov_count: &mut usize, is_capture: bool, best_score: &mut i32, alpha: i32, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
+    fn search_mov(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mov: u32, mov_count: &mut usize, is_capture: bool, best_score: &mut i32, alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
         if self.abort {
             return Return(0)
         }
@@ -560,6 +562,10 @@ impl SearchEngine {
         state.do_mov(from, to, tp, promo);
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
+
+        if def::is_p(state.squares[from]) && def::get_rank(state.player, to) <= RISKY_PAWN_RANK {
+            depth += 1;
+        }
 
         let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_p(state.squares[from]) {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
