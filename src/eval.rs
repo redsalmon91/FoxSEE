@@ -147,6 +147,10 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
+pub fn is_term_val(val: i32) -> bool {
+    val < -TERM_VAL || val > TERM_VAL
+}
+
 pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
     let (w_features_map, b_features_map) = extract_features(state, mov_table);
 
