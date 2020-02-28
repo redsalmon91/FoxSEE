@@ -13,7 +13,7 @@ const PV_TRACK_LENGTH: usize = 64;
 const MAX_DEPTH: u8 = 64;
 const KILLER_TABLE_LENGTH: usize = 256;
 const MAX_HISTORY_SCORE: u64 = u64::MAX >> 1;
-const WINDOW_SIZE: i32 = 10;
+const WINDOW_SIZE: i32 = 50;
 
 const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
@@ -561,7 +561,7 @@ impl SearchEngine {
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
-        let score = if !in_check && !gives_check && !on_pv && !is_capture && depth > 1 && *mov_count > 2 && !def::is_p(state.squares[from]) {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_p(state.squares[from]) {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
@@ -619,6 +619,10 @@ impl SearchEngine {
             return 0
         }
 
+        if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
+            return eval::MATE_VAL - ply as i32
+        }
+
         let score_sign = if state.player == def::PLAYER_W {
             1
         } else {
@@ -659,11 +663,6 @@ impl SearchEngine {
 
         for (_score, cap) in scored_cap_list {
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
-
-            let captured_piece = state.squares[to];
-            if def::is_k(captured_piece) {
-                return eval::MATE_VAL - ply as i32
-            }
 
             state.do_mov(from, to, tp, promo);
             let score = -self.q_search(state, -beta, -alpha, ply + 1, seldepth);
@@ -810,7 +809,7 @@ mod tests {
         let mut state = State::new("8/8/1r2b2p/8/8/2p5/2kR4/K7 b - - 3 56", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c2"));
@@ -824,7 +823,7 @@ mod tests {
         let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d2"));
@@ -838,7 +837,7 @@ mod tests {
         let mut state = State::new("r5rk/2p1Nppp/3p3P/pp2p1P1/4P3/2qnPQK1/8/R6R w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("h6"));
@@ -866,7 +865,7 @@ mod tests {
         let mut state = State::new("1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("a4"));
@@ -936,7 +935,7 @@ mod tests {
         let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 15500);
+        let best_mov = search_engine.search(&mut state, 25500);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c6"));
