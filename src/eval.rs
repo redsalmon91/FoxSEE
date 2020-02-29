@@ -153,6 +153,13 @@ pub fn is_term_val(val: i32) -> bool {
 }
 
 pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
+    let bitboard = state.bitboard;
+    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
+        if (bitboard.w_bishop | bitboard.w_knight).count_ones() < 2 && (bitboard.b_bishop | bitboard.b_knight).count_ones() < 2 {
+            return 0
+        }
+    }
+
     let score_sign = if state.player == def::PLAYER_W {
         1
     } else {
