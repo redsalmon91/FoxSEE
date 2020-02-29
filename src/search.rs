@@ -145,8 +145,6 @@ impl SearchEngine {
         self.abort = false;
         self.master_pv_table = [0; PV_TRACK_LENGTH];
         self.root_node_mov_list = Vec::new();
-        self.killer_table = [((0, 0), (0, 0)); KILLER_TABLE_LENGTH];
-        self.history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
 
         let mut alpha = -eval::MATE_VAL;
         let mut beta = eval::MATE_VAL;
@@ -155,6 +153,9 @@ impl SearchEngine {
         let mut best_mov = 0;
 
         loop {
+            self.killer_table = [((0, 0), (0, 0)); KILLER_TABLE_LENGTH];
+            self.history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
+
             let mut node_count = 0;
             let mut seldepth = 0;
 
