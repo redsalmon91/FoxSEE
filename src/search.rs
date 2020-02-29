@@ -628,17 +628,11 @@ impl SearchEngine {
             return eval::MATE_VAL - ply as i32
         }
 
-        let score_sign = if state.player == def::PLAYER_W {
-            1
-        } else {
-            -1
-        };
-
         if ply > *seldepth {
             *seldepth = ply;
         }
 
-        let score = eval::eval_state(state, &self.mov_table) * score_sign;
+        let score = eval::eval_state(state, &self.mov_table);
 
         if score >= beta {
             return score

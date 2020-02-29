@@ -44,6 +44,8 @@ static R_PHASE_WEIGHT: i32 = 8;
 static B_PHASE_WEIGHT: i32 = 4;
 static N_PHASE_WEIGHT: i32 = 4;
 
+static TEMPO_VAL: i32 = 10;
+
 static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
 static EDGE_MASK: u64 = 0b00000000_10000001_10000001_10000001_10000001_10000001_10000001_00000000;
 
@@ -151,6 +153,12 @@ pub fn is_term_val(val: i32) -> bool {
 }
 
 pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
+    let score_sign = if state.player == def::PLAYER_W {
+        1
+    } else {
+        -1
+    };
+
     let (w_features_map, b_features_map) = extract_features(state, mov_table);
 
     let base_score = w_features_map.queen_count * Q_VAL
@@ -194,7 +202,8 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
         - b_features_map.center_count * CENTER_CONTROL_VAL
         - b_features_map.invasion_count * INVASION_VAL
-        - b_features_map.trapped_count * EDGE_TRAPPED_PEN;
+        - b_features_map.trapped_count * EDGE_TRAPPED_PEN
+        + TEMPO_VAL * score_sign;
 
     let endgame_score = w_features_map.passed_pawn_count * PASS_PAWN_VAL
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
@@ -214,7 +223,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
     + b_features_map.bishop_count * B_PHASE_WEIGHT
     + b_features_map.knight_count * N_PHASE_WEIGHT;
 
-    base_score + (midgame_score * phase + endgame_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE
+    (base_score + (midgame_score * phase + endgame_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE) * score_sign
 }
 
 pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, FeatureMap) {
