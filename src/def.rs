@@ -1,5 +1,5 @@
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "2.8.6";
+pub static VERSION: &str = "2.8.7";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -11,6 +11,10 @@ pub const MAX_HASH_SIZE_MB: usize = 512;
 pub const BOARD_SIZE: usize = 120;
 pub const DIM_SIZE: usize = 8;
 pub const PIECE_CODE_RANGE: usize = 131;
+
+pub const MAX_CAP_COUNT: usize = 64;
+pub const MAX_MOV_COUNT: usize = 256;
+pub const MAX_CAS_COUNT: usize = 2;
 
 pub const MOV_REG: u8 = 1;
 pub const MOV_PROMO: u8 = 2;

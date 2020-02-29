@@ -389,12 +389,12 @@ impl MoveTable {
         }
     }
 
-    pub fn gen_castle_mov_list(&self, state: &State) -> Vec<u32> {
+    pub fn gen_castle_mov_list(&self, state: &State, cas_list: &mut [u32; def::MAX_CAS_COUNT]) {
         let cas_rights = state.cas_rights;
         let squares = state.squares;
         let all_mask = state.bitboard.w_all | state.bitboard.b_all;
 
-        let mut mov_list = Vec::new();
+        let mut cas_count = 0;
 
         if state.player == def::PLAYER_W {
             if cas_rights & 0b1000 != 0 {
@@ -404,7 +404,8 @@ impl MoveTable {
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK - 1, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK - 2, def::PLAYER_W) {
-                    mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_WK - 2, def::CAS_SQUARE_WK, def::MOV_CAS, 0));
+                    cas_list[cas_count] = util::encode_u32_mov(def::CAS_SQUARE_WK - 2, def::CAS_SQUARE_WK, def::MOV_CAS, 0);
+                    cas_count += 1;
                 }
             }
 
@@ -415,7 +416,7 @@ impl MoveTable {
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 1, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 2, def::PLAYER_W) {
-                    mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_WQ + 2, def::CAS_SQUARE_WQ, def::MOV_CAS, 0));
+                    cas_list[cas_count] = util::encode_u32_mov(def::CAS_SQUARE_WQ + 2, def::CAS_SQUARE_WQ, def::MOV_CAS, 0);
                 }
             }
         } else {
@@ -426,7 +427,8 @@ impl MoveTable {
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK - 1, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK - 2, def::PLAYER_B) {
-                    mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_BK - 2, def::CAS_SQUARE_BK, def::MOV_CAS, 0));
+                    cas_list[cas_count] = util::encode_u32_mov(def::CAS_SQUARE_BK - 2, def::CAS_SQUARE_BK, def::MOV_CAS, 0);
+                    cas_count += 1;
                 }
             }
 
@@ -437,27 +439,27 @@ impl MoveTable {
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 1, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 2, def::PLAYER_B) {
-                    mov_list.push(util::encode_u32_mov(def::CAS_SQUARE_BQ + 2, def::CAS_SQUARE_BQ, def::MOV_CAS, 0));
+                    cas_list[cas_count] = util::encode_u32_mov(def::CAS_SQUARE_BQ + 2, def::CAS_SQUARE_BQ, def::MOV_CAS, 0);
                 }
             }
         }
-
-        mov_list
     }
 
-    pub fn gen_reg_mov_list(&self, state: &State) -> (Vec<u32>, Vec<u32>) {
+    pub fn gen_reg_mov_list(&self, state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT], mov_list: &mut [u32; def::MAX_MOV_COUNT]) {
         let squares = state.squares;
         let player = state.player;
 
-        let mut mov_list = Vec::new();
-        let mut cap_list = Vec::new();
+        let mut cap_count = 0;
+        let mut mov_count = 0;
 
         let mut add_mov = |from: usize, to: usize, tp: u8, promo: u8| {
-            mov_list.push(util::encode_u32_mov(from, to, tp, promo));
+            mov_list[mov_count] = util::encode_u32_mov(from, to, tp, promo);
+            mov_count += 1;
         };
 
         let mut add_cap = |from: usize, to: usize, tp: u8, promo: u8| {
-            cap_list.push(util::encode_u32_mov(from, to, tp, promo));
+            cap_list[cap_count] = util::encode_u32_mov(from, to, tp, promo);
+            cap_count += 1;
         };
 
         let mut from_index = 0;
@@ -469,7 +471,7 @@ impl MoveTable {
 
             let moving_piece = squares[from_index];
 
-            if moving_piece == 0 || !def::on_same_side(player, moving_piece) {
+            if !def::on_same_side(player, moving_piece) {
                 from_index += 1;
                 continue
             }
@@ -898,18 +900,17 @@ impl MoveTable {
 
             from_index += 1;
         }
-
-        (cap_list, mov_list)
     }
 
-    pub fn gen_capture_list(&self, state: &State) -> Vec<u32> {
+    pub fn gen_capture_list(&self, state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT]) {
         let squares = state.squares;
         let player = state.player;
 
-        let mut cap_list = Vec::new();
+        let mut mov_count = 0;
 
         let mut add_cap = |from: usize, to: usize, tp: u8, promo: u8| {
-            cap_list.push(util::encode_u32_mov(from, to, tp, promo));
+            cap_list[mov_count] = util::encode_u32_mov(from, to, tp, promo);
+            mov_count += 1;
         };
 
         let mut from_index = 0;
@@ -1298,8 +1299,6 @@ impl MoveTable {
 
             from_index += 1;
         }
-
-        cap_list
     }
 
     pub fn is_in_check(&self, state: &State, player: u8) -> bool {
@@ -1799,6 +1798,7 @@ impl MoveTable {
 mod tests {
     use super::*;
     use crate::{
+        def,
         bitboard::BitMask,
         state::State,
         prng::XorshiftPrng,
@@ -1810,36 +1810,66 @@ mod tests {
         let bitmask = BitMask::new();
         let state = State::new(fen, &zob_keys, &bitmask);
 
-        let (cap_list, non_cap_list) = MoveTable::new().gen_reg_mov_list(&state);
+        let mut cap_list = [0; def::MAX_CAP_COUNT];
+        let mut mov_list = [0; def::MAX_MOV_COUNT];
+
+        MoveTable::new().gen_reg_mov_list(&state, &mut cap_list, &mut mov_list);
 
         if debug {
             println!("Captures:");
-            for c in &cap_list {
-                println!("{}", util::format_mov(*c));
+            for cap_index in 0..def::MAX_CAP_COUNT {
+                let cap = cap_list[cap_index];
+                if cap == 0 {
+                    break
+                }
+
+                println!("{}", util::format_mov(cap));
             }
 
             println!("Moves:");
-            for nc in &non_cap_list {
-                println!("{}", util::format_mov(*nc));
+            for mov_index in 0..def::MAX_MOV_COUNT {
+                let mov = mov_list[mov_index];
+                if mov == 0 {
+                    break
+                }
+
+                println!("{}", util::format_mov(mov));
             }
         }
 
-        for c in &cap_list {
-            let mov_str = util::format_mov(*c);
+        let mut cap_counter = 0;
+        let mut mov_counter = 0;
+
+        for cap_index in 0..def::MAX_CAP_COUNT {
+            let cap = cap_list[cap_index];
+            if cap == 0 {
+                break
+            }
+
+            cap_counter += 1;
+
+            let mov_str = util::format_mov(cap);
             if !expected_cap_list.contains(&&*mov_str) {
                 assert!(false, "{} not matched", mov_str);
             }
         }
 
-        for nc in &non_cap_list {
-            let mov_str = util::format_mov(*nc);
+        for mov_index in 0..def::MAX_MOV_COUNT {
+            let mov = mov_list[mov_index];
+            if mov == 0 {
+                break
+            }
+
+            mov_counter += 1;
+
+            let mov_str = util::format_mov(mov);
             if !expected_non_cap_list.contains(&&*mov_str) {
                 assert!(false, "{} not matched", mov_str);
             }
         }
 
-        assert_eq!(cap_list.len(), expected_cap_list.len(), "capture count do not match");
-        assert_eq!(non_cap_list.len(), expected_non_cap_list.len(), "non-capture count do not match");
+        assert_eq!(cap_counter, expected_cap_list.len(), "capture count do not match");
+        assert_eq!(mov_counter, expected_non_cap_list.len(), "non-capture count do not match");
     }
 
     fn gen_cas_movs_test_helper(fen: &str, expected_cas_mov_list: Vec<&str>, debug: bool) {
@@ -1847,23 +1877,40 @@ mod tests {
         let bitmask = BitMask::new();
         let state = State::new(fen, &zob_keys, &bitmask);
 
-        let cas_list = MoveTable::new().gen_castle_mov_list(&state);
+        let mut cas_list = [0; def::MAX_CAS_COUNT];
+        MoveTable::new().gen_castle_mov_list(&state, &mut cas_list);
 
         if debug {
             println!("Castles:");
-            for c in &cas_list {
-                println!("{}", util::format_mov(*c));
+            for cas_index in 0..def::MAX_CAS_COUNT {
+                let cas = cas_list[cas_index];
+
+                if cas == 0 {
+                    break
+                }
+
+                println!("{}", util::format_mov(cas));
             }
         }
 
-        for c in &cas_list {
-            let mov_str = util::format_mov(*c);
+        let mut cas_count = 0;
+
+        for cas_index in 0..def::MAX_CAS_COUNT {
+            let cas = cas_list[cas_index];
+
+            if cas == 0 {
+                break
+            }
+
+            cas_count += 1;
+
+            let mov_str = util::format_mov(cas);
             if !expected_cas_mov_list.contains(&&*mov_str) {
                 assert!(false, "{} not matched", mov_str);
             }
         }
 
-        assert_eq!(cas_list.len(), expected_cas_mov_list.len(), "castle count do not match");
+        assert_eq!(cas_count, expected_cas_mov_list.len(), "castle count do not match");
     }
 
     #[test]

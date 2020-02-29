@@ -85,10 +85,20 @@ impl SearchEngine {
 
         let mut node_count = 0;
 
-        let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
-        let cas_mov_list = self.mov_table.gen_castle_mov_list(state);
+        let mut cap_list = [0; def::MAX_CAP_COUNT];
+        let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+        let mut cas_list = [0; def::MAX_CAS_COUNT];
 
-        for cap in cap_list {
+        self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+        self.mov_table.gen_castle_mov_list(state, &mut cas_list);
+
+        for cap_index in 0..def::MAX_CAP_COUNT {
+            let cap = cap_list[cap_index];
+
+            if cap == 0 {
+                break
+            }
+
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
             if def::is_k(state.squares[to]) {
@@ -100,14 +110,26 @@ impl SearchEngine {
             state.undo_mov(from, to, tp);
         }
 
-        for non_cap in non_cap_list {
+        for non_cap_index in 0..def::MAX_MOV_COUNT {
+            let non_cap = non_cap_list[non_cap_index];
+
+            if non_cap == 0 {
+                break
+            }
+
             let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
             state.do_mov(from, to, tp, promo);
             node_count += self.perft(state, depth - 1);
             state.undo_mov(from, to, tp);
         }
 
-        for cas_mov in cas_mov_list {
+        for cas_index in 0..def::MAX_CAS_COUNT {
+            let cas_mov = cas_list[cas_index];
+
+            if cas_mov == 0 {
+                break
+            }
+
             let (from, to, tp, promo) = util::decode_u32_mov(cas_mov);
             state.do_mov(from, to, tp, promo);
             node_count += self.perft(state, depth - 1);
@@ -227,25 +249,48 @@ impl SearchEngine {
 
     pub fn root_search(&mut self, state: &mut State, pv_table: &mut [u32], mut alpha: i32, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
         if self.root_node_mov_list.is_empty() {
-            let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
+            let mut cap_list = [0; def::MAX_CAP_COUNT];
+            let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+
+            self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
 
             let player = state.player;
             let squares = state.squares;
 
-            for cap in cap_list {
+            for cap_index in 0..def::MAX_CAP_COUNT {
+                let cap = cap_list[cap_index];
+
+                if cap == 0 {
+                    break
+                }
+
                 let (from, to, _tp, promo) = util::decode_u32_mov(cap);
                 self.root_node_mov_list.push((depth, eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo), cap));
             }
 
-            for non_cap in non_cap_list {
+            for non_cap_index in 0..def::MAX_MOV_COUNT {
+                let non_cap = non_cap_list[non_cap_index];
+
+                if non_cap == 0  {
+                    break
+                }
+
                 let (_from, _to, _tp, promo) = util::decode_u32_mov(non_cap);
                 self.root_node_mov_list.push((depth, eval::val_of(promo), non_cap));
             }
 
             if (player == def::PLAYER_W && (state.cas_rights & 0b1100 != 0)) || (player == def::PLAYER_B && (state.cas_rights & 0b0011 != 0)) {
-                let cas_mov_list = self.mov_table.gen_castle_mov_list(state);
-                for cas_mov in cas_mov_list {
-                    self.root_node_mov_list.push((depth, 0, cas_mov));
+                let mut cas_list = [0; def::MAX_CAS_COUNT];
+                self.mov_table.gen_castle_mov_list(state, &mut cas_list);
+
+                for cas_index in 0..def::MAX_CAS_COUNT {
+                    let cas_mov = cas_list[cas_index];
+
+                    if cas_mov == 0  {
+                        break
+                    }
+
+                    self.root_node_mov_list.push((depth, eval::TERM_VAL, cas_mov));
                 }
             }
         }
@@ -426,13 +471,22 @@ impl SearchEngine {
             }
         }
 
-        let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
+        let mut cap_list = [0; def::MAX_CAP_COUNT];
+        let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+
+        self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
 
         let mut scored_cap_list = Vec::new();
 
         let (last_to, last_captured) = *(state.history_mov_stack.last().unwrap());
 
-        for cap in cap_list {
+        for cap_index in 0..def::MAX_CAP_COUNT {
+            let cap = cap_list[cap_index];
+
+            if cap == 0 {
+                break
+            }
+
             if cap == pv_mov || cap == hash_mov {
                 continue
             }
@@ -492,8 +546,16 @@ impl SearchEngine {
         }
 
         if (player == def::PLAYER_W && (state.cas_rights & 0b1100 != 0)) || (player == def::PLAYER_B && (state.cas_rights & 0b0011 != 0)) {
-            let castle_list = self.mov_table.gen_castle_mov_list(state);
-            for cas_mov in castle_list {
+            let mut cas_list = [0; def::MAX_CAS_COUNT];
+            self.mov_table.gen_castle_mov_list(state, &mut cas_list);
+
+            for cas_index in 0..def::MAX_CAS_COUNT {
+                let cas_mov = cas_list[cas_index];
+
+                if cas_mov == 0 {
+                    break
+                }
+
                 if cas_mov == pv_mov || cas_mov == hash_mov || cas_mov == killer_mov {
                     continue
                 }
@@ -510,7 +572,13 @@ impl SearchEngine {
 
         let mut scored_non_cap_list = Vec::new();
 
-        for non_cap in non_cap_list {
+        for non_cap_index in 0..def::MAX_MOV_COUNT {
+            let non_cap = non_cap_list[non_cap_index];
+
+            if non_cap == 0 {
+                break
+            }
+
             if non_cap == pv_mov || non_cap == hash_mov || non_cap == killer_mov {
                 continue
             }
@@ -644,16 +712,22 @@ impl SearchEngine {
             alpha = score;
         }
 
-        let cap_list = self.mov_table.gen_capture_list(state);
+        let mut cap_list = [0; def::MAX_CAP_COUNT];
+        self.mov_table.gen_capture_list(state, &mut cap_list);
 
-        if cap_list.is_empty() {
+        if cap_list[0] == 0 {
             return alpha
         }
 
         let squares = state.squares;
         let mut scored_cap_list = Vec::new();
 
-        for cap in cap_list {
+        for mov_index in 0..256 {
+            let cap = cap_list[mov_index];
+            if cap == 0 {
+                break
+            }
+
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
             scored_cap_list.push((eval::val_of(squares[to]) + eval::val_of(promo) - eval::val_of(squares[from]), cap));
         }
@@ -701,9 +775,19 @@ impl SearchEngine {
     #[inline]
     pub fn in_stale_mate(&self, state: &mut State) -> bool {
         let player = state.player;
-        let (cap_list, non_cap_list) = self.mov_table.gen_reg_mov_list(state);
 
-        for cap in cap_list {
+        let mut cap_list = [0; def::MAX_CAP_COUNT];
+        let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+
+        self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+
+        for cap_index in 0..def::MAX_CAP_COUNT {
+            let cap = cap_list[cap_index];
+
+            if cap == 0 {
+                break
+            }
+
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
             state.do_mov(from, to, tp, promo);
 
@@ -715,7 +799,13 @@ impl SearchEngine {
             state.undo_mov(from, to, tp);
         }
 
-        for non_cap in non_cap_list {
+        for non_cap_index in 0..def::MAX_MOV_COUNT {
+            let non_cap = non_cap_list[non_cap_index];
+
+            if non_cap == 0 {
+                break
+            }
+
             let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
             state.do_mov(from, to, tp, promo);
 
