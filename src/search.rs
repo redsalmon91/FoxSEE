@@ -627,27 +627,23 @@ impl SearchEngine {
 
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
-        let is_passed_pawn = if def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 3 {
-            if state.squares[from] == def::WP {
-                state.bitmask.wp_attack_masks[to] & state.bitboard.b_pawn == 0
-            } else {
-                state.bitmask.bp_attack_masks[to] & state.bitboard.w_pawn == 0
-            }
-        } else {
-            false
-        };
-
-        let is_dangerous_pawn = is_passed_pawn && def::get_rank(def::get_opposite_player(state.player), to) == 1;
+        let is_threating_pawn = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
 
         state.do_mov(from, to, tp, promo);
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
-        if def::near_horizon(depth) && (gives_check || is_dangerous_pawn) {
-            depth += 1;
+        if def::near_horizon(depth) {
+            if gives_check {
+                depth += 1;
+            }
+
+            if is_threating_pawn {
+                depth += 1;
+            }
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_passed_pawn {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_threating_pawn {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
