@@ -19,8 +19,6 @@ const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
 const NM_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
 
-const RISKY_PAWN_RANK: usize = 2;
-
 pub enum SearchMovResult {
     Return(i32),
     RaiseAlpha(i32),
@@ -270,6 +268,12 @@ impl SearchEngine {
 
             let gives_check = self.mov_table.is_in_check(state, state.player);
 
+            let depth = if gives_check {
+                depth + 1
+            } else {
+                depth
+            };
+
             let score = if mov == self.master_pv_table[0] {
                 -self.ab_search(state, true, gives_check, false, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
             } else {
@@ -320,10 +324,6 @@ impl SearchEngine {
             return 0
         }
 
-        if in_check {
-            depth += 1;
-        }
-
         if depth == 0 {
             return self.q_search(state, alpha, beta, ply, seldepth)
         }
@@ -354,10 +354,6 @@ impl SearchEngine {
             pv_mov = self.master_pv_table[ply as usize];
         }
 
-        if on_pv && pv_mov == 0 {
-            depth += 1;
-        }
-
         if pv_mov != 0 {
             let (_from, to, _tp, _promo) = util::decode_u32_mov(pv_mov);
 
@@ -368,6 +364,10 @@ impl SearchEngine {
                 },
                 Noop => (),
             }
+        }
+
+        if on_pv && pv_mov == 0 {
+            depth += 1;
         }
 
         let mut hash_mov = 0;
@@ -558,15 +558,17 @@ impl SearchEngine {
 
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
+        let is_dangerous_pawn_mov = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
+
         state.do_mov(from, to, tp, promo);
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
-        if def::is_p(state.squares[from]) && def::get_rank(state.player, to) <= RISKY_PAWN_RANK {
+        if def::near_horizon(depth) && (gives_check || is_dangerous_pawn_mov) {
             depth += 1;
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_p(state.squares[from]) {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_dangerous_pawn_mov {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
@@ -981,6 +983,20 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d6"));
         assert_eq!(to, util::map_sqr_notation_to_index("d7"));
+    }
+
+    #[test]
+    fn test_search_17() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2r3k1/ppr1bppp/4p3/3P3q/2n1Q3/PB2B2P/1P3PP1/2RR2K1 b - - 0 24", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(65536);
+
+        let best_mov = search_engine.search(&mut state, 60000);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c4"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e3"));
     }
 
     #[test]

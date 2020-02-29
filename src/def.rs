@@ -1,5 +1,5 @@
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "2.8.5";
+pub static VERSION: &str = "2.8.6";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -72,7 +72,6 @@ pub fn get_rank(player: u8, index: usize) -> usize {
     }
 }
 
-
 #[inline]
 pub const fn is_k(piece_code: u8) -> bool {
     piece_code & K != 0
@@ -103,6 +102,11 @@ pub const fn is_p(piece_code: u8) -> bool {
     piece_code & P != 0
 }
 
+#[inline]
+pub const fn near_horizon(depth: u8) -> bool {
+    depth <= 2
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,6 +118,16 @@ mod tests {
 
         let p = PLAYER_B;
         assert_eq!(PLAYER_W, get_opposite_player(p));
+    }
+
+    #[test]
+    fn test_get_rank() {
+        assert_eq!(0, get_rank(PLAYER_W, 7));
+        assert_eq!(1, get_rank(PLAYER_W, 22));
+        assert_eq!(7, get_rank(PLAYER_W, 118));
+        assert_eq!(0, get_rank(PLAYER_B, 112));
+        assert_eq!(4, get_rank(PLAYER_B, 52));
+        assert_eq!(7, get_rank(PLAYER_B, 5));
     }
 
     #[test]
