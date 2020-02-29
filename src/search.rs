@@ -626,17 +626,18 @@ impl SearchEngine {
 
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
-        let is_dangerous_pawn_mov = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
+        let pawn_above_6th_rank = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
+        let pawn_above_7th_rank = pawn_above_6th_rank && def::get_rank(def::get_opposite_player(state.player), to) <= 1;
 
         state.do_mov(from, to, tp, promo);
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
-        if def::near_horizon(depth) && (gives_check || is_dangerous_pawn_mov) {
+        if def::near_horizon(depth) && (gives_check || pawn_above_7th_rank) {
             depth += 1;
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_dangerous_pawn_mov {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !pawn_above_6th_rank {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
