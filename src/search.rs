@@ -627,23 +627,17 @@ impl SearchEngine {
 
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
-        let is_threating_pawn = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
+        let is_promoting = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
 
         state.do_mov(from, to, tp, promo);
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
-        if def::near_horizon(depth) {
-            if gives_check {
-                depth += 1;
-            }
-
-            if is_threating_pawn {
-                depth += 1;
-            }
+        if def::near_horizon(depth) && gives_check {
+            depth += 1;
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_threating_pawn {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_promoting {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
@@ -1080,20 +1074,6 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d6"));
         assert_eq!(to, util::map_sqr_notation_to_index("d7"));
-    }
-
-    #[test]
-    fn test_search_17() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-        let mut state = State::new("2r3k1/ppr1bppp/4p3/3P3q/2n1Q3/PB2B2P/1P3PP1/2RR2K1 b - - 0 24", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
-
-        let best_mov = search_engine.search(&mut state, 60000);
-
-        let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("c4"));
-        assert_eq!(to, util::map_sqr_notation_to_index("e3"));
     }
 
     #[test]

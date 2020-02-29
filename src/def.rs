@@ -13,7 +13,7 @@ pub const DIM_SIZE: usize = 8;
 pub const PIECE_CODE_RANGE: usize = 131;
 
 pub const MAX_CAP_COUNT: usize = 64;
-pub const MAX_MOV_COUNT: usize = 256;
+pub const MAX_MOV_COUNT: usize = 128;
 pub const MAX_CAS_COUNT: usize = 2;
 
 pub const MOV_REG: u8 = 1;
