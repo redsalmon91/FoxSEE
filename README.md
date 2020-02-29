@@ -29,6 +29,7 @@ UCI chess engine written in Rust!
 - Null Move Pruning
 - Perft
 - Negamax
+- Passed Pawn Extension
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/)

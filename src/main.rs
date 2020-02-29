@@ -38,7 +38,7 @@ fn main() {
                 io::stdout().flush().ok();
             },
             UciProcessResult::Position(fen_str, mov_list) => {
-                state = State::new(fen_str, &zob_keys, &bitmask);
+                state = State::new(&fen_str, &zob_keys, &bitmask);
 
                 if mov_list.is_empty() {
                     continue
@@ -102,6 +102,10 @@ fn main() {
                 let best_mov = search_engine.search(&mut state, time_millis);
                 println!("bestmove {}", util::format_mov(best_mov));
                 io::stdout().flush().ok();
+            },
+            UciProcessResult::Perft(depth) => {
+                let perft_val = search_engine.perft(&mut state, depth);
+                println!("depth {} perft {}", depth, perft_val);
             },
             UciProcessResult::Stop => {
                 search_engine.stop();

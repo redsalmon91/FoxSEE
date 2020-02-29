@@ -76,7 +76,6 @@ impl SearchEngine {
         self.abort = true;
     }
 
-    #[allow(dead_code)]
     pub fn perft(&self, state: &mut State, depth: u8) -> usize {
         if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
             return 0

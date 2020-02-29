@@ -27,7 +27,8 @@ pub enum UciProcessResult {
     Reset,
     IgnoredOption,
     SetHashSize(usize),
-    Position(&'static str, Vec<Rawmov>),
+    Perft(u8),
+    Position(String, Vec<Rawmov>),
     StartSearchWithTime(u128),
     StartSearchWithComplextTimeControl(TimeInfo),
     Stop,
@@ -55,13 +56,9 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             match cmd_seq[2] {
                 "Hash" => {
                     let hash_size_mb = cmd_seq[4].parse::<usize>().unwrap();
-                    if hash_size_mb < def::MIN_HASH_SIZE_MB {
-                        println!("hash size {} is not supported", hash_size_mb);
-                        return UciProcessResult::Noop
-                    }
-
                     let hash_ratio = hash_size_mb / def::MIN_HASH_SIZE_MB;
-                    if hash_ratio < 2 || hash_ratio % 2 != 0 {
+
+                    if hash_ratio == 0 || hash_ratio & (hash_ratio - 1) != 0 {
                         println!("hash size {} is not supported", hash_size_mb);
                         return UciProcessResult::IgnoredOption
                     }
@@ -76,17 +73,24 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
         "position" => match cmd_seq[1] {
             "startpos" => {
                 if cmd_seq.len() > 3 {
-                    process_position_startpos_with_mov_list(cmd_seq.split_off(3))
+                    process_position_with_mov_list(FEN_START_POS, cmd_seq.split_off(3))
                 } else {
-                    process_position_startpos()
+                    process_position(FEN_START_POS)
                 }
-            }
-            _ => {
-                eprintln!("only support startpos with mov list");
-                UciProcessResult::Noop
             },
+            "fen" => {
+                let len = cmd_seq.len();
+                let mut fen_str_vec = vec![""; len-2];
+                fen_str_vec.copy_from_slice(&cmd_seq[2..len]);
+                process_position(&fen_str_vec.join(" "))
+            },
+            _ => {
+                eprintln!("only support fen or startpos with mov list");
+                UciProcessResult::Noop
+            }
         },
         "go" => process_go_cmd(cmd_seq.split_off(0)),
+        "perft" => process_perft_cmd(cmd_seq[1]),
         "stop" => UciProcessResult::Stop,
         "ponderhit" => UciProcessResult::Noop,
         "quit" => UciProcessResult::Quit,
@@ -164,17 +168,21 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
     })
 }
 
-fn process_position_startpos() -> UciProcessResult {
-    UciProcessResult::Position(FEN_START_POS, vec![])
+fn process_position(fen_str: &str) -> UciProcessResult {
+    UciProcessResult::Position(fen_str.to_owned(), vec![])
 }
 
-fn process_position_startpos_with_mov_list(mov_str_list: Vec<&str>) -> UciProcessResult {
+fn process_position_with_mov_list(fen_str: &str, mov_str_list: Vec<&str>) -> UciProcessResult {
     let mut mov_list = Vec::new();
     for mov_str in mov_str_list {
         mov_list.push(parse_mov_str(mov_str));
     }
 
-    UciProcessResult::Position(FEN_START_POS, mov_list)
+    UciProcessResult::Position(fen_str.to_owned(), mov_list)
+}
+
+fn process_perft_cmd(depth: &str) -> UciProcessResult {
+    UciProcessResult::Perft(depth.parse::<u8>().unwrap())
 }
 
 fn parse_mov_str(mov_str: &str) -> Rawmov {
