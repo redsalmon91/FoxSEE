@@ -1,5 +1,5 @@
-# 🦊 FoxSEE Chess Engine
-UCI chess engine written in Rust!  
+# 🦊 FoxSEE
+UCI chess engine written in Rust!
 
 **Current Version** 2.8.5
 
@@ -26,10 +26,10 @@ UCI chess engine written in Rust!
 - Killer Heuristic
 - Aspiration Window
 - Linear Evaluation
-- Null Move Pruning
+- Null-Move Pruning
 - Perft
 - Negamax
-- Passed Pawn Extension
+- Passed-Pawn Extension
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/)
