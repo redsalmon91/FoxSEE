@@ -38,9 +38,13 @@ static CENTER_CONTROL_VAL: i32 = 20;
 static INVASION_VAL: i32 = 10;
 static EDGE_TRAPPED_PEN: i32 = -20;
 
-static ROOK_MOB_BASE_VAL: i32 = 2;
-static BISHOP_MOB_BASE_VAL: i32 = 2;
-static KNIGHT_MOB_BASE_VAL: i32 = 2;
+static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
+static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
+static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 2;
+
+static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 2;
+static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 3;
+static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 2;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
@@ -190,9 +194,9 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         + w_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        + w_features_map.rook_mobility * ROOK_MOB_BASE_VAL
-        + w_features_map.bishop_mobility * BISHOP_MOB_BASE_VAL
-        + w_features_map.knight_mobility * KNIGHT_MOB_BASE_VAL
+        + w_features_map.rook_mobility * ROOK_MIDGAME_MOB_BASE_VAL
+        + w_features_map.bishop_mobility * BISHOP_MIDGAME_MOB_BASE_VAL
+        + w_features_map.knight_mobility * KNIGHT_MIDGAME_MOB_BASE_VAL
         + w_features_map.king_caslted * KING_CASTLED_VAL
         + w_features_map.king_protector_count * KING_PROTECTED_BASE_VAL
         + w_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
@@ -205,9 +209,9 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         - b_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         - b_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        - b_features_map.rook_mobility * ROOK_MOB_BASE_VAL
-        - b_features_map.bishop_mobility * BISHOP_MOB_BASE_VAL
-        - b_features_map.knight_mobility * KNIGHT_MOB_BASE_VAL
+        - b_features_map.rook_mobility * ROOK_MIDGAME_MOB_BASE_VAL
+        - b_features_map.bishop_mobility * BISHOP_MIDGAME_MOB_BASE_VAL
+        - b_features_map.knight_mobility * KNIGHT_MIDGAME_MOB_BASE_VAL
         - b_features_map.king_caslted * KING_CASTLED_VAL
         - b_features_map.king_protector_count * KING_PROTECTED_BASE_VAL
         - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
@@ -222,10 +226,16 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         + w_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         + w_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
+        + w_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
+        + w_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
+        + w_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
-        - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN;
+        - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
+        - b_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
+        - b_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
+        - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
     + w_features_map.rook_count * R_PHASE_WEIGHT
