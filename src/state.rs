@@ -13,6 +13,38 @@ const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const LAST_MOV_POS_INDEX: usize = 4;
 
+const K_CAS_SQR_SIZE: usize = 4;
+const Q_CAS_SQR_SIZE: usize = 5;
+
+const WK_BEFORE_CAS_SQRS: [u8; K_CAS_SQR_SIZE] = [def::WK, 0, 0, def::WR];
+const WK_AFTER_CAS_SQRS: [u8; K_CAS_SQR_SIZE] = [0, def::WR, def::WK, 0];
+
+const BK_BEFORE_CAS_SQRS: [u8; K_CAS_SQR_SIZE] = [def::BK, 0, 0, def::BR];
+const BK_AFTER_CAS_SQRS: [u8; K_CAS_SQR_SIZE] = [0, def::BR, def::BK, 0];
+
+const WQ_BEFORE_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [def::WR, 0, 0, 0, def::WK];
+const WQ_AFTER_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [0, 0, def::WK, def::WR, 0];
+
+const BQ_BEFORE_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [def::BR, 0, 0, 0, def::BK];
+const BQ_AFTER_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [0, 0, def::BK, def::BR, 0];
+
+const WK_CAS_HASH: u64 = 10495489446390601685;
+const WQ_CAS_HASH: u64 = 6834661319834316719;
+const BK_CAS_HASH: u64 = 12774574915232550133;
+const BQ_CAS_HASH: u64 = 184001951153155114;
+
+const WK_CAS_ALL_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11110000;
+const WK_CAS_R_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10100000;
+
+const BK_CAS_ALL_MASK: u64 = 0b11110000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+const BK_CAS_R_MASK: u64 = 0b10100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
+const WQ_CAS_ALL_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00011101;
+const WQ_CAS_R_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001001;
+
+const BQ_CAS_ALL_MASK: u64 = 0b00011101_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+const BQ_CAS_R_MASK: u64 = 0b00001001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
 pub struct State<'state> {
     pub squares: [u8; def::BOARD_SIZE],
     pub player: u8,
@@ -37,8 +69,7 @@ pub struct State<'state> {
     pub history_mov_stack: Vec<(usize, u8)>,
     pub history_pos_stack: Vec<(u64, u8)>,
     pub non_cap_mov_count_stack: Vec<u16>,
-    pub wk_index_stack: Vec<usize>,
-    pub bk_index_stack: Vec<usize>,
+    pub king_index_stack: Vec<(usize, usize)>,
 
     zob_keys: &'state Vec<Vec<u64>>,
 }
@@ -46,11 +77,91 @@ pub struct State<'state> {
 impl <'state> State<'state> {
     pub fn new(fen_string: &str, zob_keys: &'state Vec<Vec<u64>>, bitmask: &'state BitMask) -> Self {
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
-        let (squares, hash_key, wk_index, bk_index, bitboard) = get_board_info_from_fen(fen_segment_list[FEN_SQRS_INDEX], zob_keys, bitmask);
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
         let enp_square = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
         let non_cap_mov_count = fen_segment_list[FEN_HALF_MOV_INDEX].parse::<u16>().unwrap();
+
+        let mut squares = [0; def::BOARD_SIZE];
+        let mut hash_key = 0;
+        let mut wk_index = 0;
+        let mut bk_index = 0;
+        let mut bitboard = BitBoard::new();
+
+        let rank_string_list: Vec<&str> = fen_segment_list[FEN_SQRS_INDEX].split("/").collect();
+        assert_eq!(def::DIM_SIZE, rank_string_list.len());
+
+        let mut index = 112;
+        for rank_index in 0..def::DIM_SIZE {
+            let rank_string = rank_string_list[rank_index];
+
+            for char_code in rank_string.chars() {
+                if char_code.is_numeric() {
+                    index += char_code.to_digit(10).unwrap() as usize;
+                    continue
+                }
+
+                if char_code.is_alphabetic() {
+                    let piece = util::map_piece_char_to_code(char_code);
+                    squares[index] = piece;
+                    hash_key ^= zob_keys[index][piece as usize];
+
+                    match piece {
+                        def::WP => {
+                            bitboard.w_pawn ^= bitmask.index_masks[index];
+                        },
+                        def::BP => {
+                            bitboard.b_pawn ^= bitmask.index_masks[index];
+                        },
+                        def::WN => {
+                            bitboard.w_knight ^= bitmask.index_masks[index];
+                        },
+                        def::BN => {
+                            bitboard.b_knight ^= bitmask.index_masks[index];
+                        },
+                        def::WB => {
+                            bitboard.w_bishop ^= bitmask.index_masks[index];
+                        },
+                        def::BB => {
+                            bitboard.b_bishop ^= bitmask.index_masks[index];
+                        },
+                        def::WR => {
+                            bitboard.w_rook ^= bitmask.index_masks[index];
+                        },
+                        def::BR => {
+                            bitboard.b_rook ^= bitmask.index_masks[index];
+                        },
+                        def::WQ => {
+                            bitboard.w_queen ^= bitmask.index_masks[index];
+                        },
+                        def::BQ => {
+                            bitboard.b_queen ^= bitmask.index_masks[index];
+                        },
+                        def::WK => {
+                            wk_index = index;
+                        },
+                        def::BK => {
+                            bk_index = index;
+                        },
+                        _ => ()
+                    }
+
+                    if def::on_same_side(def::PLAYER_W, piece) {
+                        bitboard.w_all ^= bitmask.index_masks[index];
+                    } else {
+                        bitboard.b_all ^= bitmask.index_masks[index];
+                    }
+
+                    index += 1;
+                }
+            }
+
+            if index == def::DIM_SIZE {
+                break
+            }
+
+            index -= 24;
+        }
 
         State {
             squares,
@@ -75,8 +186,7 @@ impl <'state> State<'state> {
             history_mov_stack: Vec::new(),
             history_pos_stack: Vec::new(),
             non_cap_mov_count_stack: Vec::new(),
-            wk_index_stack: Vec::new(),
-            bk_index_stack: Vec::new(),
+            king_index_stack: Vec::new(),
 
             zob_keys,
             bitmask,
@@ -128,8 +238,7 @@ impl <'state> State<'state> {
         self.history_mov_stack.push((to, self.squares[to]));
         self.history_pos_stack.push((self.hash_key, self.player));
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
-        self.wk_index_stack.push(self.wk_index);
-        self.bk_index_stack.push(self.bk_index);
+        self.king_index_stack.push((self.wk_index, self.bk_index));
         self.bitboard_stack.push(self.bitboard);
         self.enp_square = 0;
 
@@ -149,8 +258,9 @@ impl <'state> State<'state> {
         self.cas_rights = self.cas_rights_stack.pop().unwrap();
         self.enp_square = self.enp_sqr_stack.pop().unwrap();
         self.non_cap_mov_count = self.non_cap_mov_count_stack.pop().unwrap();
-        self.wk_index = self.wk_index_stack.pop().unwrap();
-        self.bk_index = self.bk_index_stack.pop().unwrap();
+        let (wk_index, bk_index) = self.king_index_stack.pop().unwrap();
+        self.wk_index = wk_index;
+        self.bk_index = bk_index;
         self.hash_key = self.history_pos_stack.pop().unwrap().0;
         self.bitboard = self.bitboard_stack.pop().unwrap();
         self.history_mov_stack.pop();
@@ -172,34 +282,29 @@ impl <'state> State<'state> {
         let taken_piece = self.squares[to];
         let from_index_mask = self.bitmask.index_masks[from];
         let to_index_mask = self.bitmask.index_masks[to];
+        let move_index_mask = from_index_mask ^ to_index_mask;
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
-            self.bitboard.w_all ^= from_index_mask;
-            self.bitboard.w_all ^= to_index_mask;
+            self.bitboard.w_all ^= move_index_mask;
         } else {
-            self.bitboard.b_all ^= from_index_mask;
-            self.bitboard.b_all ^= to_index_mask;
+            self.bitboard.b_all ^= move_index_mask;
         }
 
         match moving_piece {
             def::WP => {
-                self.bitboard.w_pawn ^= from_index_mask;
-                self.bitboard.w_pawn ^= to_index_mask;
+                self.bitboard.w_pawn ^= move_index_mask;
             },
             def::WN => {
-                self.bitboard.w_knight ^= from_index_mask;
-                self.bitboard.w_knight ^= to_index_mask;
+                self.bitboard.w_knight ^= move_index_mask;
             },
             def::WB => {
-                self.bitboard.w_bishop ^= from_index_mask;
-                self.bitboard.w_bishop ^= to_index_mask;
+                self.bitboard.w_bishop ^= move_index_mask;
             },
             def::WR => {
-                self.bitboard.w_rook ^= from_index_mask;
-                self.bitboard.w_rook ^= to_index_mask;
+                self.bitboard.w_rook ^= move_index_mask;
 
                 if from == 0 {
                     self.cas_rights &= 0b1011;
@@ -208,24 +313,19 @@ impl <'state> State<'state> {
                 }
             },
             def::WQ => {
-                self.bitboard.w_queen ^= from_index_mask;
-                self.bitboard.w_queen ^= to_index_mask;
+                self.bitboard.w_queen ^= move_index_mask;
             },
             def::BP => {
-                self.bitboard.b_pawn ^= from_index_mask;
-                self.bitboard.b_pawn ^= to_index_mask;
+                self.bitboard.b_pawn ^= move_index_mask;
             },
             def::BN => {
-                self.bitboard.b_knight ^= from_index_mask;
-                self.bitboard.b_knight ^= to_index_mask;
+                self.bitboard.b_knight ^= move_index_mask;
             },
             def::BB => {
-                self.bitboard.b_bishop ^= from_index_mask;
-                self.bitboard.b_bishop ^= to_index_mask;
+                self.bitboard.b_bishop ^= move_index_mask;
             },
             def::BR => {
-                self.bitboard.b_rook ^= from_index_mask;
-                self.bitboard.b_rook ^= to_index_mask;
+                self.bitboard.b_rook ^= move_index_mask;
 
                 if from == 112 {
                     self.cas_rights &= 0b1110;
@@ -234,8 +334,7 @@ impl <'state> State<'state> {
                 }
             },
             def::BQ => {
-                self.bitboard.b_queen ^= from_index_mask;
-                self.bitboard.b_queen ^= to_index_mask;
+                self.bitboard.b_queen ^= move_index_mask;
             },
             def::WK => {
                 if from == 4 {
@@ -430,129 +529,56 @@ impl <'state> State<'state> {
             self.wk_index = to;
             self.wk_castled = true;
 
-            let k_index = def::CAS_SQUARE_WK-2;
-            let r_index = def::CAS_SQUARE_WK+1;
-            let r_to_index = def::CAS_SQUARE_WK-1;
-
-            self.squares[k_index] = 0;
-            self.squares[r_index] = 0;
-            self.squares[r_to_index] = def::WR;
-            self.squares[def::CAS_SQUARE_WK] = def::WK;
-
-            self.hash_key ^= self.zob_keys[k_index][def::WK as usize];
-            self.hash_key ^= self.zob_keys[r_index][def::WR as usize];
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WK][def::WK as usize];
-            self.hash_key ^= self.zob_keys[r_to_index][def::WR as usize];
-
-            self.bitboard.w_all ^= self.bitmask.index_masks[k_index];
-            self.bitboard.w_all ^= self.bitmask.index_masks[r_index];
-            self.bitboard.w_all ^= self.bitmask.index_masks[def::CAS_SQUARE_WK];
-            self.bitboard.w_all ^= self.bitmask.index_masks[r_to_index];
-            self.bitboard.w_rook ^= self.bitmask.index_masks[r_index];
-            self.bitboard.w_rook ^= self.bitmask.index_masks[r_to_index];
+            self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_AFTER_CAS_SQRS);
+            self.hash_key ^= WK_CAS_HASH;
+            self.bitboard.w_all ^= WK_CAS_ALL_MASK;
+            self.bitboard.w_rook ^= WK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BK {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
             self.bk_castled = true;
 
-            let k_index = def::CAS_SQUARE_BK-2;
-            let r_index = def::CAS_SQUARE_BK+1;
-            let r_to_index = def::CAS_SQUARE_BK-1;
+            self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_AFTER_CAS_SQRS);
+            self.hash_key ^= BK_CAS_HASH;
 
-            self.squares[k_index] = 0;
-            self.squares[r_index] = 0;
-            self.squares[r_to_index] = def::BR;
-            self.squares[def::CAS_SQUARE_BK] = def::BK;
-
-            self.hash_key ^= self.zob_keys[k_index][def::BK as usize];
-            self.hash_key ^= self.zob_keys[r_index][def::BR as usize];
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BK][def::BK as usize];
-            self.hash_key ^= self.zob_keys[r_to_index][def::BR as usize];
-
-            self.bitboard.b_all ^= self.bitmask.index_masks[k_index];
-            self.bitboard.b_all ^= self.bitmask.index_masks[r_index];
-            self.bitboard.b_all ^= self.bitmask.index_masks[def::CAS_SQUARE_BK];
-            self.bitboard.b_all ^= self.bitmask.index_masks[r_to_index];
-            self.bitboard.b_rook ^= self.bitmask.index_masks[r_index];
-            self.bitboard.b_rook ^= self.bitmask.index_masks[r_to_index];
+            self.bitboard.b_all ^= BK_CAS_ALL_MASK;
+            self.bitboard.b_rook ^= BK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_WQ {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
             self.wk_castled = true;
 
-            let k_index = def::CAS_SQUARE_WQ+2;
-            let r_index = def::CAS_SQUARE_WQ-2;
-            let r_to_index = def::CAS_SQUARE_WQ+1;
+            self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_AFTER_CAS_SQRS);
+            self.hash_key ^= WQ_CAS_HASH;
 
-            self.squares[k_index] = 0;
-            self.squares[r_index] = 0;
-            self.squares[r_to_index] = def::WR;
-            self.squares[def::CAS_SQUARE_WQ] = def::WK;
-
-            self.hash_key ^= self.zob_keys[k_index][def::WK as usize];
-            self.hash_key ^= self.zob_keys[r_index][def::WR as usize];
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WQ][def::WK as usize];
-            self.hash_key ^= self.zob_keys[r_to_index][def::WR as usize];
-
-            self.bitboard.w_all ^= self.bitmask.index_masks[k_index];
-            self.bitboard.w_all ^= self.bitmask.index_masks[r_index];
-            self.bitboard.w_all ^= self.bitmask.index_masks[def::CAS_SQUARE_WQ];
-            self.bitboard.w_all ^= self.bitmask.index_masks[r_to_index];
-            self.bitboard.w_rook ^= self.bitmask.index_masks[r_index];
-            self.bitboard.w_rook ^= self.bitmask.index_masks[r_to_index];
+            self.bitboard.w_all ^= WQ_CAS_ALL_MASK;
+            self.bitboard.w_rook ^= WQ_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BQ {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
             self.bk_castled = true;
 
-            let k_index = def::CAS_SQUARE_BQ+2;
-            let r_index = def::CAS_SQUARE_BQ-2;
-            let r_to_index = def::CAS_SQUARE_BQ+1;
+            self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_AFTER_CAS_SQRS);
+            self.hash_key ^= BQ_CAS_HASH;
 
-            self.squares[k_index] = 0;
-            self.squares[r_index] = 0;
-            self.squares[r_to_index] = def::BR;
-            self.squares[def::CAS_SQUARE_BQ] = def::BK;
-
-            self.hash_key ^= self.zob_keys[k_index][def::BK as usize];
-            self.hash_key ^= self.zob_keys[r_index][def::BR as usize];
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BQ][def::BK as usize];
-            self.hash_key ^= self.zob_keys[r_to_index][def::BR as usize];
-
-            self.bitboard.b_all ^= self.bitmask.index_masks[k_index];
-            self.bitboard.b_all ^= self.bitmask.index_masks[r_index];
-            self.bitboard.b_all ^= self.bitmask.index_masks[def::CAS_SQUARE_BQ];
-            self.bitboard.b_all ^= self.bitmask.index_masks[r_to_index];
-            self.bitboard.b_rook ^= self.bitmask.index_masks[r_index];
-            self.bitboard.b_rook ^= self.bitmask.index_masks[r_to_index];
+            self.bitboard.b_all ^= BQ_CAS_ALL_MASK;
+            self.bitboard.b_rook ^= BQ_CAS_R_MASK;
         }
     }
 
     fn undo_cas_mov(&mut self, to: usize) {
         if to == def::CAS_SQUARE_WK {
             self.wk_castled = false;
-            self.squares[def::CAS_SQUARE_WK-2] = def::WK;
-            self.squares[def::CAS_SQUARE_WK+1] = def::WR;
-            self.squares[def::CAS_SQUARE_WK-1] = 0;
-            self.squares[def::CAS_SQUARE_WK] = 0;
+            self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_BEFORE_CAS_SQRS);
         } else if to == def::CAS_SQUARE_BK {
             self.bk_castled = false;
-            self.squares[def::CAS_SQUARE_BK-2] = def::BK;
-            self.squares[def::CAS_SQUARE_BK+1] = def::BR;
-            self.squares[def::CAS_SQUARE_BK-1] = 0;
-            self.squares[def::CAS_SQUARE_BK] = 0;
+            self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_BEFORE_CAS_SQRS);
         } else if to == def::CAS_SQUARE_WQ {
             self.wk_castled = false;
-            self.squares[def::CAS_SQUARE_WQ+2] = def::WK;
-            self.squares[def::CAS_SQUARE_WQ-2] = def::WR;
-            self.squares[def::CAS_SQUARE_WQ+1] = 0;
-            self.squares[def::CAS_SQUARE_WQ] = 0;
+            self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_BEFORE_CAS_SQRS);
         } else if to == def::CAS_SQUARE_BQ {
             self.bk_castled = false;
-            self.squares[def::CAS_SQUARE_BQ+2] = def::BK;
-            self.squares[def::CAS_SQUARE_BQ-2] = def::BR;
-            self.squares[def::CAS_SQUARE_BQ+1] = 0;
-            self.squares[def::CAS_SQUARE_BQ] = 0;
+            self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_BEFORE_CAS_SQRS);
         }
     }
 
@@ -629,22 +655,17 @@ impl <'state> State<'state> {
         self.non_cap_mov_count += 1;
 
         let moving_piece = self.squares[from];
-        let from_index_mask = self.bitmask.index_masks[from];
-        let to_index_mask = self.bitmask.index_masks[to];
+        let move_index_mask = self.bitmask.index_masks[from] ^ self.bitmask.index_masks[to];
 
         self.hash_key ^= self.zob_keys[from][moving_piece as usize];
         self.hash_key ^= self.zob_keys[to][moving_piece as usize];
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
-            self.bitboard.w_all ^= from_index_mask;
-            self.bitboard.w_all ^= to_index_mask;
-            self.bitboard.w_pawn ^= from_index_mask;
-            self.bitboard.w_pawn ^= to_index_mask;
+            self.bitboard.w_all ^= move_index_mask;
+            self.bitboard.w_pawn ^= move_index_mask;
         } else {
-            self.bitboard.b_all ^= from_index_mask;
-            self.bitboard.b_all ^= to_index_mask;
-            self.bitboard.b_pawn ^= from_index_mask;
-            self.bitboard.b_pawn ^= to_index_mask;
+            self.bitboard.b_all ^= move_index_mask;
+            self.bitboard.b_pawn ^= move_index_mask;
         }
 
         self.squares[to] = moving_piece;
@@ -680,105 +701,6 @@ impl <'state> fmt::Display for State <'state> {
 
         write!(formatter, "{}", display_string)
     }
-}
-
-fn get_board_info_from_fen(fen_squares_string: &str, zob_keys: &Vec<Vec<u64>>, bitmask: &BitMask) -> ([u8; def::BOARD_SIZE], u64, usize, usize, BitBoard) {
-    let mut squares = [0; def::BOARD_SIZE];
-    let mut hash_key = 0;
-    let mut wk_index = 0;
-    let mut bk_index = 0;
-    let mut bitboard = BitBoard {
-        w_all: 0,
-        w_pawn: 0,
-        w_knight: 0,
-        w_bishop: 0,
-        w_rook: 0,
-        w_queen: 0,
-
-        b_all: 0,
-        b_pawn: 0,
-        b_knight: 0,
-        b_bishop: 0,
-        b_rook: 0,
-        b_queen: 0,
-    };
-
-    let rank_string_list: Vec<&str> = fen_squares_string.split("/").collect();
-    assert_eq!(def::DIM_SIZE, rank_string_list.len());
-
-    let mut index = 112;
-    for rank_index in 0..def::DIM_SIZE {
-        let rank_string = rank_string_list[rank_index];
-
-        for char_code in rank_string.chars() {
-            if char_code.is_numeric() {
-                index += char_code.to_digit(10).unwrap() as usize;
-                continue
-            }
-
-            if char_code.is_alphabetic() {
-                let piece = util::map_piece_char_to_code(char_code);
-                squares[index] = piece;
-                hash_key ^= zob_keys[index][piece as usize];
-
-                match piece {
-                    def::WP => {
-                        bitboard.w_pawn ^= bitmask.index_masks[index];
-                    },
-                    def::BP => {
-                        bitboard.b_pawn ^= bitmask.index_masks[index];
-                    },
-                    def::WN => {
-                        bitboard.w_knight ^= bitmask.index_masks[index];
-                    },
-                    def::BN => {
-                        bitboard.b_knight ^= bitmask.index_masks[index];
-                    },
-                    def::WB => {
-                        bitboard.w_bishop ^= bitmask.index_masks[index];
-                    },
-                    def::BB => {
-                        bitboard.b_bishop ^= bitmask.index_masks[index];
-                    },
-                    def::WR => {
-                        bitboard.w_rook ^= bitmask.index_masks[index];
-                    },
-                    def::BR => {
-                        bitboard.b_rook ^= bitmask.index_masks[index];
-                    },
-                    def::WQ => {
-                        bitboard.w_queen ^= bitmask.index_masks[index];
-                    },
-                    def::BQ => {
-                        bitboard.b_queen ^= bitmask.index_masks[index];
-                    },
-                    def::WK => {
-                        wk_index = index;
-                    },
-                    def::BK => {
-                        bk_index = index;
-                    },
-                    _ => ()
-                }
-
-                if def::on_same_side(def::PLAYER_W, piece) {
-                    bitboard.w_all ^= bitmask.index_masks[index];
-                } else {
-                    bitboard.b_all ^= bitmask.index_masks[index];
-                }
-
-                index += 1;
-            }
-        }
-
-        if index == def::DIM_SIZE {
-            break
-        }
-
-        index -= 24;
-    }
-
-    (squares, hash_key, wk_index, bk_index, bitboard)
 }
 
 fn get_player_from_fen(fen_player_string: &str) -> u8 {

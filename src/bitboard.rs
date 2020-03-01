@@ -45,6 +45,26 @@ pub struct BitBoard {
     pub b_queen: u64,
 }
 
+impl BitBoard {
+    pub fn new() -> Self {
+        BitBoard {
+            w_all: 0,
+            w_pawn: 0,
+            w_knight: 0,
+            w_bishop: 0,
+            w_rook: 0,
+            w_queen: 0,
+
+            b_all: 0,
+            b_pawn: 0,
+            b_knight: 0,
+            b_bishop: 0,
+            b_rook: 0,
+            b_queen: 0,
+        }
+    }
+}
+
 pub struct BitMask {
     pub index_masks: [u64; def::BOARD_SIZE],
     pub file_masks: [u64; def::BOARD_SIZE],

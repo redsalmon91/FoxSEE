@@ -303,10 +303,10 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
             def::BP => {
                 let file_mask = file_masks[index];
-                let rank = def::get_rank(def::PLAYER_B, index);
+                let rank = def::get_rank(def::PLAYER_B, index) as i32;
 
                 if bp_forward_masks[index] & bitboard.w_pawn == 0 {
-                    b_feature_map.passed_pawn_count += rank as i32;
+                    b_feature_map.passed_pawn_count += rank;
                 }
 
                 if (bp_behind_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
