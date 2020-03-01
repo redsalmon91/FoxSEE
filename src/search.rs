@@ -1144,7 +1144,6 @@ mod tests {
         assert_eq!(9467, search_engine.perft(&mut state, 3));
         assert_eq!(422333, search_engine.perft(&mut state, 4));
         assert_eq!(15833292, search_engine.perft(&mut state, 5));
-        assert_eq!(706045033, search_engine.perft(&mut state, 6));
     }
 
     #[test]

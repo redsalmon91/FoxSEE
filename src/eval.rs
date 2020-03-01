@@ -12,8 +12,8 @@ static R_MIDGAME_VAL: i32 = 525;
 static B_MIDGAME_VAL: i32 = 350;
 static N_MIDGAME_VAL: i32 = 345;
 
-static Q_ENDGAME_VAL: i32 = 900;
-static R_ENDGAME_VAL: i32 = 500;
+static Q_ENDGAME_VAL: i32 = 950;
+static R_ENDGAME_VAL: i32 = 550;
 static B_ENDGAME_VAL: i32 = 300;
 static N_ENDGAME_VAL: i32 = 300;
 
