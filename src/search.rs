@@ -627,17 +627,17 @@ impl SearchEngine {
 
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
-        let is_promoting = def::is_p(state.squares[from]) && def::get_rank(def::get_opposite_player(state.player), to) <= 2;
-
         state.do_mov(from, to, tp, promo);
 
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
-        if def::near_horizon(depth) && gives_check {
-            depth += 1;
+        if def::near_horizon(depth) {
+            if gives_check {
+                depth += 1;
+            }
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !is_promoting {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)

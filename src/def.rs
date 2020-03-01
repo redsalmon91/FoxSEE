@@ -108,7 +108,7 @@ pub const fn is_p(piece_code: u8) -> bool {
 
 #[inline]
 pub const fn near_horizon(depth: u8) -> bool {
-    depth <= 2
+    depth <= 3
 }
 
 #[cfg(test)]
