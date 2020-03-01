@@ -275,6 +275,10 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
                 if wp_forward_masks[index] & bitboard.b_pawn == 0 {
                     w_feature_map.passed_pawn_count += rank;
+
+                    if wp_behind_masks[index] & bitboard.w_pawn != 0 {
+                        w_feature_map.passed_pawn_count += rank / 2;
+                    }
                 }
 
                 if (wp_behind_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
@@ -295,6 +299,10 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
 
                 if bp_forward_masks[index] & bitboard.w_pawn == 0 {
                     b_feature_map.passed_pawn_count += rank;
+
+                    if bp_behind_masks[index] & bitboard.b_pawn != 0 {
+                        b_feature_map.passed_pawn_count += rank / 2;
+                    }
                 }
 
                 if (bp_behind_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
@@ -557,7 +565,7 @@ mod tests {
             dup_pawn_count: 2,
             isolate_pawn_count: 2,
             open_isolate_pawn_count: 2,
-            passed_pawn_count: 5,
+            passed_pawn_count: 7,
 
             knight_mobility: 4,
             bishop_mobility: 3,
