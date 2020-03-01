@@ -10,7 +10,6 @@ use crate::{
 use std::u64;
 
 const PV_TRACK_LENGTH: usize = 64;
-const MAX_DEPTH: u8 = 64;
 const KILLER_TABLE_LENGTH: usize = 256;
 const MAX_HISTORY_SCORE: u64 = u64::MAX >> 1;
 const WINDOW_SIZE: i32 = 50;
@@ -139,7 +138,7 @@ impl SearchEngine {
         node_count
     }
 
-    pub fn search(&mut self, state: &mut State, max_time_millis: u128) -> u32 {
+    pub fn search(&mut self, state: &mut State, max_time_millis: u128, max_depth: u8) -> u32 {
         self.time_tracker = Instant::now();
         self.max_time_millis = max_time_millis;
         self.abort = false;
@@ -209,7 +208,7 @@ impl SearchEngine {
 
             depth += 1;
 
-            if depth > MAX_DEPTH {
+            if depth > max_depth {
                 break
             }
 
@@ -632,12 +631,12 @@ impl SearchEngine {
         let gives_check = self.mov_table.is_in_check(state, state.player);
 
         if def::near_horizon(depth) {
-            if gives_check {
+            if gives_check || def::is_q(promo) {
                 depth += 1;
             }
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture {
+        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_q(promo) {
             let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
@@ -859,7 +858,7 @@ mod tests {
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 5500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("h6"));
@@ -873,7 +872,7 @@ mod tests {
         let mut state = State::new("r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 5500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d7"));
@@ -887,7 +886,7 @@ mod tests {
         let mut state = State::new("8/1k3ppp/8/5PPP/8/8/1K6/8 w - - 9 83", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 5500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("g5"));
@@ -901,7 +900,7 @@ mod tests {
         let mut state = State::new("8/8/1r2b2p/8/8/2p5/2kR4/K7 b - - 3 56", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 500);
+        let best_mov = search_engine.search(&mut state, 500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c2"));
@@ -915,7 +914,7 @@ mod tests {
         let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 500);
+        let best_mov = search_engine.search(&mut state, 500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d2"));
@@ -929,7 +928,7 @@ mod tests {
         let mut state = State::new("r5rk/2p1Nppp/3p3P/pp2p1P1/4P3/2qnPQK1/8/R6R w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 500);
+        let best_mov = search_engine.search(&mut state, 500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("h6"));
@@ -943,7 +942,7 @@ mod tests {
         let mut state = State::new("3r2k1/ppq2pp1/4p2p/3n3P/3N2P1/2P5/PP2QP2/K2R4 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 5500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d5"));
@@ -957,7 +956,7 @@ mod tests {
         let mut state = State::new("1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 500);
+        let best_mov = search_engine.search(&mut state, 500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("a4"));
@@ -971,7 +970,7 @@ mod tests {
         let mut state = State::new("8/8/8/5p1p/3k1P1P/5K2/8/8 b - - 1 59", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 5500);
+        let best_mov = search_engine.search(&mut state, 5500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d4"));
@@ -985,7 +984,7 @@ mod tests {
         let mut state = State::new("1r4k1/7p/5np1/3p3n/8/2NB4/7P/3N1RK1 w - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 7500);
+        let best_mov = search_engine.search(&mut state, 7500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c3"));
@@ -999,7 +998,7 @@ mod tests {
         let mut state = State::new("3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 7500);
+        let best_mov = search_engine.search(&mut state, 7500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("f5"));
@@ -1013,7 +1012,7 @@ mod tests {
         let mut state = State::new("r1bqkb1r/4npp1/p1p4p/1p1pP1B1/8/1B6/PPPN1PPP/R2Q1RK1 w kq - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 15500);
+        let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d2"));
@@ -1027,7 +1026,7 @@ mod tests {
         let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 25500);
+        let best_mov = search_engine.search(&mut state, 25500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c6"));
@@ -1041,7 +1040,7 @@ mod tests {
         let mut state = State::new("1r1q1rk1/p1p2pbp/2pp1np1/6B1/4P3/2NQ4/PPP2PPP/3R1RK1 w - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 15500);
+        let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("e4"));
@@ -1055,7 +1054,7 @@ mod tests {
         let mut state = State::new("2r2rk1/1bqnbpp1/1p1ppn1p/pP6/N1P1P3/P2B1N1P/1B2QPP1/R2R2K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 15500);
+        let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b7"));
@@ -1069,7 +1068,7 @@ mod tests {
         let mut state = State::new("8/1k6/3R4/2K5/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
-        let best_mov = search_engine.search(&mut state, 15500);
+        let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d6"));

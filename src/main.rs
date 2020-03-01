@@ -16,6 +16,10 @@ use search::SearchEngine;
 use uci::{UciProcessResult, Rawmov};
 
 use std::io::{self, prelude::*};
+use std::u128;
+
+const DEFAULT_MAX_TIME_MILLIS: u128 = u128::MAX;
+const DEFAULT_MAX_DEPTH: u8 = 64;
 
 fn main() {
     if 1u8 != 0b01 {
@@ -34,8 +38,7 @@ fn main() {
         match uci_cmd_process_result {
             UciProcessResult::SetHashSize(hash_size) => {
                 search_engine.set_hash_size(hash_size);
-                println!("uciok");
-                io::stdout().flush().ok();
+                print_uci_ok();
             },
             UciProcessResult::Position(fen_str, mov_list) => {
                 state = State::new(&fen_str, &zob_keys, &bitmask);
@@ -88,9 +91,8 @@ fn main() {
                 }
             },
             UciProcessResult::StartSearchWithTime(time_millis) => {
-                let best_mov = search_engine.search(&mut state, time_millis);
-                println!("bestmove {}", util::format_mov(best_mov));
-                io::stdout().flush().ok();
+                let best_mov = search_engine.search(&mut state, time_millis, DEFAULT_MAX_DEPTH);
+                print_best_mov(best_mov);
             },
             UciProcessResult::StartSearchWithComplextTimeControl(time_info) => {
                 let time_millis = if state.player == def::PLAYER_W {
@@ -99,9 +101,16 @@ fn main() {
                     time_info.black_millis
                 };
 
-                let best_mov = search_engine.search(&mut state, time_millis);
-                println!("bestmove {}", util::format_mov(best_mov));
-                io::stdout().flush().ok();
+                let best_mov = search_engine.search(&mut state, time_millis, DEFAULT_MAX_DEPTH);
+                print_best_mov(best_mov);
+            },
+            UciProcessResult::StartSearchToDepth(depth) => {
+                let best_mov = search_engine.search(&mut state, DEFAULT_MAX_TIME_MILLIS, depth);
+                print_best_mov(best_mov);
+            },
+            UciProcessResult::StartSearchInfinite => {
+                let best_mov = search_engine.search(&mut state, DEFAULT_MAX_TIME_MILLIS, DEFAULT_MAX_DEPTH);
+                print_best_mov(best_mov);
             },
             UciProcessResult::Perft(depth) => {
                 let perft_val = search_engine.perft(&mut state, depth);
@@ -109,27 +118,36 @@ fn main() {
             },
             UciProcessResult::Stop => {
                 search_engine.stop();
-                println!("uciok");
-                io::stdout().flush().ok();
+                print_uci_ok();
             },
             UciProcessResult::IgnoredOption => {
-                println!("uciok");
-                io::stdout().flush().ok();
+                print_uci_ok();
             },
             UciProcessResult::Noop => {},
             UciProcessResult::Reset => {
                 search_engine.reset();
-                println!("uciok");
-                io::stdout().flush().ok();
+                print_uci_ok();
             },
             UciProcessResult::Quit => {
-                println!("quit");
                 std::process::exit(0);
             }
         }
     }
 }
 
+#[inline]
+fn print_best_mov(best_mov: u32) {
+    println!("bestmove {}", util::format_mov(best_mov));
+    io::stdout().flush().ok();
+}
+
+#[inline]
+fn print_uci_ok() {
+    println!("uciok");
+    io::stdout().flush().ok();
+}
+
+#[inline]
 fn read_gui_input() -> String {
     let mut input = String::new();
     match io::stdin().read_line(&mut input) {

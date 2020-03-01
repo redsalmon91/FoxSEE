@@ -31,6 +31,8 @@ pub enum UciProcessResult {
     Position(String, Vec<Rawmov>),
     StartSearchWithTime(u128),
     StartSearchWithComplextTimeControl(TimeInfo),
+    StartSearchToDepth(u8),
+    StartSearchInfinite,
     Stop,
     Quit,
 }
@@ -103,9 +105,11 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
 
 fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciProcessResult {
     match go_cmd_seq[1] {
-        "ponder" => UciProcessResult::Noop,
-        "movetime" => UciProcessResult::StartSearchWithTime(go_cmd_seq[2].parse::<u128>().unwrap()),
         "wtime" => process_time_control(go_cmd_seq),
+        "movetime" => UciProcessResult::StartSearchWithTime(go_cmd_seq[2].parse::<u128>().unwrap()),
+        "depth" => UciProcessResult::StartSearchToDepth(go_cmd_seq[2].parse::<u8>().unwrap()),
+        "infinite" => UciProcessResult::StartSearchInfinite,
+        "ponder" => UciProcessResult::Noop,
         sub_cmd => panic!("unsupported sub command {}", sub_cmd),
     }
 }

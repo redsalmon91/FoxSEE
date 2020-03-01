@@ -45,6 +45,8 @@ This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCI
 Aside from the standard set of UCI commands, `perft x` is also supported.
 
 ## Limitations
-- Infinite analysis mode is currently unsupported
-- Search to depth is currently unsupported
-- Big-endian systems are not supported
+- Search `x` nodes is currently not supported
+- Search `mate` in in `x` moves is currently not supported
+- Search specific moves under a given position is currently not supported
+- `ponder` is currently not supported
+- Big-Endian systems are not supported
