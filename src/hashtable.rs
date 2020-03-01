@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 type Key = u64;
 type BitMask = u64;
 type Player = u8;

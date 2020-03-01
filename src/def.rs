@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 pub static ENGINE_NAME: &str = "FoxSEE";
 pub static VERSION: &str = "2.8.8";
 pub static AUTHOR: &str = "Zixiao Han";
@@ -138,7 +142,7 @@ mod tests {
     fn test_piece_type() {
         assert!(is_k(WK));
         assert!(is_k(BK));
-        
+
         assert!(is_q(WQ));
         assert!(is_q(BQ));
 

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 use crate::{
     def,
     state::State,
@@ -168,7 +172,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
 
     let (w_features_map, b_features_map) = extract_features(state, mov_table);
 
-    let material_score = 
+    let material_score =
         w_features_map.queen_count * Q_VAL
         + w_features_map.rook_count * R_VAL
         + w_features_map.bishop_count * B_VAL
@@ -606,7 +610,7 @@ mod tests {
             semi_open_rook_count: 1,
             open_rook_count: 0,
             open_queen_count: 0,
-            
+
             center_count: 2,
             invasion_count: 0,
             trapped_count: 0,

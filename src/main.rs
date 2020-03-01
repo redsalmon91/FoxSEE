@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 mod bitboard;
 mod def;
 mod eval;

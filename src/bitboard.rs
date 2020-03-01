@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 use crate::{
     def,
 };
@@ -153,13 +157,13 @@ impl BitMask {
 }
 
 pub fn gen_masks() -> (
-    [u64; def::BOARD_SIZE], 
-    [u64; def::BOARD_SIZE], 
-    [u64; def::BOARD_SIZE], 
-    [u64; def::BOARD_SIZE], 
-    [u64; def::BOARD_SIZE], 
-    [u64; def::BOARD_SIZE], 
-    [u64; def::BOARD_SIZE], 
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
+    [u64; def::BOARD_SIZE],
     [u64; def::BOARD_SIZE],
     [u64; def::BOARD_SIZE],
     [u64; def::BOARD_SIZE],
@@ -457,11 +461,11 @@ pub fn gen_masks() -> (
             }
 
             if mask_index < index || mask_index - index < 15 {
-                wp_forward_mask &= !index_masks[mask_index]; 
+                wp_forward_mask &= !index_masks[mask_index];
             }
 
             if mask_index > index || index - mask_index < 15 {
-                bp_forward_mask &= !index_masks[mask_index]; 
+                bp_forward_mask &= !index_masks[mask_index];
             }
 
             mask_index += 1;
@@ -476,12 +480,12 @@ pub fn gen_masks() -> (
     }
 
     (
-        index_masks, 
-        file_masks, 
-        rank_masks, 
-        wk_protect_masks, 
-        bk_protect_masks, 
-        wp_forward_masks, 
+        index_masks,
+        file_masks,
+        rank_masks,
+        wk_protect_masks,
+        bk_protect_masks,
+        wp_forward_masks,
         bp_forward_masks,
         wp_behind_masks,
         bp_behind_masks,
@@ -509,12 +513,12 @@ mod tests {
     #[test]
     fn test_gen_masks() {
         let (
-            index_masks, 
-            file_masks, 
-            rank_masks, 
-            wk_protect_masks, 
-            bk_protect_masks, 
-            wp_forward_masks, 
+            index_masks,
+            file_masks,
+            rank_masks,
+            wk_protect_masks,
+            bk_protect_masks,
+            wp_forward_masks,
             bp_forward_masks,
             wp_behind_masks,
             bp_behind_masks,

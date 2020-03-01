@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 use crate::{
     bitboard::{BitMask, BitBoard},
     def,
@@ -340,14 +344,14 @@ impl <'state> State<'state> {
                 if from == 4 {
                     self.cas_rights &= 0b0011;
                 }
-    
+
                 self.wk_index = to;
             },
             def::BK => {
                 if from == 116 {
                     self.cas_rights &= 0b1100;
                 }
-    
+
                 self.bk_index = to;
             },
             _ => (),

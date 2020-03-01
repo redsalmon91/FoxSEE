@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2020 Zixiao Han
+ */
+
 use crate::def;
 
 const MOV_ENCODE_BIT_MASK: u32 = 0b11111111;
