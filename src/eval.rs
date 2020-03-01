@@ -7,16 +7,10 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
-static Q_MIDGAME_VAL: i32 = 1000;
-static R_MIDGAME_VAL: i32 = 525;
-static B_MIDGAME_VAL: i32 = 350;
-static N_MIDGAME_VAL: i32 = 345;
-
-static Q_ENDGAME_VAL: i32 = 950;
-static R_ENDGAME_VAL: i32 = 550;
-static B_ENDGAME_VAL: i32 = 300;
-static N_ENDGAME_VAL: i32 = 300;
-
+static Q_VAL: i32 = 1000;
+static R_VAL: i32 = 525;
+static B_VAL: i32 = 350;
+static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
 static KING_PROTECTED_BASE_VAL: i32 = 10;
@@ -137,17 +131,17 @@ pub fn val_of(piece: u8) -> i32 {
     match piece {
         0 => 0,
         def::WK => MATE_VAL,
-        def::WQ => Q_MIDGAME_VAL,
-        def::WR => R_MIDGAME_VAL,
-        def::WB => B_MIDGAME_VAL,
-        def::WN => N_MIDGAME_VAL,
+        def::WQ => Q_VAL,
+        def::WR => R_VAL,
+        def::WB => B_VAL,
+        def::WN => N_VAL,
         def::WP => P_VAL,
 
         def::BK => MATE_VAL,
-        def::BQ => Q_MIDGAME_VAL,
-        def::BR => R_MIDGAME_VAL,
-        def::BB => B_MIDGAME_VAL,
-        def::BN => N_MIDGAME_VAL,
+        def::BQ => Q_VAL,
+        def::BR => R_VAL,
+        def::BB => B_VAL,
+        def::BN => N_VAL,
         def::BP => P_VAL,
 
         _ => 0,
@@ -174,13 +168,20 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
 
     let (w_features_map, b_features_map) = extract_features(state, mov_table);
 
-    let midgame_score =
-        w_features_map.queen_count * Q_MIDGAME_VAL
-        + w_features_map.rook_count * R_MIDGAME_VAL
-        + w_features_map.bishop_count * B_MIDGAME_VAL
-        + w_features_map.knight_count * N_MIDGAME_VAL
+    let material_score = 
+        w_features_map.queen_count * Q_VAL
+        + w_features_map.rook_count * R_VAL
+        + w_features_map.bishop_count * B_VAL
+        + w_features_map.knight_count * N_VAL
         + w_features_map.pawn_count * P_VAL
-        + w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
+        - b_features_map.queen_count * Q_VAL
+        - b_features_map.rook_count * R_VAL
+        - b_features_map.bishop_count * B_VAL
+        - b_features_map.knight_count * N_VAL
+        - b_features_map.pawn_count * P_VAL;
+
+    let midgame_extra_score =
+        w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         + w_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
@@ -195,11 +196,6 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         + w_features_map.center_count * CENTER_CONTROL_VAL
         + w_features_map.invasion_count * INVASION_VAL
         + w_features_map.trapped_count * EDGE_TRAPPED_PEN
-        - b_features_map.queen_count * Q_MIDGAME_VAL
-        - b_features_map.rook_count * R_MIDGAME_VAL
-        - b_features_map.bishop_count * B_MIDGAME_VAL
-        - b_features_map.knight_count * N_MIDGAME_VAL
-        - b_features_map.pawn_count * P_VAL
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         - b_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
@@ -217,22 +213,12 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         - b_features_map.trapped_count * EDGE_TRAPPED_PEN
         + TEMPO_VAL * score_sign;
 
-    let endgame_score =
-        w_features_map.queen_count * Q_ENDGAME_VAL
-        + w_features_map.rook_count * R_ENDGAME_VAL
-        + w_features_map.bishop_count * B_ENDGAME_VAL
-        + w_features_map.knight_count * N_ENDGAME_VAL
-        + w_features_map.pawn_count * P_VAL
-        + w_features_map.passed_pawn_count * PASS_PAWN_VAL
+    let endgame_extra_score =
+        w_features_map.passed_pawn_count * PASS_PAWN_VAL
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         + w_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         + w_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
-        - b_features_map.queen_count * Q_ENDGAME_VAL
-        - b_features_map.rook_count * R_ENDGAME_VAL
-        - b_features_map.bishop_count * B_ENDGAME_VAL
-        - b_features_map.knight_count * N_ENDGAME_VAL
-        - b_features_map.pawn_count * P_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN;
@@ -246,7 +232,9 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
     + b_features_map.bishop_count * B_PHASE_WEIGHT
     + b_features_map.knight_count * N_PHASE_WEIGHT;
 
-    ((midgame_score * phase + endgame_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE) * score_sign
+    let extra_score = (midgame_extra_score * phase + endgame_extra_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
+
+    (material_score + extra_score) * score_sign
 }
 
 pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, FeatureMap) {
