@@ -3,7 +3,7 @@
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "2.8.8";
+pub static VERSION: &str = "2.9.0";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -12,7 +12,7 @@ pub const MIN_HASH_SIZE_MB: usize = 1;
 pub const MIN_HASH_SIZE_UNIT: usize = 32768;
 pub const MAX_HASH_SIZE_MB: usize = 512;
 
-pub const BOARD_SIZE: usize = 120;
+pub const BOARD_SIZE: usize = 64;
 pub const DIM_SIZE: usize = 8;
 pub const PIECE_CODE_RANGE: usize = 131;
 
@@ -28,8 +28,8 @@ pub const MOV_CR_ENP: u8 = 5;
 
 pub const CAS_SQUARE_WK: usize = 6;
 pub const CAS_SQUARE_WQ: usize = 2;
-pub const CAS_SQUARE_BK: usize = 118;
-pub const CAS_SQUARE_BQ: usize = 114;
+pub const CAS_SQUARE_BK: usize = 62;
+pub const CAS_SQUARE_BQ: usize = 58;
 
 pub const PLAYER_W: u8 = 0b10;
 pub const PLAYER_B: u8 = 0b01;
@@ -57,11 +57,6 @@ pub const Q: u8 = 0b1000000;
 pub const K: u8 = 0b10000000;
 
 #[inline]
-pub const fn is_index_valid(index: usize) -> bool {
-    index & 0x88 == 0
-}
-
-#[inline]
 pub const fn get_opposite_player(player: u8) -> u8 {
     player ^ PLAYER_SWITCH
 }
@@ -74,9 +69,9 @@ pub const fn on_same_side(player: u8, piece_code: u8) -> bool {
 #[inline]
 pub fn get_rank(player: u8, index: usize) -> usize {
     if player == PLAYER_W {
-        index / 16
+        index / 8
     } else {
-        7 - index / 16
+        7 - index / 8
     }
 }
 
@@ -130,12 +125,12 @@ mod tests {
 
     #[test]
     fn test_get_rank() {
-        assert_eq!(0, get_rank(PLAYER_W, 7));
-        assert_eq!(1, get_rank(PLAYER_W, 22));
-        assert_eq!(7, get_rank(PLAYER_W, 118));
-        assert_eq!(0, get_rank(PLAYER_B, 112));
-        assert_eq!(4, get_rank(PLAYER_B, 52));
-        assert_eq!(7, get_rank(PLAYER_B, 5));
+        assert_eq!(0, get_rank(PLAYER_W, 6));
+        assert_eq!(1, get_rank(PLAYER_W, 9));
+        assert_eq!(7, get_rank(PLAYER_W, 62));
+        assert_eq!(7, get_rank(PLAYER_B, 2));
+        assert_eq!(3, get_rank(PLAYER_B, 35));
+        assert_eq!(7, get_rank(PLAYER_W, 58));
     }
 
     #[test]

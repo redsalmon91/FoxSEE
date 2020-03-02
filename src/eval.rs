@@ -266,17 +266,14 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
     let mut w_feature_map = FeatureMap::empty();
     let mut b_feature_map = FeatureMap::empty();
 
-    let mut index = 0;
+    let occupy_mask = bitboard.w_all | bitboard.b_all;
+    let start_index = occupy_mask.trailing_zeros() as usize;
+    let end_index = def::BOARD_SIZE - occupy_mask.leading_zeros() as usize;
 
-    while index < def::BOARD_SIZE {
-        if !def::is_index_valid(index) {
-            index += 8;
-        }
-
+    for index in start_index..end_index {
         let moving_piece = squares[index];
 
         if moving_piece == 0 {
-            index += 1;
             continue
         }
 
@@ -295,7 +292,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     }
                 }
 
-                if (wp_behind_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
+                if wp_behind_masks[index] & bitboard.w_pawn == 0 {
                     if file_mask & bitboard.b_pawn == 0 {
                         w_feature_map.open_isolate_pawn_count += 1;
                     } else {
@@ -319,7 +316,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                     }
                 }
 
-                if (bp_behind_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
+                if bp_behind_masks[index] & bitboard.b_pawn == 0 {
                     if file_mask & bitboard.w_pawn == 0 {
                         b_feature_map.open_isolate_pawn_count += 1;
                     } else {
@@ -434,8 +431,6 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
             _ => {},
         }
-
-        index += 1;
     }
 
     w_feature_map.pawn_count = bitboard.w_pawn.count_ones() as i32;
@@ -484,7 +479,7 @@ mod tests {
         mov_table::MoveTable,
         state::State,
         prng::XorshiftPrng,
-    };
+   };
 
     #[test]
     fn test_extract_features_1() {

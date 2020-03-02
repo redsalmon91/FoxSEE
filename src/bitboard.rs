@@ -2,31 +2,7 @@
  * Copyright (C) 2020 Zixiao Han
  */
 
-use crate::{
-    def,
-};
-
-static FILE_MASKS: [u64; def::DIM_SIZE] = [
-    0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000,
-    0b01000000_01000000_01000000_01000000_01000000_01000000_01000000_01000000,
-    0b00100000_00100000_00100000_00100000_00100000_00100000_00100000_00100000,
-    0b00010000_00010000_00010000_00010000_00010000_00010000_00010000_00010000,
-    0b00001000_00001000_00001000_00001000_00001000_00001000_00001000_00001000,
-    0b00000100_00000100_00000100_00000100_00000100_00000100_00000100_00000100,
-    0b00000010_00000010_00000010_00000010_00000010_00000010_00000010_00000010,
-    0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001,
-];
-
-static RANK_MASKS: [u64; def::DIM_SIZE] = [
-    0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
-    0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000,
-    0b00000000_00000000_00000000_11111111_00000000_00000000_00000000_00000000,
-    0b00000000_00000000_00000000_00000000_11111111_00000000_00000000_00000000,
-    0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000,
-    0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
-    0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111,
-];
+use crate::def;
 
 #[derive(Copy, Clone)]
 pub struct BitBoard {
@@ -72,7 +48,6 @@ impl BitBoard {
 pub struct BitMask {
     pub index_masks: [u64; def::BOARD_SIZE],
     pub file_masks: [u64; def::BOARD_SIZE],
-    pub rank_masks: [u64; def::BOARD_SIZE],
 
     pub wk_protect_masks: [u64; def::BOARD_SIZE],
     pub bk_protect_masks: [u64; def::BOARD_SIZE],
@@ -84,6 +59,13 @@ pub struct BitMask {
 
     pub wp_attack_masks: [u64; def::BOARD_SIZE],
     pub bp_attack_masks: [u64; def::BOARD_SIZE],
+
+    pub wp_mov_masks: [u64; def::BOARD_SIZE],
+    pub bp_mov_masks: [u64; def::BOARD_SIZE],
+
+    pub wp_init_mov_masks: [u64; def::BOARD_SIZE],
+    pub bp_init_mov_masks: [u64; def::BOARD_SIZE],
+
     pub n_attack_masks: [u64; def::BOARD_SIZE],
     pub k_attack_masks: [u64; def::BOARD_SIZE],
     pub b_attack_masks: [u64; def::BOARD_SIZE],
@@ -102,470 +84,350 @@ pub struct BitMask {
 
 impl BitMask {
     pub fn new() -> Self {
-        let (
-            index_masks,
-            file_masks,
-            rank_masks,
-            wk_protect_masks,
-            bk_protect_masks,
-            wp_forward_masks,
-            bp_forward_masks,
-            wp_behind_masks,
-            bp_behind_masks,
-            wp_attack_masks,
-            bp_attack_masks,
-            n_attack_masks,
-            k_attack_masks,
-            b_attack_masks,
-            r_attack_masks,
-            left_attack_masks,
-            right_attack_masks,
-            up_attack_masks,
-            down_attack_masks,
-            up_left_attack_masks,
-            up_right_attack_masks,
-            down_left_attack_masks,
-            down_right_attack_masks,
-        ) = gen_masks();
+        let mut bitmask = BitMask {
+            index_masks: [0; def::BOARD_SIZE],
+            file_masks: [0; def::BOARD_SIZE],
 
-        BitMask {
-            index_masks,
-            file_masks,
-            rank_masks,
-            wk_protect_masks,
-            bk_protect_masks,
-            wp_forward_masks,
-            bp_forward_masks,
-            wp_behind_masks,
-            bp_behind_masks,
-            wp_attack_masks,
-            bp_attack_masks,
-            n_attack_masks,
-            k_attack_masks,
-            b_attack_masks,
-            r_attack_masks,
-            left_attack_masks,
-            right_attack_masks,
-            up_attack_masks,
-            down_attack_masks,
-            up_left_attack_masks,
-            up_right_attack_masks,
-            down_left_attack_masks,
-            down_right_attack_masks,
-        }
-    }
-}
+            wk_protect_masks: [0; def::BOARD_SIZE],
+            bk_protect_masks: [0; def::BOARD_SIZE],
 
-pub fn gen_masks() -> (
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE],
-    [u64; def::BOARD_SIZE]) {
+            wp_forward_masks: [0; def::BOARD_SIZE],
+            bp_forward_masks: [0; def::BOARD_SIZE],
+            wp_behind_masks: [0; def::BOARD_SIZE],
+            bp_behind_masks: [0; def::BOARD_SIZE],
 
-    let mut index_masks = [0; def::BOARD_SIZE];
-    let mut file_masks = [0; def::BOARD_SIZE];
-    let mut rank_masks = [0; def::BOARD_SIZE];
+            wp_attack_masks: [0; def::BOARD_SIZE],
+            bp_attack_masks: [0; def::BOARD_SIZE],
 
-    let mut wk_protect_masks = [0; def::BOARD_SIZE];
-    let mut bk_protect_masks = [0; def::BOARD_SIZE];
-    let mut wp_forward_masks = [0; def::BOARD_SIZE];
-    let mut bp_forward_masks = [0; def::BOARD_SIZE];
-    let mut wp_behind_masks = [0; def::BOARD_SIZE];
-    let mut bp_behind_masks = [0; def::BOARD_SIZE];
+            wp_mov_masks: [0; def::BOARD_SIZE],
+            bp_mov_masks: [0; def::BOARD_SIZE],
 
-    let mut wp_attack_masks = [0; def::BOARD_SIZE];
-    let mut bp_attack_masks = [0; def::BOARD_SIZE];
-    let mut n_attack_masks = [0; def::BOARD_SIZE];
-    let mut k_attack_masks = [0; def::BOARD_SIZE];
-    let mut b_attack_masks = [0; def::BOARD_SIZE];
-    let mut r_attack_masks = [0; def::BOARD_SIZE];
+            wp_init_mov_masks: [0; def::BOARD_SIZE],
+            bp_init_mov_masks: [0; def::BOARD_SIZE],
 
-    let mut left_attack_masks = [0; def::BOARD_SIZE];
-    let mut right_attack_masks = [0; def::BOARD_SIZE];
-    let mut up_attack_masks = [0; def::BOARD_SIZE];
-    let mut down_attack_masks = [0; def::BOARD_SIZE];
+            n_attack_masks: [0; def::BOARD_SIZE],
+            k_attack_masks: [0; def::BOARD_SIZE],
+            b_attack_masks: [0; def::BOARD_SIZE],
+            r_attack_masks: [0; def::BOARD_SIZE],
 
-    let mut up_left_attack_masks = [0; def::BOARD_SIZE];
-    let mut up_right_attack_masks = [0; def::BOARD_SIZE];
-    let mut down_left_attack_masks = [0; def::BOARD_SIZE];
-    let mut down_right_attack_masks = [0; def::BOARD_SIZE];
+            left_attack_masks: [0; def::BOARD_SIZE],
+            right_attack_masks: [0; def::BOARD_SIZE],
+            up_attack_masks: [0; def::BOARD_SIZE],
+            down_attack_masks: [0; def::BOARD_SIZE],
 
-    let mut index = 0;
+            up_left_attack_masks: [0; def::BOARD_SIZE],
+            up_right_attack_masks: [0; def::BOARD_SIZE],
+            down_left_attack_masks: [0; def::BOARD_SIZE],
+            down_right_attack_masks: [0; def::BOARD_SIZE],
+        };
 
-    while index < def::BOARD_SIZE {
-        if !def::is_index_valid(index) {
-            index += 8;
-        }
+        bitmask.init_base();
 
-        let mapped_bit_index = (index + (index & 7)) >> 1;
-        let index_mask = 1 << mapped_bit_index;
+        bitmask.init_n_masks();
+        bitmask.init_k_masks();
 
-        index_masks[index] = index_mask;
+        bitmask.init_up_left_masks();
+        bitmask.init_down_left_masks();
+        bitmask.init_up_right_masks();
+        bitmask.init_down_right_masks();
 
-        for dim_index in 0..def::DIM_SIZE {
-            let file_mask = FILE_MASKS[dim_index];
-            if file_mask & index_mask != 0 {
-                file_masks[index] = file_mask;
-            }
+        bitmask.init_up_masks();
+        bitmask.init_down_masks();
+        bitmask.init_left_masks();
+        bitmask.init_right_masks();
 
-            let rank_mask = RANK_MASKS[dim_index];
-            if rank_mask & index_mask != 0 {
-                rank_masks[index] = rank_mask;
-            }
-        }
+        bitmask.init_rb_attack_masks();
 
-        index += 1;
+        bitmask.init_p_attack_masks();
+        bitmask.init_p_mov_masks();
+
+        bitmask.init_k_protect_masks();
+        bitmask.init_p_misc_masks();
+
+        bitmask
     }
 
-    index = 0;
-    while index < def::BOARD_SIZE {
-        if !def::is_index_valid(index) {
-            index += 8;
+    fn init_base(&mut self) {
+        let mut file_masks = [0; def::DIM_SIZE];
+
+        for index in 0..def::BOARD_SIZE {
+            let index_mask = 1u64 << index;
+            self.index_masks[index] = index_mask;
+
+            let file = index % def::DIM_SIZE;
+            file_masks[file] = file_masks[file] | index_mask;
         }
 
-        let mut wk_protect_mask = 0;
-        for index_change in vec![15, 16, 17, 31, 32, 33] {
-            let protect_index = index + index_change;
-            if def::is_index_valid(protect_index) {
-                wk_protect_mask ^= index_masks[protect_index];
-            }
+        for index in 0..def::BOARD_SIZE {
+            let file = index % def::DIM_SIZE;
+            self.file_masks[index] = file_masks[file];
         }
-
-        wk_protect_masks[index] = wk_protect_mask;
-
-        let mut bk_protect_mask = 0;
-        for index_change in vec![-15, -16, -17, -31, -32, -33] {
-            let protect_index = index as isize + index_change;
-            if protect_index >= 0 {
-                let protect_index = protect_index as usize;
-                if def::is_index_valid(protect_index) {
-                    bk_protect_mask ^= index_masks[protect_index];
-                }
-            }
-        }
-
-        bk_protect_masks[index] = bk_protect_mask;
-
-        index += 1;
     }
 
-    index = 0;
-    while index < def::BOARD_SIZE {
-        if !def::is_index_valid(index) {
-            index += 8;
-        }
+    fn init_n_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            if index + 6 < def::BOARD_SIZE
+                && (self.index_masks[index] & self.file_masks[0] == 0)
+                && (self.index_masks[index] & self.file_masks[1] == 0)
+            {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index + 6];
+            }
 
-        let mut wp_attack_mask = 0;
-        for index_change in vec![15, 17] {
-            let attack_index = index + index_change;
-            if def::is_index_valid(attack_index) {
-                wp_attack_mask ^= index_masks[attack_index];
+            if index >= 6
+                && (self.index_masks[index] & self.file_masks[6] == 0)
+                && (self.index_masks[index] & self.file_masks[7] == 0)
+            {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index - 6];
+            }
+
+            if index + 10 < def::BOARD_SIZE
+                && (self.index_masks[index] & self.file_masks[6] == 0)
+                && (self.index_masks[index] & self.file_masks[7] == 0)
+            {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index + 10];
+            }
+
+            if index >= 10
+                && (self.index_masks[index] & self.file_masks[0] == 0)
+                && (self.index_masks[index] & self.file_masks[1] == 0)
+            {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index - 10];
+            }
+
+            if index + 15 < def::BOARD_SIZE && (self.index_masks[index] & self.file_masks[0] == 0) {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index + 15];
+            }
+
+            if index >= 15 && (self.index_masks[index] & self.file_masks[7] == 0) {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index - 15];
+            }
+
+            if index + 17 < def::BOARD_SIZE && (self.index_masks[index] & self.file_masks[7] == 0) {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index + 17];
+            }
+
+            if index >= 17 && (self.index_masks[index] & self.file_masks[0] == 0) {
+                self.n_attack_masks[index] = self.n_attack_masks[index] | self.index_masks[index - 17];
             }
         }
-
-        wp_attack_masks[index] = wp_attack_mask;
-
-        let mut bp_attack_mask = 0;
-        for index_change in vec![-15, -17] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    bp_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        bp_attack_masks[index] = bp_attack_mask;
-
-        let mut n_attack_mask = 0;
-        for index_change in vec![14, 18, 31, 33, -14, -18, -31, -33] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    n_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        n_attack_masks[index] = n_attack_mask;
-
-        let mut k_attack_mask = 0;
-        for index_change in vec![1, 15, 16, 17, -1, -15, -16, -17] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    k_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        k_attack_masks[index] = k_attack_mask;
-
-        let mut left_attack_mask = 0;
-        for index_change in vec![-1, -2, -3, -4, -5, -6, -7] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    left_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        left_attack_masks[index] = left_attack_mask;
-
-        let mut right_attack_mask = 0;
-        for index_change in vec![1, 2, 3, 4, 5, 6, 7] {
-            let attack_index = index + index_change;
-            if def::is_index_valid(attack_index) {
-                right_attack_mask ^= index_masks[attack_index];
-            }
-        }
-
-        right_attack_masks[index] = right_attack_mask;
-
-        let mut up_attack_mask = 0;
-        for index_change in vec![16, 32, 48, 64, 80, 96, 112] {
-            let attack_index = index + index_change;
-            if def::is_index_valid(attack_index) {
-                up_attack_mask ^= index_masks[attack_index];
-            }
-        }
-
-        up_attack_masks[index] = up_attack_mask;
-
-        let mut down_attack_mask = 0;
-        for index_change in vec![-16, -32, -48, -64, -80, -96, -112] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    down_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        down_attack_masks[index] = down_attack_mask;
-
-        let mut down_left_attack_mask = 0;
-        for index_change in vec![-17, -34, -51, -68, -85, -102, -119] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    down_left_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        down_left_attack_masks[index] = down_left_attack_mask;
-
-        let mut down_right_attack_mask = 0;
-        for index_change in vec![-15, -30, -45, -60, -75, -90, -105] {
-            let attack_index = index as isize + index_change;
-            if attack_index >= 0 {
-                let attack_index = attack_index as usize;
-                if def::is_index_valid(attack_index) {
-                    down_right_attack_mask ^= index_masks[attack_index];
-                }
-            }
-        }
-
-        down_right_attack_masks[index] = down_right_attack_mask;
-
-        let mut up_left_attack_mask = 0;
-        for index_change in vec![15, 30, 45, 60, 75, 90, 105] {
-            let attack_index = index + index_change;
-            if def::is_index_valid(attack_index) {
-                up_left_attack_mask ^= index_masks[attack_index];
-            }
-        }
-
-        up_left_attack_masks[index] = up_left_attack_mask;
-
-        let mut up_right_attack_mask = 0;
-        for index_change in vec![17, 34, 51, 68, 85, 102, 119] {
-            let attack_index = index + index_change;
-            if def::is_index_valid(attack_index) {
-                up_right_attack_mask ^= index_masks[attack_index];
-            }
-        }
-
-        up_right_attack_masks[index] = up_right_attack_mask;
-
-        b_attack_masks[index] = up_left_attack_mask | up_right_attack_mask | down_left_attack_mask | down_right_attack_mask;
-        r_attack_masks[index] = left_attack_mask | right_attack_mask | up_attack_mask | down_attack_mask;
-
-        index += 1;
     }
 
-    let mut surround_files_masks = [0; def::BOARD_SIZE];
+    fn init_k_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            if index + 1 < def::BOARD_SIZE && (self.index_masks[index] & self.file_masks[7] == 0) {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index + 1];
+            }
 
-    index = 0;
-    while index < def::BOARD_SIZE {
-        if !def::is_index_valid(index) {
-            index += 8;
+            if index >= 1 && (self.index_masks[index] & self.file_masks[0] == 0) {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index - 1];
+            }
+
+            if index + 8 < def::BOARD_SIZE {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index + 8];
+            }
+
+            if index >= 8 {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index - 8];
+            }
+
+            if index + 7 < def::BOARD_SIZE && (self.index_masks[index] & self.file_masks[0] == 0) {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index + 7];
+            }
+
+            if index >= 7 && (self.index_masks[index] & self.file_masks[7] == 0) {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index - 7];
+            }
+
+            if index + 9 < def::BOARD_SIZE && (self.index_masks[index] & self.file_masks[7] == 0) {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index + 9];
+            }
+
+            if index >= 9 && (self.index_masks[index] & self.file_masks[0] == 0) {
+                self.k_attack_masks[index] = self.k_attack_masks[index] | self.index_masks[index - 9];
+            }
         }
-
-        let mut surround_files_mask = file_masks[index];
-
-        if index as isize - 1 >= 16 && def::is_index_valid(index - 1) {
-            surround_files_mask |= file_masks[index - 1];
-        }
-
-        if index + 1 <= 103 && def::is_index_valid(index + 1) {
-            surround_files_mask |= file_masks[index + 1];
-        }
-
-        surround_files_masks[index] = surround_files_mask;
-
-        index += 1;
     }
 
-    index = 0;
-    while index < def::BOARD_SIZE {
-        if !def::is_index_valid(index) {
-            index += 8;
+    fn init_up_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut up_index = index;
+            while up_index < 56 {
+                up_index += 8;
+
+                self.up_attack_masks[index] ^= self.index_masks[up_index];
+            }
         }
-
-        let surround_files_mask = surround_files_masks[index];
-        let mut wp_forward_mask = surround_files_mask;
-        let mut bp_forward_mask = surround_files_mask;
-
-        let mut mask_index = 0;
-        while mask_index < def::BOARD_SIZE {
-            if !def::is_index_valid(mask_index) {
-                mask_index += 8;
-            }
-
-            if mask_index < index || mask_index - index < 15 {
-                wp_forward_mask &= !index_masks[mask_index];
-            }
-
-            if mask_index > index || index - mask_index < 15 {
-                bp_forward_mask &= !index_masks[mask_index];
-            }
-
-            mask_index += 1;
-        }
-
-        wp_forward_masks[index] = wp_forward_mask;
-        bp_forward_masks[index] = bp_forward_mask;
-        wp_behind_masks[index] = (surround_files_mask ^ wp_forward_mask) & !file_masks[index];
-        bp_behind_masks[index] = (surround_files_mask ^ bp_forward_mask) & !file_masks[index];
-
-        index += 1;
     }
 
-    (
-        index_masks,
-        file_masks,
-        rank_masks,
-        wk_protect_masks,
-        bk_protect_masks,
-        wp_forward_masks,
-        bp_forward_masks,
-        wp_behind_masks,
-        bp_behind_masks,
-        wp_attack_masks,
-        bp_attack_masks,
-        n_attack_masks,
-        k_attack_masks,
-        b_attack_masks,
-        r_attack_masks,
-        left_attack_masks,
-        right_attack_masks,
-        up_attack_masks,
-        down_attack_masks,
-        up_left_attack_masks,
-        up_right_attack_masks,
-        down_left_attack_masks,
-        down_right_attack_masks,
-    )
-}
+    fn init_down_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut down_index = index;
+            while down_index > 7 {
+                down_index -= 8;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+                self.down_attack_masks[index] ^= self.index_masks[down_index];
+            }
+        }
+    }
 
-    #[test]
-    fn test_gen_masks() {
-        let (
-            index_masks,
-            file_masks,
-            rank_masks,
-            wk_protect_masks,
-            bk_protect_masks,
-            wp_forward_masks,
-            bp_forward_masks,
-            wp_behind_masks,
-            bp_behind_masks,
-            wp_attack_masks,
-            bp_attack_masks,
-            n_attack_masks,
-            k_attack_masks,
-            _b_attack_masks,
-            _r_attack_masks,
-            _left_attack_masks,
-            _right_attack_masks,
-            _up_attack_masks,
-            _down_attack_masks,
-            _up_left_attack_masks,
-            _up_right_attack_masks,
-            _down_left_attack_masks,
-            _down_right_attack_masks,
-        ) = gen_masks();
+    fn init_left_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut left_index = index;
+            while left_index % 8 > 0 {
+                left_index -= 1;
 
-        assert_eq!(0b1, index_masks[0]);
-        assert_eq!(0b10, index_masks[1]);
-        assert_eq!(0b100, index_masks[2]);
-        assert_eq!(0b10000000_00000000, index_masks[23]);
+                self.left_attack_masks[index] ^= self.index_masks[left_index];
+            }
+        }
+    }
 
-        assert_eq!(0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000, file_masks[7]);
-        assert_eq!(0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000, file_masks[119]);
-        assert_eq!(0b00000010_00000010_00000010_00000010_00000010_00000010_00000010_00000010, file_masks[1]);
-        assert_eq!(0b00000010_00000010_00000010_00000010_00000010_00000010_00000010_00000010, file_masks[33]);
+    fn init_right_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut right_index = index;
+            while right_index % 8 < 7 {
+                right_index += 1;
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, rank_masks[0]);
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, rank_masks[7]);
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000, rank_masks[33]);
+                self.right_attack_masks[index] ^= self.index_masks[right_index];
+            }
+        }
+    }
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_11100000_11100000_00000000, wk_protect_masks[6]);
-        assert_eq!(0b00000000_11000000_11000000_00000000_00000000_00000000_00000000_00000000, bk_protect_masks[119]);
-        assert_eq!(0b00000000_00011100_00011100_00000000_00000000_00000000_00000000_00000000, bk_protect_masks[115]);
+    fn init_up_left_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut up_left_index = index;
+            while up_left_index < 56 && up_left_index % 8 > 0 {
+                up_left_index += 7;
 
-        assert_eq!(0b00000011_00000011_00000011_00000011_00000011_00000000_00000000_00000000, wp_forward_masks[32]);
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000111_00000111, bp_forward_masks[33]);
+                self.up_left_attack_masks[index] ^= self.index_masks[up_left_index];
+            }
+        }
+    }
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00101000_00101000_00101000_00101000, wp_behind_masks[52]);
-        assert_eq!(0b00000010_00000010_00000010_00000000_00000000_00000000_00000000_00000000, bp_behind_masks[80]);
+    fn init_up_right_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut up_right_index = index;
+            while up_right_index < 56 && up_right_index % 8 < 7 {
+                up_right_index += 9;
 
-        assert_eq!(0b00000000_00010100_00000000_00000000_00000000_00000000_00000000_00000000, bp_attack_masks[115]);
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_10100000_00000000, wp_attack_masks[6]);
+                self.up_right_attack_masks[index] ^= self.index_masks[up_right_index];
+            }
+        }
+    }
 
-        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_10100000_00010000_00000000, n_attack_masks[6]);
-        assert_eq!(0b10100000_11100000_00000000_00000000_00000000_00000000_00000000_00000000, k_attack_masks[118]);
+    fn init_down_left_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut down_left_index = index;
+            while down_left_index > 7 && down_left_index % 8 > 0 {
+                down_left_index -= 9;
+
+                self.down_left_attack_masks[index] ^= self.index_masks[down_left_index];
+            }
+        }
+    }
+
+    fn init_down_right_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            let mut down_right_index = index;
+            while down_right_index > 7 && down_right_index % 8 < 7 {
+                down_right_index -= 7;
+
+                self.down_right_attack_masks[index] ^= self.index_masks[down_right_index];
+            }
+        }
+    }
+
+    fn init_rb_attack_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            self.b_attack_masks[index] = self.up_left_attack_masks[index] ^ self.up_right_attack_masks[index] ^ self.down_left_attack_masks[index] ^ self.down_right_attack_masks[index];
+            self.r_attack_masks[index] = self.up_attack_masks[index] ^ self.down_attack_masks[index] ^ self.left_attack_masks[index] ^ self.right_attack_masks[index];
+        }
+    }
+
+    fn init_p_attack_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            if self.index_masks[index] & self.file_masks[0] == 0 {
+                if index < 56 {
+                    self.wp_attack_masks[index] = self.wp_attack_masks[index] | self.index_masks[index + 7];
+                }
+
+                if index > 7 {
+                    self.bp_attack_masks[index] = self.bp_attack_masks[index] | self.index_masks[index - 9];
+                }
+            }
+
+            if self.index_masks[index] & self.file_masks[7] == 0 {
+                if index < 56 {
+                    self.wp_attack_masks[index] = self.wp_attack_masks[index] | self.index_masks[index + 9];
+                }
+
+                if index > 7 {
+                    self.bp_attack_masks[index] = self.bp_attack_masks[index] | self.index_masks[index - 7];
+                }
+            }
+        }
+    }
+
+    fn init_p_mov_masks(&mut self) {
+        for index in 8..def::BOARD_SIZE - 8 {
+            self.wp_mov_masks[index] = self.index_masks[index + 8];
+            self.bp_mov_masks[index] = self.index_masks[index - 8];
+
+            if index < 16 {
+                self.wp_init_mov_masks[index] = self.index_masks[index + 16];
+            }
+
+            if index > 47 {
+                self.bp_init_mov_masks[index] = self.index_masks[index - 16];
+            }
+        }
+    }
+
+    fn init_k_protect_masks(&mut self) {
+        for index in 0..16 {
+            self.wk_protect_masks[index] ^= self.index_masks[index + 8] ^ self.index_masks[index + 16];
+
+            if index % 8 < 7 {
+                self.wk_protect_masks[index] ^= self.index_masks[index + 9] ^ self.index_masks[index + 17];
+            }
+
+            if index % 8 > 0 {
+                self.wk_protect_masks[index] ^= self.index_masks[index + 7] ^ self.index_masks[index + 15];
+            }
+        }
+
+        for index in 48..def::BOARD_SIZE {
+            self.bk_protect_masks[index] ^= self.index_masks[index - 8] ^ self.index_masks[index - 16];
+
+            if index % 8 < 7 {
+                self.bk_protect_masks[index] ^= self.index_masks[index - 7] ^ self.index_masks[index - 15];
+            }
+
+            if index % 8 > 0 {
+                self.bk_protect_masks[index] ^= self.index_masks[index - 9] ^ self.index_masks[index - 17];
+            }
+        }
+    }
+
+    fn init_p_misc_masks(&mut self) {
+        for index in 0..def::BOARD_SIZE {
+            self.wp_forward_masks[index] = self.up_attack_masks[index];
+            self.bp_forward_masks[index] = self.down_attack_masks[index];
+
+            if index % 8 > 0 {
+                self.wp_forward_masks[index] ^= self.up_attack_masks[index - 1];
+                self.wp_behind_masks[index] ^= self.down_attack_masks[index - 1] ^ self.index_masks[index - 1];
+
+                self.bp_forward_masks[index] ^= self.down_attack_masks[index - 1];
+                self.bp_behind_masks[index] ^= self.up_attack_masks[index - 1] ^ self.index_masks[index - 1];
+            }
+
+            if index % 8 < 7 {
+                self.wp_forward_masks[index] ^= self.up_attack_masks[index + 1];
+                self.wp_behind_masks[index] ^= self.down_attack_masks[index + 1] ^ self.index_masks[index + 1];
+
+                self.bp_forward_masks[index] ^= self.down_attack_masks[index + 1];
+                self.bp_behind_masks[index] ^= self.up_attack_masks[index + 1] ^ self.index_masks[index + 1];
+            }
+        }
     }
 }

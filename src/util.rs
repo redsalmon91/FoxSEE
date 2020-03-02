@@ -66,8 +66,8 @@ pub fn map_promo_piece_to_char(piece: u8) -> char {
 
 #[inline]
 pub fn map_index_to_sqr_notation(index: usize) -> String {
-    let rank = index / 16 + 1;
-    let file = index % 16;
+    let rank = index / 8 + 1;
+    let file = index % 8;
 
     let file_str = match file {
         0 => "a",
@@ -101,7 +101,7 @@ pub fn map_sqr_notation_to_index(sqr_notation: &str) -> usize {
 
     let rank_index = sqr_notation_chars[1].to_digit(10).unwrap() - 1;
 
-    (rank_index * 16 + file_index) as usize
+    (rank_index * 8 + file_index) as usize
 }
 
 #[inline]
@@ -187,10 +187,10 @@ mod tests {
     #[test]
     fn test_map_sqr_notation_to_index() {
         assert_eq!(0, map_sqr_notation_to_index("a1"));
-        assert_eq!(16, map_sqr_notation_to_index("a2"));
-        assert_eq!(49, map_sqr_notation_to_index("b4"));
-        assert_eq!(119, map_sqr_notation_to_index("h8"));
-        assert_eq!(112, map_sqr_notation_to_index("a8"));
+        assert_eq!(8, map_sqr_notation_to_index("a2"));
+        assert_eq!(25, map_sqr_notation_to_index("b4"));
+        assert_eq!(63, map_sqr_notation_to_index("h8"));
+        assert_eq!(56, map_sqr_notation_to_index("a8"));
     }
 
     #[test]

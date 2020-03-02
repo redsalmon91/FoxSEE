@@ -32,11 +32,6 @@ const WQ_AFTER_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [0, 0, def::WK, def::WR, 0];
 const BQ_BEFORE_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [def::BR, 0, 0, 0, def::BK];
 const BQ_AFTER_CAS_SQRS: [u8; Q_CAS_SQR_SIZE] = [0, 0, def::BK, def::BR, 0];
 
-const WK_CAS_HASH: u64 = 10495489446390601685;
-const WQ_CAS_HASH: u64 = 6834661319834316719;
-const BK_CAS_HASH: u64 = 12774574915232550133;
-const BQ_CAS_HASH: u64 = 184001951153155114;
-
 const WK_CAS_ALL_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11110000;
 const WK_CAS_R_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10100000;
 
@@ -64,7 +59,6 @@ pub struct State<'state> {
     pub bk_castled: bool,
 
     pub bitboard: BitBoard,
-    pub bitboard_stack: Vec<BitBoard>,
     pub bitmask: &'state BitMask,
 
     pub taken_piece_stack: Vec<u8>,
@@ -95,7 +89,7 @@ impl <'state> State<'state> {
         let rank_string_list: Vec<&str> = fen_segment_list[FEN_SQRS_INDEX].split("/").collect();
         assert_eq!(def::DIM_SIZE, rank_string_list.len());
 
-        let mut index = 112;
+        let mut index = 56;
         for rank_index in 0..def::DIM_SIZE {
             let rank_string = rank_string_list[rank_index];
 
@@ -164,7 +158,7 @@ impl <'state> State<'state> {
                 break
             }
 
-            index -= 24;
+            index -= 16;
         }
 
         State {
@@ -182,7 +176,6 @@ impl <'state> State<'state> {
             bk_castled: false,
 
             bitboard,
-            bitboard_stack: Vec::new(),
 
             taken_piece_stack: Vec::new(),
             enp_sqr_stack: Vec::new(),
@@ -243,7 +236,6 @@ impl <'state> State<'state> {
         self.history_pos_stack.push((self.hash_key, self.player));
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
-        self.bitboard_stack.push(self.bitboard);
         self.enp_square = 0;
 
         match mov_type {
@@ -266,7 +258,6 @@ impl <'state> State<'state> {
         self.wk_index = wk_index;
         self.bk_index = bk_index;
         self.hash_key = self.history_pos_stack.pop().unwrap().0;
-        self.bitboard = self.bitboard_stack.pop().unwrap();
         self.history_mov_stack.pop();
 
         self.player = def::get_opposite_player(self.player);
@@ -288,8 +279,7 @@ impl <'state> State<'state> {
         let to_index_mask = self.bitmask.index_masks[to];
         let move_index_mask = from_index_mask ^ to_index_mask;
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
-        self.hash_key ^= self.zob_keys[to][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][moving_piece as usize];
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
             self.bitboard.w_all ^= move_index_mask;
@@ -331,9 +321,9 @@ impl <'state> State<'state> {
             def::BR => {
                 self.bitboard.b_rook ^= move_index_mask;
 
-                if from == 112 {
+                if from == 56 {
                     self.cas_rights &= 0b1110;
-                } else if from == 119 {
+                } else if from == 63 {
                     self.cas_rights &= 0b1101;
                 }
             },
@@ -348,7 +338,7 @@ impl <'state> State<'state> {
                 self.wk_index = to;
             },
             def::BK => {
-                if from == 116 {
+                if from == 60 {
                     self.cas_rights &= 0b1100;
                 }
 
@@ -419,6 +409,92 @@ impl <'state> State<'state> {
 
         self.squares[to] = taken_piece;
         self.squares[from] = moving_piece;
+
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
+        let move_index_mask = from_index_mask ^ to_index_mask;
+
+        if def::on_same_side(def::PLAYER_W, moving_piece) {
+            self.bitboard.w_all ^= move_index_mask;
+        } else {
+            self.bitboard.b_all ^= move_index_mask;
+        }
+
+        match moving_piece {
+            def::WP => {
+                self.bitboard.w_pawn ^= move_index_mask;
+            },
+            def::WN => {
+                self.bitboard.w_knight ^= move_index_mask;
+            },
+            def::WB => {
+                self.bitboard.w_bishop ^= move_index_mask;
+            },
+            def::WR => {
+                self.bitboard.w_rook ^= move_index_mask;
+            },
+            def::WQ => {
+                self.bitboard.w_queen ^= move_index_mask;
+            },
+            def::BP => {
+                self.bitboard.b_pawn ^= move_index_mask;
+            },
+            def::BN => {
+                self.bitboard.b_knight ^= move_index_mask;
+            },
+            def::BB => {
+                self.bitboard.b_bishop ^= move_index_mask;
+            },
+            def::BR => {
+                self.bitboard.b_rook ^= move_index_mask;
+            },
+            def::BQ => {
+                self.bitboard.b_queen ^= move_index_mask;
+            },
+            _ => (),
+        }
+
+        if taken_piece != 0 {
+            if def::on_same_side(def::PLAYER_W, taken_piece) {
+                self.bitboard.w_all ^= to_index_mask;
+            } else {
+                self.bitboard.b_all ^= to_index_mask;
+            }
+
+            match taken_piece {
+                def::WP => {
+                    self.bitboard.w_pawn ^= to_index_mask;
+                },
+                def::WN => {
+                    self.bitboard.w_knight ^= to_index_mask;
+                },
+                def::WB => {
+                    self.bitboard.w_bishop ^= to_index_mask;
+                },
+                def::WR => {
+                    self.bitboard.w_rook ^= to_index_mask;
+                },
+                def::WQ => {
+                    self.bitboard.w_queen ^= to_index_mask;
+                },
+                def::BP => {
+                    self.bitboard.b_pawn ^= to_index_mask;
+                },
+                def::BN => {
+                    self.bitboard.b_knight ^= to_index_mask;
+                },
+                def::BB => {
+                    self.bitboard.b_bishop ^= to_index_mask;
+                },
+                def::BR => {
+                    self.bitboard.b_rook ^= to_index_mask;
+                },
+                def::BQ => {
+                    self.bitboard.b_queen ^= to_index_mask;
+                },
+                _ => (),
+            }
+        }
     }
 
     fn do_promo_mov(&mut self, from: usize, to: usize, promo: u8) {
@@ -466,8 +542,7 @@ impl <'state> State<'state> {
             _ => (),
         }
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
-        self.hash_key ^= self.zob_keys[to][promo as usize];
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][promo as usize];
 
         if taken_piece != 0 {
             self.hash_key ^= self.zob_keys[to][taken_piece as usize];
@@ -521,8 +596,88 @@ impl <'state> State<'state> {
             def::BP
         };
 
-        self.squares[to] = self.taken_piece_stack.pop().unwrap();
+        let promo = self.squares[to];
+        let taken_piece = self.taken_piece_stack.pop().unwrap();
+
+        self.squares[to] = taken_piece;
         self.squares[from] = moving_piece;
+
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
+
+        if moving_piece == def::WP {
+            self.bitboard.w_pawn ^= from_index_mask;
+            self.bitboard.w_all ^= from_index_mask;
+            self.bitboard.w_all ^= to_index_mask;
+        } else {
+            self.bitboard.b_pawn ^= from_index_mask;
+            self.bitboard.b_all ^= from_index_mask;
+            self.bitboard.b_all ^= to_index_mask;
+        }
+
+        match promo {
+            def::WN => {
+                self.bitboard.w_knight ^= to_index_mask;
+            },
+            def::WB => {
+                self.bitboard.w_bishop ^= to_index_mask;
+            },
+            def::WR => {
+                self.bitboard.w_rook ^= to_index_mask;
+            },
+            def::WQ => {
+                self.bitboard.w_queen ^= to_index_mask;
+            },
+            def::BN => {
+                self.bitboard.b_knight ^= to_index_mask;
+            },
+            def::BB => {
+                self.bitboard.b_bishop ^= to_index_mask;
+            },
+            def::BR => {
+                self.bitboard.b_rook ^= to_index_mask;
+            },
+            def::BQ => {
+                self.bitboard.b_queen ^= to_index_mask;
+            },
+            _ => (),
+        }
+
+        if taken_piece != 0 {
+            if def::on_same_side(def::PLAYER_W, taken_piece) {
+                self.bitboard.w_all ^= to_index_mask;
+            } else {
+                self.bitboard.b_all ^= to_index_mask;
+            }
+
+            match taken_piece {
+                def::WN => {
+                    self.bitboard.w_knight ^= to_index_mask;
+                },
+                def::WB => {
+                    self.bitboard.w_bishop ^= to_index_mask;
+                },
+                def::WR => {
+                    self.bitboard.w_rook ^= to_index_mask;
+                },
+                def::WQ => {
+                    self.bitboard.w_queen ^= to_index_mask;
+                },
+                def::BN => {
+                    self.bitboard.b_knight ^= to_index_mask;
+                },
+                def::BB => {
+                    self.bitboard.b_bishop ^= to_index_mask;
+                },
+                def::BR => {
+                    self.bitboard.b_rook ^= to_index_mask;
+                },
+                def::BQ => {
+                    self.bitboard.b_queen ^= to_index_mask;
+                },
+                _ => (),
+            }
+        }
     }
 
     fn do_cas_mov(&mut self, to: usize) {
@@ -534,7 +689,10 @@ impl <'state> State<'state> {
             self.wk_castled = true;
 
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_AFTER_CAS_SQRS);
-            self.hash_key ^= WK_CAS_HASH;
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WK-2][def::WK as usize]
+                ^ self.zob_keys[def::CAS_SQUARE_WK][def::WK as usize]
+                ^ self.zob_keys[def::CAS_SQUARE_WK-1][def::WR as usize]
+                ^ self.zob_keys[def::CAS_SQUARE_WK+1][def::WR as usize];
             self.bitboard.w_all ^= WK_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BK {
@@ -543,7 +701,10 @@ impl <'state> State<'state> {
             self.bk_castled = true;
 
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_AFTER_CAS_SQRS);
-            self.hash_key ^= BK_CAS_HASH;
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BK-2][def::BK as usize]
+            ^ self.zob_keys[def::CAS_SQUARE_BK][def::BK as usize]
+            ^ self.zob_keys[def::CAS_SQUARE_BK-1][def::BR as usize]
+            ^ self.zob_keys[def::CAS_SQUARE_BK+1][def::BR as usize];
 
             self.bitboard.b_all ^= BK_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BK_CAS_R_MASK;
@@ -553,7 +714,10 @@ impl <'state> State<'state> {
             self.wk_castled = true;
 
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_AFTER_CAS_SQRS);
-            self.hash_key ^= WQ_CAS_HASH;
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WQ+2][def::WK as usize]
+                ^ self.zob_keys[def::CAS_SQUARE_WQ][def::WK as usize]
+                ^ self.zob_keys[def::CAS_SQUARE_WQ-2][def::WR as usize]
+                ^ self.zob_keys[def::CAS_SQUARE_WQ+1][def::WR as usize];
 
             self.bitboard.w_all ^= WQ_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WQ_CAS_R_MASK;
@@ -563,7 +727,10 @@ impl <'state> State<'state> {
             self.bk_castled = true;
 
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_AFTER_CAS_SQRS);
-            self.hash_key ^= BQ_CAS_HASH;
+            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BQ+2][def::BK as usize]
+            ^ self.zob_keys[def::CAS_SQUARE_BQ][def::BK as usize]
+            ^ self.zob_keys[def::CAS_SQUARE_BQ-2][def::BR as usize]
+            ^ self.zob_keys[def::CAS_SQUARE_BQ+1][def::BR as usize];
 
             self.bitboard.b_all ^= BQ_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BQ_CAS_R_MASK;
@@ -574,23 +741,31 @@ impl <'state> State<'state> {
         if to == def::CAS_SQUARE_WK {
             self.wk_castled = false;
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_BEFORE_CAS_SQRS);
+            self.bitboard.w_all ^= WK_CAS_ALL_MASK;
+            self.bitboard.w_rook ^= WK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BK {
             self.bk_castled = false;
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_BEFORE_CAS_SQRS);
+            self.bitboard.b_all ^= BK_CAS_ALL_MASK;
+            self.bitboard.b_rook ^= BK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_WQ {
             self.wk_castled = false;
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_BEFORE_CAS_SQRS);
+            self.bitboard.w_all ^= WQ_CAS_ALL_MASK;
+            self.bitboard.w_rook ^= WQ_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BQ {
             self.bk_castled = false;
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_BEFORE_CAS_SQRS);
+            self.bitboard.b_all ^= BQ_CAS_ALL_MASK;
+            self.bitboard.b_rook ^= BQ_CAS_R_MASK;
         }
     }
 
     fn do_enp_mov(&mut self, from: usize, to: usize) {
         let taken_index = if self.player == def::PLAYER_W {
-            to - 16
+            to - 8
         } else {
-            to + 16
+            to + 8
         };
 
         self.non_cap_mov_count = 0;
@@ -624,9 +799,7 @@ impl <'state> State<'state> {
             _ => ()
         }
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
-        self.hash_key ^= self.zob_keys[to][moving_piece as usize];
-        self.hash_key ^= self.zob_keys[taken_index][taken_piece as usize];
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][moving_piece as usize] ^ self.zob_keys[taken_index][taken_piece as usize];
 
         self.taken_piece_stack.push(taken_piece);
         self.squares[to] = moving_piece;
@@ -636,9 +809,9 @@ impl <'state> State<'state> {
 
     fn undo_enp_mov(&mut self, from: usize, to: usize) {
         let taken_index = if self.player == def::PLAYER_W {
-            to - 16
+            to - 8
         } else {
-            to + 16
+            to + 8
         };
 
         let moving_piece = self.squares[to];
@@ -647,13 +820,39 @@ impl <'state> State<'state> {
         self.squares[taken_index] = taken_piece;
         self.squares[from] = moving_piece;
         self.squares[to] = 0;
+
+        let from_index_mask = self.bitmask.index_masks[from];
+        let to_index_mask = self.bitmask.index_masks[to];
+        let taken_index_mask = self.bitmask.index_masks[taken_index];
+
+        match taken_piece {
+            def::WP => {
+                self.bitboard.w_pawn ^= taken_index_mask;
+                self.bitboard.w_all ^= taken_index_mask;
+
+                self.bitboard.b_pawn ^= from_index_mask;
+                self.bitboard.b_all ^= from_index_mask;
+                self.bitboard.b_pawn ^= to_index_mask;
+                self.bitboard.b_all ^= to_index_mask;
+            },
+            def::BP => {
+                self.bitboard.b_pawn ^= taken_index_mask;
+                self.bitboard.b_all ^= taken_index_mask;
+
+                self.bitboard.w_pawn ^= from_index_mask;
+                self.bitboard.w_all ^= from_index_mask;
+                self.bitboard.w_pawn ^= to_index_mask;
+                self.bitboard.w_all ^= to_index_mask;
+            },
+            _ => ()
+        }
     }
 
     fn do_cr_enp_mov(&mut self, from: usize, to: usize) {
         self.enp_square = if self.player == def::PLAYER_W {
-            to - 16
+            to - 8
         } else {
-            to + 16
+            to + 8
         };
 
         self.non_cap_mov_count += 1;
@@ -661,8 +860,7 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[from];
         let move_index_mask = self.bitmask.index_masks[from] ^ self.bitmask.index_masks[to];
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize];
-        self.hash_key ^= self.zob_keys[to][moving_piece as usize];
+        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][moving_piece as usize];
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
             self.bitboard.w_all ^= move_index_mask;
@@ -681,6 +879,16 @@ impl <'state> State<'state> {
 
         self.squares[from] = moving_piece;
         self.squares[to] = 0;
+
+        let move_index_mask = self.bitmask.index_masks[from] ^ self.bitmask.index_masks[to];
+
+        if def::on_same_side(def::PLAYER_W, moving_piece) {
+            self.bitboard.w_all ^= move_index_mask;
+            self.bitboard.w_pawn ^= move_index_mask;
+        } else {
+            self.bitboard.b_all ^= move_index_mask;
+            self.bitboard.b_pawn ^= move_index_mask;
+        }
     }
 }
 
@@ -688,7 +896,7 @@ impl <'state> fmt::Display for State <'state> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut display_string = String::new();
 
-        let mut rank_left_index = 112;
+        let mut rank_left_index = 56;
         loop {
             for file_index in 0..def::DIM_SIZE {
                 display_string.push(util::map_piece_code_to_char(self.squares[rank_left_index + file_index]));
@@ -700,7 +908,7 @@ impl <'state> fmt::Display for State <'state> {
                 break
             }
 
-            rank_left_index -= 16;
+            rank_left_index -= 8;
         }
 
         write!(formatter, "{}", display_string)
@@ -778,6 +986,9 @@ mod tests {
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
 
+        let w_all = state.bitboard.w_all;
+        let b_all = state.bitboard.b_all;
+
         state.do_mov(util::map_sqr_notation_to_index("e2"), util::map_sqr_notation_to_index("e4"), def::MOV_CR_ENP, 0);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(util::map_sqr_notation_to_index("e3"), state.enp_square);
@@ -787,6 +998,9 @@ mod tests {
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
+
+        assert_eq!(w_all, state.bitboard.w_all);
+        assert_eq!(b_all, state.bitboard.b_all);
     }
 
     #[test]
@@ -799,6 +1013,9 @@ mod tests {
         assert_eq!(def::PLAYER_W, state.player);
         assert_eq!(def::BR, state.squares[util::map_sqr_notation_to_index("a8")]);
 
+        let w_all = state.bitboard.w_all;
+        let b_all = state.bitboard.b_all;
+
         state.do_mov(util::map_sqr_notation_to_index("b7"), util::map_sqr_notation_to_index("a8"), def::MOV_PROMO, def::WQ);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
@@ -810,6 +1027,9 @@ mod tests {
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
         assert_eq!(def::BR, state.squares[util::map_sqr_notation_to_index("a8")]);
+
+        assert_eq!(w_all, state.bitboard.w_all);
+        assert_eq!(b_all, state.bitboard.b_all);
     }
 
     #[test]
@@ -823,6 +1043,9 @@ mod tests {
         assert_eq!(def::BK, state.squares[util::map_sqr_notation_to_index("e8")]);
         assert_eq!(def::BR, state.squares[util::map_sqr_notation_to_index("a8")]);
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("c8")]);
+
+        let w_all = state.bitboard.w_all;
+        let b_all = state.bitboard.b_all;
 
         state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS, 0);
         assert_eq!(0b0100, state.cas_rights);
@@ -841,6 +1064,9 @@ mod tests {
         assert_eq!(def::BR, state.squares[util::map_sqr_notation_to_index("a8")]);
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("c8")]);
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("d8")]);
+
+        assert_eq!(w_all, state.bitboard.w_all);
+        assert_eq!(b_all, state.bitboard.b_all);
     }
 
     #[test]
@@ -909,6 +1135,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B1P1NBn/pPP2PPP/R3K2R b KQ - 0 1", &zob_keys, &bitmask);
+
         state.do_mov(util::map_sqr_notation_to_index("e5"), util::map_sqr_notation_to_index("e4"), def::MOV_REG, 0);
         state.do_mov(util::map_sqr_notation_to_index("f3"), util::map_sqr_notation_to_index("d2"), def::MOV_REG, 0);
         state.do_mov(util::map_sqr_notation_to_index("d7"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0);
@@ -919,6 +1146,9 @@ mod tests {
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("f3")]);
         assert_eq!(def::WP, state.squares[util::map_sqr_notation_to_index("f4")]);
         assert_eq!(def::BP, state.squares[util::map_sqr_notation_to_index("e4")]);
+
+        let w_all = state.bitboard.w_all;
+        let b_all = state.bitboard.b_all;
 
         state.do_mov(util::map_sqr_notation_to_index("e4"), util::map_sqr_notation_to_index("f3"), def::MOV_ENP, 0);
         assert_eq!(0, state.enp_square);
@@ -941,6 +1171,9 @@ mod tests {
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("f3")]);
         assert_eq!(def::WP, state.squares[util::map_sqr_notation_to_index("f4")]);
         assert_eq!(def::BP, state.squares[util::map_sqr_notation_to_index("e4")]);
+
+        assert_eq!(w_all, state.bitboard.w_all);
+        assert_eq!(b_all, state.bitboard.b_all);
     }
 
     #[test]

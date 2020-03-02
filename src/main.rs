@@ -85,7 +85,7 @@ fn main() {
                         if to == state.enp_square {
                             state.do_mov(from, to, def::MOV_ENP, 0);
                             continue
-                        } else if (from as isize - to as isize).abs() == 32 {
+                        } else if (from as isize - to as isize).abs() == 16 {
                             state.do_mov(from, to, def::MOV_CR_ENP, 0);
                             continue
                         }
@@ -93,6 +93,15 @@ fn main() {
 
                     state.do_mov(from, to, def::MOV_REG, 0);
                 }
+
+                println!("{}", state);
+                println!("ENP {}", state.enp_square);
+
+                println!("W:");
+                util::print_bitboard(state.bitboard.w_all);
+
+                println!("B:");
+                util::print_bitboard(state.bitboard.b_all);
             },
             UciProcessResult::StartSearchWithTime(time_millis) => {
                 let best_mov = search_engine.search(&mut state, time_millis, DEFAULT_MAX_DEPTH);

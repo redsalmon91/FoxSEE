@@ -8,403 +8,45 @@ use crate::{
     util,
 };
 
-static CAS_WK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000;
-static CAS_WQ_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110;
-static CAS_BK_MASK: u64 = 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-static CAS_BQ_MASK: u64 = 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-
-const N_MOVS: [isize; 8] = [14, 18, 31, 33, -14, -18, -31, -33];
-const K_MOVS: [isize; 8] = [1, 15, 16, 17, -1, -15, -16, -17];
-
-const VERTICAL_SLIDE_MOVS: [isize; 7] = [16, 32, 48, 64, 80, 96, 112];
-const HORIZONTAL_SLIDE_MOVS: [isize; 7] = [1, 2, 3, 4, 5, 6, 7];
-
-const DESC_DIAGNOL_SLIDE_MOVS: [isize; 7] = [15, 30, 45, 60, 75, 90, 105];
-const ASC_DIAGNOL_SLIDE_MOVS: [isize; 7] = [17, 34, 51, 68, 85, 102, 119];
-
-fn gen_n_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..8 {
-            let mov = N_MOVS[mov_index];
-            let to_index = from_index as isize + mov;
-            if to_index < 0 {
-                continue
-            }
-
-            let to_index = to_index as usize;
-
-            if def::is_index_valid(to_index) {
-                mov_list_on_index.push(to_index);
-            }
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_k_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..8 {
-            let mov = K_MOVS[mov_index];
-            let to_index = from_index as isize + mov;
-            if to_index < 0 {
-                continue
-            }
-
-            let to_index = to_index as usize;
-
-            if def::is_index_valid(to_index) {
-                mov_list_on_index.push(to_index);
-            }
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_up_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = VERTICAL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize + mov;
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_down_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = VERTICAL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize - mov;
-
-            if to_index < 0 {
-                break
-            }
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_right_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = HORIZONTAL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize + mov;
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_left_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = HORIZONTAL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize - mov;
-
-            if to_index < 0 {
-                break
-            }
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_up_left_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = DESC_DIAGNOL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize + mov;
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_down_right_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = DESC_DIAGNOL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize - mov;
-
-            if to_index < 0 {
-                break
-            }
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_up_right_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = ASC_DIAGNOL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize + mov;
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
-
-fn gen_down_left_slide_mov_table() -> Vec<Vec<usize>> {
-    let mut mov_table = vec![vec![]; def::BOARD_SIZE];
-
-    let mut from_index = 0;
-
-    while from_index < def::BOARD_SIZE {
-        if !def::is_index_valid(from_index) {
-            from_index += 8;
-        }
-
-        let mut mov_list_on_index = Vec::new();
-
-        for mov_index in 0..7 {
-            let mov = ASC_DIAGNOL_SLIDE_MOVS[mov_index];
-            let to_index = from_index as isize - mov;
-
-            if to_index < 0 {
-                break
-            }
-
-            let to_index = to_index as usize;
-
-            if !def::is_index_valid(to_index) {
-                break
-            }
-
-            mov_list_on_index.push(to_index);
-        }
-
-        mov_table[from_index] = mov_list_on_index;
-        from_index += 1;
-    }
-
-    mov_table
-}
+static CAS_WK_OCCUPY_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10010000;
+static CAS_WK_R_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000000;
+static CAS_WK_EMPTY_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000;
+
+static CAS_WQ_OCCUPY_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010001;
+static CAS_WQ_R_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001;
+static CAS_WQ_EMPTY_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110;
+
+static CAS_BK_OCCUPY_MASK: u64 = 0b10010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+static CAS_BK_R_MASK: u64 = 0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+static CAS_BK_EMPTY_MASK: u64 = 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
+static CAS_BQ_OCCUPY_MASK: u64 = 0b00010001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+static CAS_BQ_R_MASK: u64 = 0b00000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+static CAS_BQ_EMPTY_MASK: u64 = 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
+static ENP_SQRS_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_11111111_00000000_00000000;
 
 pub struct MoveTable {
-    k_mov_table: Vec<Vec<usize>>,
-    n_mov_table: Vec<Vec<usize>>,
-
-    up_mov_table: Vec<Vec<usize>>,
-    down_mov_table: Vec<Vec<usize>>,
-    left_mov_table: Vec<Vec<usize>>,
-    right_mov_table: Vec<Vec<usize>>,
-
-    up_left_mov_table: Vec<Vec<usize>>,
-    up_right_mov_table: Vec<Vec<usize>>,
-    down_right_mov_table: Vec<Vec<usize>>,
-    down_left_mov_table: Vec<Vec<usize>>,
 }
 
 impl MoveTable {
     pub fn new() -> Self {
         MoveTable {
-            k_mov_table: gen_k_mov_table(),
-            n_mov_table: gen_n_mov_table(),
-
-            up_mov_table: gen_up_slide_mov_table(),
-            down_mov_table: gen_down_slide_mov_table(),
-            left_mov_table: gen_left_slide_mov_table(),
-            right_mov_table: gen_right_slide_mov_table(),
-
-            up_left_mov_table: gen_up_left_slide_mov_table(),
-            up_right_mov_table: gen_up_right_slide_mov_table(),
-            down_right_mov_table: gen_down_right_slide_mov_table(),
-            down_left_mov_table: gen_down_left_slide_mov_table(),
         }
     }
 
     pub fn gen_castle_mov_list(&self, state: &State, cas_list: &mut [u32; def::MAX_CAS_COUNT]) {
         let cas_rights = state.cas_rights;
-        let squares = state.squares;
-        let all_mask = state.bitboard.w_all | state.bitboard.b_all;
+        let bitboard = state.bitboard;
+        let all_mask = bitboard.w_all | bitboard.b_all;
 
         let mut cas_count = 0;
 
         if state.player == def::PLAYER_W {
             if cas_rights & 0b1000 != 0 {
-                if squares[def::CAS_SQUARE_WK - 2] == def::WK
-                && squares[def::CAS_SQUARE_WK + 1] == def::WR
-                && all_mask & CAS_WK_MASK == 0
+                if bitboard.w_all & CAS_WK_OCCUPY_MASK == CAS_WK_OCCUPY_MASK
+                && bitboard.w_rook & CAS_WK_R_MASK == CAS_WK_R_MASK
+                && all_mask & CAS_WK_EMPTY_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK - 1, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WK - 2, def::PLAYER_W) {
@@ -414,9 +56,9 @@ impl MoveTable {
             }
 
             if cas_rights & 0b0100 != 0 {
-                if squares[def::CAS_SQUARE_WQ + 2] == def::WK
-                && squares[def::CAS_SQUARE_WQ - 2] == def::WR
-                && all_mask & CAS_WQ_MASK == 0
+                if bitboard.w_all & CAS_WQ_OCCUPY_MASK == CAS_WQ_OCCUPY_MASK
+                && bitboard.w_rook & CAS_WQ_R_MASK == CAS_WQ_R_MASK
+                && all_mask & CAS_WQ_EMPTY_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 1, def::PLAYER_W)
                 && !self.is_under_attack(state, def::CAS_SQUARE_WQ + 2, def::PLAYER_W) {
@@ -425,9 +67,9 @@ impl MoveTable {
             }
         } else {
             if cas_rights & 0b0010 != 0 {
-                if squares[def::CAS_SQUARE_BK - 2] == def::BK
-                && squares[def::CAS_SQUARE_BK + 1] == def::BR
-                && all_mask & CAS_BK_MASK == 0
+                if bitboard.b_all & CAS_BK_OCCUPY_MASK == CAS_BK_OCCUPY_MASK
+                && bitboard.b_rook & CAS_BK_R_MASK == CAS_BK_R_MASK
+                && all_mask & CAS_BK_EMPTY_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK - 1, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BK - 2, def::PLAYER_B) {
@@ -437,9 +79,9 @@ impl MoveTable {
             }
 
             if cas_rights & 0b0001 != 0 {
-                if squares[def::CAS_SQUARE_BQ + 2] == def::BK
-                && squares[def::CAS_SQUARE_BQ - 2] == def::BR
-                && all_mask & CAS_BQ_MASK == 0
+                if bitboard.b_all & CAS_BQ_OCCUPY_MASK == CAS_BQ_OCCUPY_MASK
+                && bitboard.b_rook & CAS_BQ_R_MASK == CAS_BQ_R_MASK
+                && all_mask & CAS_BQ_EMPTY_MASK == 0
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 1, def::PLAYER_B)
                 && !self.is_under_attack(state, def::CAS_SQUARE_BQ + 2, def::PLAYER_B) {
@@ -450,8 +92,12 @@ impl MoveTable {
     }
 
     pub fn gen_reg_mov_list(&self, state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT], mov_list: &mut [u32; def::MAX_MOV_COUNT]) {
-        let squares = state.squares;
         let player = state.player;
+        let bitboard = state.bitboard;
+        let bitmask = state.bitmask;
+
+        let occupy_mask = bitboard.w_all | bitboard.b_all;
+        let empty_mask = !occupy_mask;
 
         let mut cap_count = 0;
         let mut mov_count = 0;
@@ -466,26 +112,27 @@ impl MoveTable {
             cap_count += 1;
         };
 
-        let mut from_index = 0;
+        let moving_side_mask = if player == def::PLAYER_W {
+            bitboard.w_all
+        } else {
+            bitboard.b_all
+        };
 
-        while from_index < def::BOARD_SIZE {
-            if !def::is_index_valid(from_index) {
-                from_index += 8;
-            }
+        let start_index = moving_side_mask.trailing_zeros() as usize;
+        let end_index = def::BOARD_SIZE - moving_side_mask.leading_zeros() as usize;
 
-            let moving_piece = squares[from_index];
+        for from_index in start_index..end_index {
+            let moving_piece = state.squares[from_index];
 
             if !def::on_same_side(player, moving_piece) {
-                from_index += 1;
                 continue
             }
 
             if def::is_p(moving_piece) {
                 if player == def::PLAYER_W {
-                    let to_index = from_index + 16;
-
-                    if def::is_index_valid(to_index) && squares[to_index] == 0 {
-                        if to_index > 111 {
+                    if bitmask.wp_mov_masks[from_index] & empty_mask != 0 {
+                        let to_index = from_index + 8;
+                        if to_index > 55 {
                             add_mov(from_index, to_index, def::MOV_PROMO, def::WQ);
                             add_mov(from_index, to_index, def::MOV_PROMO, def::WR);
                             add_mov(from_index, to_index, def::MOV_PROMO, def::WB);
@@ -493,815 +140,640 @@ impl MoveTable {
                         } else {
                             add_mov(from_index, to_index, def::MOV_REG, 0);
 
-                            if from_index < 24 {
-                                let to_index = from_index + 32;
-                                if def::is_index_valid(to_index) && squares[to_index] == 0 {
-                                    add_mov(from_index, to_index, def::MOV_CR_ENP, 0);
+                            if bitmask.wp_init_mov_masks[from_index] & empty_mask != 0 {
+                                add_mov(from_index, to_index + 8, def::MOV_CR_ENP, 0);
+                            }
+                        }
+                    }
+
+                    let enp_square_index = state.enp_square;
+                    let mut attack_mask = bitmask.wp_attack_masks[from_index] & (bitboard.b_all | bitmask.index_masks[enp_square_index]);
+
+                    let mut attack_index = 0;
+                    while attack_mask != 0 {
+                        if attack_mask & 1u64 != 0 {
+                            if attack_index > 55 {
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WQ);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WR);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WB);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WN);
+                            } else {
+                                if attack_index == enp_square_index {
+                                    add_cap(from_index, attack_index, def::MOV_ENP, 0);
+                                } else {
+                                    add_cap(from_index, attack_index, def::MOV_REG, 0);
                                 }
                             }
                         }
-                    }
 
-                    let take_index = from_index + 15;
-                    if def::is_index_valid(take_index) {
-                        let take = squares[take_index];
-                        if take != 0 && !def::on_same_side(player, take) {
-                            if take_index > 111 {
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WQ);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WR);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WB);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WN);
-                            } else {
-                                add_cap(from_index, take_index, def::MOV_REG, 0);
-                            }
-                        }
-
-                        if take_index == state.enp_square {
-                            add_cap(from_index, take_index, def::MOV_ENP, 0);
-                        }
-                    }
-
-                    let take_index = from_index + 17;
-                    if def::is_index_valid(take_index) {
-                        let take = squares[take_index];
-                        if take != 0 && !def::on_same_side(player, take) {
-                            if take_index > 111 {
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WQ);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WR);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WB);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WN);
-                            } else {
-                                add_cap(from_index, take_index, def::MOV_REG, 0);
-                            }
-                        }
-                        if take_index == state.enp_square {
-                            add_cap(from_index, take_index, def::MOV_ENP, 0);
-                        }
+                        attack_mask >>= 1;
+                        attack_index += 1;
                     }
                 } else {
-                    let to_index = from_index as isize - 16;
-                    if to_index >= 0 {
-                        let to_index = to_index as usize;
+                    if bitmask.bp_mov_masks[from_index] & empty_mask != 0 {
+                        let to_index = from_index - 8;
+                        if to_index < 8 {
+                            add_mov(from_index, to_index, def::MOV_PROMO, def::BQ);
+                            add_mov(from_index, to_index, def::MOV_PROMO, def::BR);
+                            add_mov(from_index, to_index, def::MOV_PROMO, def::BB);
+                            add_mov(from_index, to_index, def::MOV_PROMO, def::BN);
+                        } else {
+                            add_mov(from_index, to_index, def::MOV_REG, 0);
 
-                        if def::is_index_valid(to_index) && squares[to_index] == 0 {
-                            if to_index < 8 {
-                                add_mov(from_index, to_index, def::MOV_PROMO, def::BQ);
-                                add_mov(from_index, to_index, def::MOV_PROMO, def::BR);
-                                add_mov(from_index, to_index, def::MOV_PROMO, def::BB);
-                                add_mov(from_index, to_index, def::MOV_PROMO, def::BN);
+                            if bitmask.bp_init_mov_masks[from_index] & empty_mask != 0 {
+                                add_mov(from_index, to_index - 8, def::MOV_CR_ENP, 0);
+                            }
+                        }
+                    }
+
+                    let enp_square_index = state.enp_square;
+                    let mut attack_mask = bitmask.bp_attack_masks[from_index] & (bitboard.w_all | (bitmask.index_masks[enp_square_index] & ENP_SQRS_MASK));
+
+                    let mut attack_index = 0;
+                    while attack_mask != 0 {
+                        if attack_mask & 1u64 != 0 {
+                            if attack_index < 8 {
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BQ);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BR);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BB);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BN);
                             } else {
-                                add_mov(from_index, to_index, def::MOV_REG, 0);
-
-                                if from_index > 95 {
-                                    let to_index = from_index - 32;
-                                    if def::is_index_valid(to_index) && squares[to_index] == 0 {
-                                        add_mov(from_index, to_index, def::MOV_CR_ENP, 0);
-                                    }
+                                if attack_index == enp_square_index {
+                                    add_cap(from_index, attack_index, def::MOV_ENP, 0);
+                                } else {
+                                    add_cap(from_index, attack_index, def::MOV_REG, 0);
                                 }
                             }
                         }
 
-                        if from_index >= 15 {
-                            let take_index = from_index - 15;
-                            if def::is_index_valid(take_index) {
-                                let take = squares[take_index];
-                                if take != 0 && !def::on_same_side(player, take) {
-                                    if take_index < 8 {
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
-                                    } else {
-                                        add_cap(from_index, take_index, def::MOV_REG, 0);
-                                    }
-                                }
-
-                                if take_index == state.enp_square && take_index != 0 {
-                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
-                                }
-                            }
-                        }
-
-                        if from_index >= 17 {
-                            let take_index = from_index - 17;
-                            if def::is_index_valid(take_index) {
-                                let take = squares[take_index];
-                                if take != 0 && !def::on_same_side(player, take) {
-                                    if take_index < 8 {
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
-                                    } else {
-                                        add_cap(from_index, take_index, def::MOV_REG, 0);
-                                    }
-                                }
-
-                                if take_index == state.enp_square && take_index != 0 {
-                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
-                                }
-                            }
-                        }
+                        attack_mask >>= 1;
+                        attack_index += 1;
                     }
                 }
             } else if def::is_n(moving_piece) {
-                let mov_index_list = &self.n_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+                    (bitboard.b_all, bitboard.w_all)
+                } else {
+                    (bitboard.w_all, bitboard.b_all)
+                };
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                    } else if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                let reach_mask = bitmask.n_attack_masks[from_index] & !self_mask;
+                let mut attack_mask = reach_mask & opponent_mask;
+                let mut mov_mask = reach_mask ^ attack_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
+
+                    attack_mask >>= 1;
+                    attack_index += 1;
+                }
+
+                let mut mov_index = 0;
+                while mov_mask != 0 {
+                    if mov_mask & 1u64 != 0 {
+                        add_mov(from_index, mov_index, def::MOV_REG, 0);
+                    }
+
+                    mov_mask >>= 1;
+                    mov_index += 1;
                 }
             } else if def::is_b(moving_piece) {
-                let mov_index_list = &self.up_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+                    (bitboard.b_all, bitboard.w_all)
+                } else {
+                    (bitboard.w_all, bitboard.b_all)
+                };
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
+                let mut reach_mask = 0;
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
+                reach_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.up_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_right_attack_mask = bitmask.up_right_attack_masks[from_index];
+                reach_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_left_attack_mask = bitmask.down_left_attack_masks[from_index];
+                reach_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let down_right_attack_mask = bitmask.down_right_attack_masks[from_index];
+                reach_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                }
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
+                reach_mask &= !self_mask;
+
+                let mut attack_mask = reach_mask & opponent_mask;
+                let mut mov_mask = reach_mask ^ attack_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    attack_mask >>= 1;
+                    attack_index += 1;
+                }
+
+                let mut mov_index = 0;
+                while mov_mask != 0 {
+                    if mov_mask & 1u64 != 0 {
+                        add_mov(from_index, mov_index, def::MOV_REG, 0);
                     }
 
-                    break
+                    mov_mask >>= 1;
+                    mov_index += 1;
                 }
             } else if def::is_r(moving_piece) {
-                let mov_index_list = &self.up_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+                    (bitboard.b_all, bitboard.w_all)
+                } else {
+                    (bitboard.w_all, bitboard.b_all)
+                };
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
+                let mut reach_mask = 0;
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_attack_mask = bitmask.up_attack_masks[from_index];
+                reach_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let right_attack_mask = bitmask.right_attack_masks[from_index];
+                reach_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_attack_mask = bitmask.down_attack_masks[from_index];
+                reach_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let left_attack_mask = bitmask.left_attack_masks[from_index];
+                reach_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
+                reach_mask &= !self_mask;
+
+                let mut attack_mask = reach_mask & opponent_mask;
+                let mut mov_mask = reach_mask ^ attack_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    attack_mask >>= 1;
+                    attack_index += 1;
+                }
+
+                let mut mov_index = 0;
+                while mov_mask != 0 {
+                    if mov_mask & 1u64 != 0 {
+                        add_mov(from_index, mov_index, def::MOV_REG, 0);
                     }
 
-                    break
+                    mov_mask >>= 1;
+                    mov_index += 1;
                 }
             } else if def::is_q(moving_piece) {
-                let mov_index_list = &self.up_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+                    (bitboard.b_all, bitboard.w_all)
+                } else {
+                    (bitboard.w_all, bitboard.b_all)
+                };
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
+                let mut reach_mask = 0;
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
+                reach_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.up_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_right_attack_mask = bitmask.up_right_attack_masks[from_index];
+                reach_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_left_attack_mask = bitmask.down_left_attack_masks[from_index];
+                reach_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_right_attack_mask = bitmask.down_right_attack_masks[from_index];
+                reach_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.up_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_attack_mask = bitmask.up_attack_masks[from_index];
+                reach_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let right_attack_mask = bitmask.right_attack_masks[from_index];
+                reach_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_attack_mask = bitmask.down_attack_masks[from_index];
+                reach_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let left_attack_mask = bitmask.left_attack_masks[from_index];
+                reach_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                        continue
+                reach_mask &= !self_mask;
+
+                let mut attack_mask = reach_mask & opponent_mask;
+                let mut mov_mask = reach_mask ^ attack_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                    attack_mask >>= 1;
+                    attack_index += 1;
+                }
+
+                let mut mov_index = 0;
+                while mov_mask != 0 {
+                    if mov_mask & 1u64 != 0 {
+                        add_mov(from_index, mov_index, def::MOV_REG, 0);
                     }
 
-                    break
+                    mov_mask >>= 1;
+                    mov_index += 1;
                 }
             } else if def::is_k(moving_piece) {
-                let mov_index_list = &self.k_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+                    (bitboard.b_all, bitboard.w_all)
+                } else {
+                    (bitboard.w_all, bitboard.b_all)
+                };
 
-                    if taken_piece == 0 {
-                        add_mov(from_index, to_index, def::MOV_REG, 0);
-                    } else if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
+                let reach_mask = bitmask.k_attack_masks[from_index] & !self_mask;
+                let mut attack_mask = reach_mask & opponent_mask;
+                let mut mov_mask = reach_mask ^ attack_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
+
+                    attack_mask >>= 1;
+                    attack_index += 1;
+                }
+
+                let mut mov_index = 0;
+                while mov_mask != 0 {
+                    if mov_mask & 1u64 != 0 {
+                        add_mov(from_index, mov_index, def::MOV_REG, 0);
+                    }
+
+                    mov_mask >>= 1;
+                    mov_index += 1;
                 }
             }
-
-            from_index += 1;
         }
     }
 
     pub fn gen_capture_list(&self, state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT]) {
-        let squares = state.squares;
         let player = state.player;
+        let bitboard = state.bitboard;
+        let bitmask = state.bitmask;
 
-        let mut mov_count = 0;
+        let occupy_mask = bitboard.w_all | bitboard.b_all;
+
+        let mut cap_count = 0;
 
         let mut add_cap = |from: usize, to: usize, tp: u8, promo: u8| {
-            cap_list[mov_count] = util::encode_u32_mov(from, to, tp, promo);
-            mov_count += 1;
+            cap_list[cap_count] = util::encode_u32_mov(from, to, tp, promo);
+            cap_count += 1;
         };
 
-        let mut from_index = 0;
+        let moving_side_mask = if player == def::PLAYER_W {
+            bitboard.w_all
+        } else {
+            bitboard.b_all
+        };
 
-        while from_index < def::BOARD_SIZE {
-            if !def::is_index_valid(from_index) {
-                from_index += 8;
-            }
+        let start_index = moving_side_mask.trailing_zeros() as usize;
+        let end_index = def::BOARD_SIZE - moving_side_mask.leading_zeros() as usize;
 
-            let moving_piece = squares[from_index];
+        for from_index in start_index..end_index {
+            let moving_piece = state.squares[from_index];
 
-            if moving_piece == 0 || !def::on_same_side(player, moving_piece) {
-                from_index += 1;
+            if !def::on_same_side(player, moving_piece) {
                 continue
             }
 
             if def::is_p(moving_piece) {
                 if player == def::PLAYER_W {
-                    let take_index = from_index + 15;
-                    if def::is_index_valid(take_index) {
-                        let take = squares[take_index];
-                        if take != 0 && !def::on_same_side(player, take) {
-                            if take_index > 111 {
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WQ);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WR);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WB);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WN);
+                    let enp_square_index = state.enp_square;
+                    let mut attack_mask = bitmask.wp_attack_masks[from_index] & (bitboard.b_all | bitmask.index_masks[enp_square_index]);
+
+                    let mut attack_index = 0;
+                    while attack_mask != 0 {
+                        if attack_mask & 1u64 != 0 {
+                            if attack_index > 55 {
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WQ);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WR);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WB);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::WN);
                             } else {
-                                add_cap(from_index, take_index, def::MOV_REG, 0);
+                                if attack_index == enp_square_index {
+                                    add_cap(from_index, attack_index, def::MOV_ENP, 0);
+                                } else {
+                                    add_cap(from_index, attack_index, def::MOV_REG, 0);
+                                }
                             }
                         }
 
-                        if take_index == state.enp_square {
-                            add_cap(from_index, take_index, def::MOV_ENP, 0);
-                        }
-                    }
-
-                    let take_index = from_index + 17;
-                    if def::is_index_valid(take_index) {
-                        let take = squares[take_index];
-                        if take != 0 && !def::on_same_side(player, take) {
-                            if take_index > 111 {
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WQ);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WR);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WB);
-                                add_cap(from_index, take_index, def::MOV_PROMO, def::WN);
-                            } else {
-                                add_cap(from_index, take_index, def::MOV_REG, 0);
-                            }
-                        }
-                        if take_index == state.enp_square {
-                            add_cap(from_index, take_index, def::MOV_ENP, 0);
-                        }
+                        attack_mask >>= 1;
+                        attack_index += 1;
                     }
                 } else {
-                    let to_index = from_index as isize - 16;
-                    if to_index >= 0 {
-                        if from_index >= 15 {
-                            let take_index = from_index - 15;
-                            if def::is_index_valid(take_index) {
-                                let take = squares[take_index];
-                                if take != 0 && !def::on_same_side(player, take) {
-                                    if take_index < 8 {
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
-                                    } else {
-                                        add_cap(from_index, take_index, def::MOV_REG, 0);
-                                    }
-                                }
+                    let enp_square_index = state.enp_square;
+                    let mut attack_mask = bitmask.bp_attack_masks[from_index] & (bitboard.w_all | (bitmask.index_masks[enp_square_index] & ENP_SQRS_MASK));
 
-                                if take_index == state.enp_square && take_index != 0 {
-                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
+                    let mut attack_index = 0;
+                    while attack_mask != 0 {
+                        if attack_mask & 1u64 != 0 {
+                            if attack_index < 8 {
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BQ);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BR);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BB);
+                                add_cap(from_index, attack_index, def::MOV_PROMO, def::BN);
+                            } else {
+                                if attack_index == enp_square_index {
+                                    add_cap(from_index, attack_index, def::MOV_ENP, 0);
+                                } else {
+                                    add_cap(from_index, attack_index, def::MOV_REG, 0);
                                 }
                             }
                         }
 
-                        if from_index >= 17 {
-                            let take_index = from_index - 17;
-                            if def::is_index_valid(take_index) {
-                                let take = squares[take_index];
-                                if take != 0 && !def::on_same_side(player, take) {
-                                    if take_index < 8 {
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BQ);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BR);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BB);
-                                        add_cap(from_index, take_index, def::MOV_PROMO, def::BN);
-                                    } else {
-                                        add_cap(from_index, take_index, def::MOV_REG, 0);
-                                    }
-                                }
-
-                                if take_index == state.enp_square && take_index != 0 {
-                                    add_cap(from_index, take_index, def::MOV_ENP, 0);
-                                }
-                            }
-                        }
+                        attack_mask >>= 1;
+                        attack_index += 1;
                     }
                 }
             } else if def::is_n(moving_piece) {
-                let mov_index_list = &self.n_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let opponent_mask = if player == def::PLAYER_W {
+                    bitboard.b_all
+                } else {
+                    bitboard.w_all
+                };
 
-                    if taken_piece == 0 {
-                        continue
+                let mut attack_mask = bitmask.n_attack_masks[from_index] & opponent_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
+                    attack_mask >>= 1;
+                    attack_index += 1;
                 }
             } else if def::is_b(moving_piece) {
-                let mov_index_list = &self.up_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let opponent_mask = if player == def::PLAYER_W {
+                    bitboard.b_all
+                } else {
+                    bitboard.w_all
+                };
 
-                    if taken_piece == 0 {
-                        continue
-                    }
+                let mut reach_mask = 0;
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
+                reach_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.up_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_right_attack_mask = bitmask.up_right_attack_masks[from_index];
+                reach_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_left_attack_mask = bitmask.down_left_attack_masks[from_index];
+                reach_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let down_right_attack_mask = bitmask.down_right_attack_masks[from_index];
+                reach_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                }
 
-                    if taken_piece == 0 {
-                        continue
+                let mut attack_mask = reach_mask & opponent_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                    attack_mask >>= 1;
+                    attack_index += 1;
                 }
             } else if def::is_r(moving_piece) {
-                let mov_index_list = &self.up_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let opponent_mask = if player == def::PLAYER_W {
+                    bitboard.b_all
+                } else {
+                    bitboard.w_all
+                };
 
-                    if taken_piece == 0 {
-                        continue
-                    }
+                let mut reach_mask = 0;
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_attack_mask = bitmask.up_attack_masks[from_index];
+                reach_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let right_attack_mask = bitmask.right_attack_masks[from_index];
+                reach_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_attack_mask = bitmask.down_attack_masks[from_index];
+                reach_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let left_attack_mask = bitmask.left_attack_masks[from_index];
+                reach_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
 
-                    if taken_piece == 0 {
-                        continue
+                let mut attack_mask = reach_mask & opponent_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                    attack_mask >>= 1;
+                    attack_index += 1;
                 }
             } else if def::is_q(moving_piece) {
-                let mov_index_list = &self.up_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let opponent_mask = if player == def::PLAYER_W {
+                    bitboard.b_all
+                } else {
+                    bitboard.w_all
+                };
 
-                    if taken_piece == 0 {
-                        continue
-                    }
+                let mut reach_mask = 0;
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
+                reach_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.up_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_right_attack_mask = bitmask.up_right_attack_masks[from_index];
+                reach_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_left_attack_mask = bitmask.down_left_attack_masks[from_index];
+                reach_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_right_attack_mask = bitmask.down_right_attack_masks[from_index];
+                reach_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.up_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let up_attack_mask = bitmask.up_attack_masks[from_index];
+                reach_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.right_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let right_attack_mask = bitmask.right_attack_masks[from_index];
+                reach_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
                 }
 
-                let mov_index_list = &self.down_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
-
-                    if taken_piece == 0 {
-                        continue
-                    }
-
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                let down_attack_mask = bitmask.down_attack_masks[from_index];
+                reach_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let mov_index_list = &self.left_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let left_attack_mask = bitmask.left_attack_masks[from_index];
+                reach_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    reach_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
 
-                    if taken_piece == 0 {
-                        continue
+                let mut attack_mask = reach_mask & opponent_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
-
-                    break
+                    attack_mask >>= 1;
+                    attack_index += 1;
                 }
             } else if def::is_k(moving_piece) {
-                let mov_index_list = &self.k_mov_table[from_index];
-                for to_index in mov_index_list {
-                    let to_index = *to_index;
-                    let taken_piece = squares[to_index];
+                let opponent_mask = if player == def::PLAYER_W {
+                    bitboard.b_all
+                } else {
+                    bitboard.w_all
+                };
 
-                    if taken_piece == 0 {
-                        continue
+                let mut attack_mask = bitmask.k_attack_masks[from_index] & opponent_mask;
+
+                let mut attack_index = 0;
+                while attack_mask != 0 {
+                    if attack_mask & 1u64 != 0 {
+                        add_cap(from_index, attack_index, def::MOV_REG, 0);
                     }
 
-                    if !def::on_same_side(player, taken_piece) {
-                        add_cap(from_index, to_index, def::MOV_REG, 0);
-                    }
+                    attack_mask >>= 1;
+                    attack_index += 1;
                 }
             }
-
-            from_index += 1;
         }
     }
 
@@ -1316,7 +788,6 @@ impl MoveTable {
     }
 
     pub fn is_under_attack(&self, state: &State, index: usize, player: u8) -> bool {
-        let squares = state.squares;
         let bitboard = state.bitboard;
         let bitmask = state.bitmask;
 
@@ -1326,18 +797,27 @@ impl MoveTable {
             bitboard.w_knight
         };
 
-        if opponent_n_mask != 0 && opponent_n_mask & bitmask.n_attack_masks[index] != 0 {
-            let mov_index_list = &self.n_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
-
-                if taken_piece != 0 {
-                    if !def::on_same_side(player, taken_piece) && def::is_n(taken_piece) {
-                        return true
-                    }
-                }
-            }
+        if opponent_n_mask & bitmask.n_attack_masks[index] != 0 {
+            return true
         }
+
+        let opponent_k_mask = if player == def::PLAYER_W {
+            bitmask.index_masks[state.bk_index]
+        } else {
+            bitmask.index_masks[state.wk_index]
+        };
+
+        if opponent_k_mask & bitmask.k_attack_masks[index] != 0 {
+            return true
+        }
+
+        if player == def::PLAYER_W && bitboard.b_pawn & bitmask.wp_attack_masks[index] != 0 {
+            return true
+        } else if player == def::PLAYER_B && bitboard.w_pawn & bitmask.bp_attack_masks[index] != 0 {
+            return true
+        }
+
+        let blocker_mask = bitboard.w_all | bitboard.b_all;
 
         let opponent_rq_mask = if player == def::PLAYER_W {
             bitboard.b_rook | bitboard.b_queen
@@ -1345,80 +825,36 @@ impl MoveTable {
             bitboard.w_rook | bitboard.w_queen
         };
 
-        if opponent_rq_mask != 0 && opponent_rq_mask & bitmask.r_attack_masks[index] != 0 {
-            if opponent_rq_mask & bitmask.up_attack_masks[index] != 0 {
-                let mov_index_list = &self.up_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+        if opponent_rq_mask != 0 {
+            let up_attack_mask = bitmask.up_attack_masks[index];
+            if up_attack_mask & opponent_rq_mask != 0 {
+                let lowest_blocker_index = get_lowest_index(up_attack_mask & blocker_mask);
+                if (up_attack_mask ^ bitmask.up_attack_masks[lowest_blocker_index]) & opponent_rq_mask != 0 {
+                    return true
                 }
             }
 
-            if opponent_rq_mask & bitmask.down_attack_masks[index] != 0 {
-                let mov_index_list = &self.down_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+            let right_attack_mask = bitmask.right_attack_masks[index];
+            if right_attack_mask & opponent_rq_mask != 0 {
+                let lowest_blocker_index = get_lowest_index(right_attack_mask & blocker_mask);
+                if (right_attack_mask ^ bitmask.right_attack_masks[lowest_blocker_index]) & opponent_rq_mask != 0 {
+                    return true
                 }
             }
 
-            if opponent_rq_mask & bitmask.left_attack_masks[index] != 0 {
-                let mov_index_list = &self.left_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+            let down_attack_mask = bitmask.down_attack_masks[index];
+            if down_attack_mask & opponent_rq_mask != 0 {
+                let highest_blocker_index = get_highest_index(down_attack_mask & blocker_mask);
+                if (down_attack_mask ^ bitmask.down_attack_masks[highest_blocker_index]) & opponent_rq_mask != 0 {
+                    return true
                 }
             }
 
-            if opponent_rq_mask & bitmask.right_attack_masks[index] != 0 {
-                let mov_index_list = &self.right_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_r(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+            let left_attack_mask = bitmask.left_attack_masks[index];
+            if left_attack_mask & opponent_rq_mask != 0 {
+                let highest_blocker_index = get_highest_index(left_attack_mask & blocker_mask);
+                if (left_attack_mask ^ bitmask.left_attack_masks[highest_blocker_index]) & opponent_rq_mask != 0 {
+                    return true
                 }
             }
         }
@@ -1429,138 +865,36 @@ impl MoveTable {
             bitboard.w_bishop | bitboard.w_queen
         };
 
-        if opponent_bq_mask != 0 && opponent_bq_mask & bitmask.b_attack_masks[index] != 0 {
-            if opponent_bq_mask & bitmask.up_left_attack_masks[index] != 0 {
-                let mov_index_list = &self.up_left_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+        if opponent_bq_mask != 0 {
+            let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+            if up_left_attack_mask & opponent_bq_mask != 0 {
+                let lowest_blocker_index = get_lowest_index(up_left_attack_mask & blocker_mask);
+                if (up_left_attack_mask ^ bitmask.up_left_attack_masks[lowest_blocker_index]) & opponent_bq_mask != 0 {
+                    return true
                 }
             }
 
-            if opponent_bq_mask & bitmask.up_right_attack_masks[index] != 0 {
-                let mov_index_list = &self.up_right_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+            let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+            if up_right_attack_mask & opponent_bq_mask != 0 {
+                let lowest_blocker_index = get_lowest_index(up_right_attack_mask & blocker_mask);
+                if (up_right_attack_mask ^ bitmask.up_right_attack_masks[lowest_blocker_index]) & opponent_bq_mask != 0 {
+                    return true
                 }
             }
 
-            if opponent_bq_mask & bitmask.down_right_attack_masks[index] != 0 {
-                let mov_index_list = &self.down_right_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
+            let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+            if down_left_attack_mask & opponent_bq_mask != 0 {
+                let highest_blocker_index = get_highest_index(down_left_attack_mask & blocker_mask);
+                if (down_left_attack_mask ^ bitmask.down_left_attack_masks[highest_blocker_index]) & opponent_bq_mask != 0 {
+                    return true
                 }
             }
 
-            if opponent_bq_mask & bitmask.down_left_attack_masks[index] != 0 {
-                let mov_index_list = &self.down_left_mov_table[index];
-                for to_index in mov_index_list {
-                    let taken_piece = squares[*to_index];
-
-                    if taken_piece != 0 {
-                        if def::on_same_side(player, taken_piece) {
-                            break
-                        }
-
-                        if def::is_b(taken_piece) || def::is_q(taken_piece) {
-                            return true
-                        }
-
-                        break
-                    }
-                }
-            }
-        }
-
-        if player == def::PLAYER_W {
-            if bitboard.b_pawn & bitmask.wp_attack_masks[index] != 0 {
-                if index < 105 {
-                    let potential_pawn_attacker = squares[index + 15];
-
-                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                        return true
-                    }
-                }
-
-                if index < 103 {
-                    let potential_pawn_attacker = squares[index + 17];
-
-                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                        return true
-                    }
-                }
-            }
-        } else {
-            if bitboard.w_pawn & bitmask.bp_attack_masks[index] != 0 {
-                if index as isize >= 15 {
-                    let potential_pawn_attacker = squares[index - 15];
-
-                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                        return true
-                    }
-                }
-
-
-                if index as isize >= 17 {
-                    let potential_pawn_attacker = squares[index - 17];
-
-                    if !def::on_same_side(player, potential_pawn_attacker) && def::is_p(potential_pawn_attacker) {
-                        return true
-                    }
-                }
-            }
-        }
-
-        let opponent_k_mask = if player == def::PLAYER_W {
-            bitmask.index_masks[state.bk_index]
-        } else {
-            bitmask.index_masks[state.wk_index]
-        };
-
-        if opponent_k_mask & bitmask.k_attack_masks[index] != 0 {
-            let mov_index_list = &self.k_mov_table[index];
-            for to_index in mov_index_list {
-                let taken_piece = squares[*to_index];
-
-                if taken_piece != 0 {
-                    if !def::on_same_side(player, taken_piece) && def::is_k(taken_piece) {
-                        return true
-                    }
+            let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+            if down_right_attack_mask & opponent_bq_mask != 0 {
+                let highest_blocker_index = get_highest_index(down_right_attack_mask & blocker_mask);
+                if (down_right_attack_mask ^ bitmask.down_right_attack_masks[highest_blocker_index]) & opponent_bq_mask != 0 {
+                    return true
                 }
             }
         }
@@ -1580,6 +914,7 @@ impl MoveTable {
         }
 
         let moving_piece = squares[from];
+        let bitboard = state.bitboard;
         let bitmask = state.bitmask;
         let to_index_mask = bitmask.index_masks[to];
 
@@ -1605,25 +940,29 @@ impl MoveTable {
             }
         } else if def::is_p(moving_piece) {
             if moving_piece == def::WP {
-                if from + 16 == to && squares[to] == 0 {
-                    return true
-                } else if from + 32 == to && squares[to] == 0 && squares[from + 16] == 0 {
-                    return true
-                } else if bitmask.wp_attack_masks[from] & to_index_mask != 0 && (squares[to] != 0 || to == state.enp_square) {
+                if bitmask.wp_attack_masks[from] & to_index_mask & (bitboard.b_all | bitmask.index_masks[state.enp_square]) != 0 {
                     return true
                 }
 
-                return false
-            } else if moving_piece == def::BP {
-                if to + 16 == from && squares[to] == 0 {
-                    return true
-                } else if to + 32 == from && squares[to] == 0 && squares[to + 16] == 0 {
-                    return true
-                } else if bitmask.bp_attack_masks[from] & to_index_mask != 0 && (squares[to] != 0 || to == state.enp_square) {
+                if bitmask.wp_mov_masks[from] & to_index_mask & !(bitboard.w_all | bitboard.b_all) != 0 {
                     return true
                 }
 
-                return false
+                if bitmask.wp_init_mov_masks[from] == to_index_mask && (bitmask.wp_mov_masks[from] | bitmask.wp_init_mov_masks[from]) & (bitboard.w_all | bitboard.b_all) == 0 {
+                    return true
+                }
+            } else {
+                if bitmask.bp_attack_masks[from] & to_index_mask & (bitboard.w_all | (bitmask.index_masks[state.enp_square] & ENP_SQRS_MASK)) != 0 {
+                    return true
+                }
+
+                if bitmask.bp_mov_masks[from] & to_index_mask & !(bitboard.w_all | bitboard.b_all) != 0 {
+                    return true
+                }
+
+                if bitmask.bp_init_mov_masks[from] == to_index_mask && (bitmask.bp_mov_masks[from] | bitmask.bp_init_mov_masks[from]) & (bitboard.w_all | bitboard.b_all) == 0 {
+                    return true
+                }
             }
         }
 
@@ -1631,171 +970,117 @@ impl MoveTable {
     }
 
     pub fn count_rook_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
-        let squares = state.squares;
-        let mut mob_score = 0;
+        let bitboard = state.bitboard;
+        let bitmask = state.bitmask;
 
-        let mov_index_list = &self.up_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
+        let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+            (bitboard.b_all, bitboard.w_all)
+        } else {
+            (bitboard.w_all, bitboard.b_all)
+        };
 
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
+        let occupy_mask = opponent_mask | self_mask;
 
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
+        let mut reach_mask = 0;
 
-            break
+        let up_attack_mask = bitmask.up_attack_masks[index];
+        reach_mask ^= up_attack_mask;
+        if up_attack_mask & occupy_mask != 0 {
+            let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
         }
 
-        let mov_index_list = &self.right_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
-
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-
-            break
+        let right_attack_mask = bitmask.right_attack_masks[index];
+        reach_mask ^= right_attack_mask;
+        if right_attack_mask & occupy_mask != 0 {
+            let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
         }
 
-        let mov_index_list = &self.down_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
-
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-
-            break
+        let down_attack_mask = bitmask.down_attack_masks[index];
+        reach_mask ^= down_attack_mask;
+        if down_attack_mask & occupy_mask != 0 {
+            let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.down_attack_masks[highest_blocker_index];
         }
 
-        let mov_index_list = &self.left_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
-
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-
-            break
+        let left_attack_mask = bitmask.left_attack_masks[index];
+        reach_mask ^= left_attack_mask;
+        if left_attack_mask & occupy_mask != 0 {
+            let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.left_attack_masks[highest_blocker_index];
         }
 
-        mob_score
+        (reach_mask & !self_mask).count_ones() as i32
     }
 
     pub fn count_bishop_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
-        let squares = state.squares;
-        let mut mob_score = 0;
+        let bitboard = state.bitboard;
+        let bitmask = state.bitmask;
 
-        let mov_index_list = &self.up_left_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
+        let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+            (bitboard.b_all, bitboard.w_all)
+        } else {
+            (bitboard.w_all, bitboard.b_all)
+        };
 
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
+        let occupy_mask = opponent_mask | self_mask;
 
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
+        let mut reach_mask = 0;
 
-            break
+        let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+        reach_mask ^= up_left_attack_mask;
+        if up_left_attack_mask & occupy_mask != 0 {
+            let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
         }
 
-        let mov_index_list = &self.up_right_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
-
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-
-            break
+        let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+        reach_mask ^= up_right_attack_mask;
+        if up_right_attack_mask & occupy_mask != 0 {
+            let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
         }
 
-        let mov_index_list = &self.down_right_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
-
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-
-            break
+        let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+        reach_mask ^= down_left_attack_mask;
+        if down_left_attack_mask & occupy_mask != 0 {
+            let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
         }
 
-        let mov_index_list = &self.down_left_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
-
-            if taken_piece == 0 {
-                mob_score += 1;
-                continue
-            }
-
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-
-            break
+        let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+        reach_mask ^= down_right_attack_mask;
+        if down_right_attack_mask & occupy_mask != 0 {
+            let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+            reach_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
         }
 
-        mob_score
+        (reach_mask & !self_mask).count_ones() as i32
     }
 
     pub fn count_knight_mobility(&self, state: &State, index: usize, player: u8) -> i32 {
-        let squares = state.squares;
-        let mut mob_score = 0;
+        let bitboard = state.bitboard;
+        let bitmask = state.bitmask;
 
-        let mov_index_list = &self.n_mov_table[index];
-        for to_index in mov_index_list {
-            let to_index = *to_index;
-            let taken_piece = squares[to_index];
+        let self_mask = if player == def::PLAYER_W {
+            bitboard.w_all
+        } else {
+            bitboard.b_all
+        };
 
-            if !def::on_same_side(player, taken_piece) {
-                mob_score += 1;
-            }
-        }
-
-        mob_score
+        (bitmask.n_attack_masks[index] & !self_mask).count_ones() as i32
     }
+}
+
+#[inline]
+fn get_lowest_index(mask: u64) -> usize {
+    mask.trailing_zeros() as usize
+}
+
+#[inline]
+fn get_highest_index(mask: u64) -> usize {
+    63 - mask.leading_zeros() as usize
 }
 
 #[cfg(test)]
@@ -2129,6 +1414,17 @@ mod tests {
 
         assert!(!mov_table.is_in_check(&state, def::PLAYER_W));
         assert!(!mov_table.is_in_check(&state, def::PLAYER_B));
+    }
+
+    #[test]
+    fn test_king_check_7() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("8/1B6/8/3k3p/8/6K1/8/4b3 w - - 0 1", &zob_keys, &bitmask);
+        let mov_table = MoveTable::new();
+
+        assert!(mov_table.is_in_check(&state, def::PLAYER_W));
+        assert!(mov_table.is_in_check(&state, def::PLAYER_B));
     }
 
     #[test]
