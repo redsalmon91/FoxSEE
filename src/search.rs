@@ -743,7 +743,7 @@ impl SearchEngine {
         let squares = state.squares;
         let mut scored_cap_list = Vec::new();
 
-        for mov_index in 0..256 {
+        for mov_index in 0..def::MAX_CAP_COUNT {
             let cap = cap_list[mov_index];
             if cap == 0 {
                 break
