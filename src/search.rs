@@ -22,6 +22,9 @@ const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
 const NM_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
 
+const ENDGAME_PIECE_COUNT: u32 = 6;
+const PROMO_HORIZON_RANK: usize = 1;
+
 pub enum SearchMovResult {
     Return(i32),
     RaiseAlpha(i32),
@@ -637,6 +640,15 @@ impl SearchEngine {
         if def::near_horizon(depth) {
             if gives_check || def::is_q(promo) {
                 depth += 1;
+            } else if def::is_p(state.squares[to]) {
+                let bitboard = state.bitboard;
+                if ((bitboard.w_all | bitboard.b_all) ^ (bitboard.w_pawn | bitboard.b_pawn)).count_ones() <= ENDGAME_PIECE_COUNT {
+                    depth += 1;
+
+                    if def::get_rank(state.player, to) == PROMO_HORIZON_RANK {
+                        depth += 1;
+                    }
+                }
             }
         }
 
