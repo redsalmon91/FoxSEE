@@ -19,13 +19,13 @@ static P_VAL: i32 = 100;
 
 static KING_PROTECTED_BASE_VAL: i32 = 10;
 static KING_EXPOSED_BASE_PEN: i32 = -50;
-static KING_CASTLED_VAL: i32 = 90;
+static KING_CASTLED_VAL: i32 = 50;
 static KING_MIDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_SQR_VAL: i32 = 20;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
-static PASS_PAWN_VAL: i32 = 20;
-static DUP_PAWN_PEN: i32 = -50;
+static PASS_PAWN_VAL: i32 = 30;
+static DUP_PAWN_PEN: i32 = -30;
 static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 

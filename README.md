@@ -1,7 +1,7 @@
 # 🦊 FoxSEE
 Strong UCI chess engine written in Rust!
 
-**Current Version** 2.9.1
+**Current Version** 2.9.2
 
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 
@@ -30,7 +30,7 @@ Strong UCI chess engine written in Rust!
 - Negamax
 
 **Deprecated**
-- 0x88 Board
+- 0x88 Board Representation
 - Static Exchange Evalution (SEE)
 
 ## How to build
