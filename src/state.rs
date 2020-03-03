@@ -55,9 +55,6 @@ pub struct State<'state> {
     pub wk_index: usize,
     pub bk_index: usize,
 
-    pub wk_castled: bool,
-    pub bk_castled: bool,
-
     pub bitboard: BitBoard,
     pub bitmask: &'state BitMask,
 
@@ -171,9 +168,6 @@ impl <'state> State<'state> {
 
             wk_index,
             bk_index,
-
-            wk_castled: false,
-            bk_castled: false,
 
             bitboard,
 
@@ -688,7 +682,6 @@ impl <'state> State<'state> {
         if to == def::CAS_SQUARE_WK {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
-            self.wk_castled = true;
 
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_AFTER_CAS_SQRS);
             self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WK-2][def::WK as usize]
@@ -700,7 +693,6 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_BK {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
-            self.bk_castled = true;
 
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_AFTER_CAS_SQRS);
             self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BK-2][def::BK as usize]
@@ -713,7 +705,6 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_WQ {
             self.cas_rights &= 0b0011;
             self.wk_index = to;
-            self.wk_castled = true;
 
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_AFTER_CAS_SQRS);
             self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WQ+2][def::WK as usize]
@@ -726,7 +717,6 @@ impl <'state> State<'state> {
         } else if to == def::CAS_SQUARE_BQ {
             self.cas_rights &= 0b1100;
             self.bk_index = to;
-            self.bk_castled = true;
 
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_AFTER_CAS_SQRS);
             self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BQ+2][def::BK as usize]
@@ -741,22 +731,18 @@ impl <'state> State<'state> {
 
     fn undo_cas_mov(&mut self, to: usize) {
         if to == def::CAS_SQUARE_WK {
-            self.wk_castled = false;
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_BEFORE_CAS_SQRS);
             self.bitboard.w_all ^= WK_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BK {
-            self.bk_castled = false;
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_BEFORE_CAS_SQRS);
             self.bitboard.b_all ^= BK_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_WQ {
-            self.wk_castled = false;
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_BEFORE_CAS_SQRS);
             self.bitboard.w_all ^= WQ_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WQ_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BQ {
-            self.bk_castled = false;
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_BEFORE_CAS_SQRS);
             self.bitboard.b_all ^= BQ_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BQ_CAS_R_MASK;
