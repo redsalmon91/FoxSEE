@@ -16,6 +16,7 @@ const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const LAST_MOV_POS_INDEX: usize = 4;
+const MAX_NON_CAP_MOV_COUNT: usize = 99;
 
 const K_CAS_SQR_SIZE: usize = 4;
 const Q_CAS_SQR_SIZE: usize = 5;
@@ -190,6 +191,10 @@ impl <'state> State<'state> {
 
         if check_range < LAST_MOV_POS_INDEX {
             return false
+        }
+
+        if check_range >= MAX_NON_CAP_MOV_COUNT {
+            return true
         }
 
         let (pos_hash, _player) = self.history_pos_stack[history_len - LAST_MOV_POS_INDEX];
