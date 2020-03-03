@@ -22,9 +22,6 @@ const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
 const NM_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
 
-const ENDGAME_PIECE_COUNT: u32 = 6;
-const PROMO_HORIZON_RANK: usize = 1;
-
 pub enum SearchMovResult {
     Return(i32),
     RaiseAlpha(i32),
@@ -184,9 +181,9 @@ impl SearchEngine {
                 let nps = node_count as u128 / (iter_time_taken_millis / 1000).max(1);
 
                 if checkmate {
-                    println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", (eval::MATE_VAL - score.abs() + 1) / 2, depth, seldepth, node_count, nps, iter_time_taken_millis, util::format_pv(&pv_table));
+                    println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", (eval::MATE_VAL - score.abs() + 1) / 2, depth, seldepth, node_count, nps, total_time_taken, util::format_pv(&pv_table));
                 } else {
-                    println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, seldepth, node_count, nps, iter_time_taken_millis, util::format_pv(&pv_table));
+                    println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, seldepth, node_count, nps, total_time_taken, util::format_pv(&pv_table));
                 }
             }
 
@@ -531,6 +528,43 @@ impl SearchEngine {
             }
         }
 
+        let mut promo_non_cap_list = Vec::new();
+        let mut scored_non_cap_list = Vec::new();
+
+        for non_cap_index in 0..def::MAX_MOV_COUNT {
+            let non_cap = non_cap_list[non_cap_index];
+
+            if non_cap == 0 {
+                break
+            }
+
+            if non_cap == pv_mov || non_cap == hash_mov {
+                continue
+            }
+
+            let (from, to, _tp, promo) = util::decode_u32_mov(non_cap);
+            if promo != 0 {
+                promo_non_cap_list.push((eval::val_of(promo), non_cap));
+                continue
+            }
+
+            scored_non_cap_list.push((self.history_table[from][to], non_cap));
+        }
+
+        promo_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+            score_b.partial_cmp(&score_a).unwrap()
+        });
+
+        for (_score, non_cap) in promo_non_cap_list {
+            match self.search_mov(state, false, in_check, on_scout,pv_table, non_cap, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                Return(score) => return score,
+                RaiseAlpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
         let mut killer_mov = 0;
         let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize].0;
         if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
@@ -579,28 +613,6 @@ impl SearchEngine {
             }
         }
 
-        let mut scored_non_cap_list = Vec::new();
-
-        for non_cap_index in 0..def::MAX_MOV_COUNT {
-            let non_cap = non_cap_list[non_cap_index];
-
-            if non_cap == 0 {
-                break
-            }
-
-            if non_cap == pv_mov || non_cap == hash_mov || non_cap == killer_mov {
-                continue
-            }
-
-            let (from, to, _tp, promo) = util::decode_u32_mov(non_cap);
-            if def::is_q(promo) {
-                scored_non_cap_list.push((MAX_HISTORY_SCORE, non_cap));
-                continue
-            }
-
-            scored_non_cap_list.push((self.history_table[from][to], non_cap));
-        }
-
         scored_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
@@ -642,15 +654,6 @@ impl SearchEngine {
         if def::near_horizon(depth) {
             if gives_check || def::is_q(promo) {
                 depth += 1;
-            } else if def::is_p(state.squares[to]) {
-                let bitboard = state.bitboard;
-                if ((bitboard.w_all | bitboard.b_all) ^ (bitboard.w_pawn | bitboard.b_pawn)).count_ones() <= ENDGAME_PIECE_COUNT {
-                    depth += 1;
-
-                    if def::get_rank(state.player, to) == PROMO_HORIZON_RANK {
-                        depth += 1;
-                    }
-                }
             }
         }
 
@@ -668,7 +671,7 @@ impl SearchEngine {
         state.undo_mov(from, to, tp);
 
         if score >= beta {
-            if !is_capture {
+            if !is_capture && promo == 0 {
                 let (killer_score, _killer_mov) = self.killer_table[ply as usize].0;
                 if score > killer_score || killer_score == 0 {
                     self.killer_table[ply as usize].1 = self.killer_table[ply as usize].0;
