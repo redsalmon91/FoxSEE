@@ -157,6 +157,7 @@ impl SearchEngine {
 
         let mut depth = 1;
         let mut best_mov = 0;
+        let mut accumulated_time_taken = 0;
 
         loop {
             self.killer_table = [((0, 0), (0, 0)); KILLER_TABLE_LENGTH];
@@ -176,14 +177,16 @@ impl SearchEngine {
 
             let checkmate = score > eval::TERM_VAL;
 
+            let total_time_taken = self.time_tracker.elapsed().as_millis();
+
             if !pv_table.is_empty() && pv_table[0] != 0 {
-                let time_taken_millis = self.time_tracker.elapsed().as_millis();
-                let nps = node_count as u128 / (time_taken_millis / 1000).max(1);
+                let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
+                let nps = node_count as u128 / (iter_time_taken_millis / 1000).max(1);
 
                 if checkmate {
-                    println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", (eval::MATE_VAL - score.abs() + 1) / 2, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
+                    println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", (eval::MATE_VAL - score.abs() + 1) / 2, depth, seldepth, node_count, nps, iter_time_taken_millis, util::format_pv(&pv_table));
                 } else {
-                    println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, seldepth, node_count, nps, time_taken_millis, util::format_pv(&pv_table));
+                    println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, seldepth, node_count, nps, iter_time_taken_millis, util::format_pv(&pv_table));
                 }
             }
 
@@ -205,15 +208,14 @@ impl SearchEngine {
                 break
             }
 
-            let current_time_millis = self.time_tracker.elapsed().as_millis();
-
             if !pv_changed {
-                if current_time_millis > max_time_millis >> 1 {
+                if total_time_taken - accumulated_time_taken > max_time_millis >> 1 {
                     break
                 }
             }
 
             depth += 1;
+            accumulated_time_taken = total_time_taken;
 
             if depth > max_depth {
                 break
