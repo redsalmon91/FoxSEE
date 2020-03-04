@@ -6,7 +6,7 @@ use crate::{
     def,
     eval,
     hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA},
-    mov_table::MoveTable,
+    mov_table,
     state::State,
     util,
 };
@@ -33,7 +33,6 @@ use LookupResult::*;
 use std::time::Instant;
 
 pub struct SearchEngine {
-    mov_table: MoveTable,
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
     killer_table: [((i32, u32), (i32, u32)); KILLER_TABLE_LENGTH],
@@ -49,7 +48,6 @@ pub struct SearchEngine {
 impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
-            mov_table: MoveTable::new(),
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
             killer_table: [((0, 0), (0, 0)); KILLER_TABLE_LENGTH],
@@ -78,7 +76,7 @@ impl SearchEngine {
     }
 
     pub fn perft(&self, state: &mut State, depth: u8) -> usize {
-        if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
+        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
             return 0
         }
 
@@ -92,8 +90,8 @@ impl SearchEngine {
         let mut non_cap_list = [0; def::MAX_MOV_COUNT];
         let mut cas_list = [0; def::MAX_CAS_COUNT];
 
-        self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
-        self.mov_table.gen_castle_mov_list(state, &mut cas_list);
+        mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+        mov_table::gen_castle_mov_list(state, &mut cas_list);
 
         for cap_index in 0..def::MAX_CAP_COUNT {
             let cap = cap_list[cap_index];
@@ -242,7 +240,7 @@ impl SearchEngine {
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
         state.do_mov(from, to, tp, promo);
 
-        if self.mov_table.is_in_check(state, player) {
+        if mov_table::is_in_check(state, player) {
             pv_table[mov_index] = 0;
             state.undo_mov(from, to, tp);
             return
@@ -258,10 +256,7 @@ impl SearchEngine {
             let mut cap_list = [0; def::MAX_CAP_COUNT];
             let mut non_cap_list = [0; def::MAX_MOV_COUNT];
 
-            self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
-
-            let player = state.player;
-            let squares = state.squares;
+            mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
 
             for cap_index in 0..def::MAX_CAP_COUNT {
                 let cap = cap_list[cap_index];
@@ -271,7 +266,7 @@ impl SearchEngine {
                 }
 
                 let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-                self.root_node_mov_list.push((depth, eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo), cap));
+                self.root_node_mov_list.push((depth, see(state, from, to, promo), cap));
             }
 
             for non_cap_index in 0..def::MAX_MOV_COUNT {
@@ -285,9 +280,9 @@ impl SearchEngine {
                 self.root_node_mov_list.push((depth, eval::val_of(promo), non_cap));
             }
 
-            if (player == def::PLAYER_W && (state.cas_rights & 0b1100 != 0)) || (player == def::PLAYER_B && (state.cas_rights & 0b0011 != 0)) {
+            if state.cas_rights != 0 {
                 let mut cas_list = [0; def::MAX_CAS_COUNT];
-                self.mov_table.gen_castle_mov_list(state, &mut cas_list);
+                mov_table::gen_castle_mov_list(state, &mut cas_list);
 
                 for cas_index in 0..def::MAX_CAS_COUNT {
                     let cas_mov = cas_list[cas_index];
@@ -317,7 +312,7 @@ impl SearchEngine {
 
             state.do_mov(from, to, tp, promo);
 
-            let gives_check = self.mov_table.is_in_check(state, state.player);
+            let gives_check = mov_table::is_in_check(state, state.player);
 
             let depth = if gives_check {
                 depth + 1
@@ -379,14 +374,14 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply, seldepth)
         }
 
-        if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
+        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
             return eval::MATE_VAL - ply as i32
         }
 
         if !on_pv && !in_check && depth >= MIN_NM_DEPTH {
             state.do_null_mov();
 
-            let gives_check = self.mov_table.is_in_check(state, state.player);
+            let gives_check = mov_table::is_in_check(state, state.player);
 
             let scout_score = -self.ab_search(state, false, gives_check, true, &mut NM_PV_TABLE, -beta, -beta+1, depth - NM_DEPTH_REDUCTION - 1, ply + 1, node_count, seldepth);
             state.undo_null_mov();
@@ -422,15 +417,15 @@ impl SearchEngine {
         }
 
         let mut hash_mov = 0;
-        if !on_pv {
+        if pv_mov == 0 {
             match self.get_hash(state, depth) {
                 Match(flag, score, mov) => {
                     let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
 
-                    if self.mov_table.is_mov_valid(state, from, to) {
+                    if mov_table::is_mov_valid(state, from, to) {
                         hash_mov = mov;
 
-                        if score != 0 && !eval::is_term_val(score) {
+                        if !on_pv && score != 0 && !eval::is_term_val(score) {
                             match flag {
                                 HASH_TYPE_ALPHA => {
                                     if score <= alpha {
@@ -454,7 +449,7 @@ impl SearchEngine {
                 MovOnly(mov) => {
                     let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
 
-                    if self.mov_table.is_mov_valid(state, from, to) {
+                    if mov_table::is_mov_valid(state, from, to) {
                         hash_mov = mov;
                     }
                 },
@@ -462,7 +457,6 @@ impl SearchEngine {
             }
         }
 
-        let player = state.player;
         let squares = state.squares;
 
         if hash_mov != 0 {
@@ -480,9 +474,10 @@ impl SearchEngine {
         let mut cap_list = [0; def::MAX_CAP_COUNT];
         let mut non_cap_list = [0; def::MAX_MOV_COUNT];
 
-        self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+        mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
 
-        let mut scored_cap_list = Vec::new();
+        let mut good_cap_list = Vec::new();
+        let mut other_cap_list = Vec::new();
 
         let (last_to, last_captured) = *(state.history_mov_stack.last().unwrap());
 
@@ -506,19 +501,24 @@ impl SearchEngine {
             };
 
             if reply_score != 0 {
-                scored_cap_list.push((reply_score, cap));
+                good_cap_list.push((reply_score, cap));
                 continue
             }
 
-            let exchange_score = eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo);
-            scored_cap_list.push((exchange_score, cap));
+            let see_score = see(state, from, to, promo);
+
+            if see_score >= eval::EQUAL_EXCHANGE_VAL {
+                good_cap_list.push((see_score, cap));
+            } else {
+                other_cap_list.push((see_score, cap));
+            }
         }
 
-        scored_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+        good_cap_list.sort_by(|(score_a, _), (score_b, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        for (_score, cap) in scored_cap_list {
+        for (_score, cap) in good_cap_list {
             match self.search_mov(state, false, in_check, on_scout, pv_table, cap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                 Return(score) => return score,
                 RaiseAlpha(score) => {
@@ -529,7 +529,7 @@ impl SearchEngine {
         }
 
         let mut promo_non_cap_list = Vec::new();
-        let mut scored_non_cap_list = Vec::new();
+        let mut other_non_cap_list = Vec::new();
 
         for non_cap_index in 0..def::MAX_MOV_COUNT {
             let non_cap = non_cap_list[non_cap_index];
@@ -548,7 +548,7 @@ impl SearchEngine {
                 continue
             }
 
-            scored_non_cap_list.push((self.history_table[from][to], non_cap));
+            other_non_cap_list.push((self.history_table[from][to], non_cap));
         }
 
         promo_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
@@ -588,9 +588,23 @@ impl SearchEngine {
             }
         }
 
-        if (player == def::PLAYER_W && (state.cas_rights & 0b1100 != 0)) || (player == def::PLAYER_B && (state.cas_rights & 0b0011 != 0)) {
+        other_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+            score_b.partial_cmp(&score_a).unwrap()
+        });
+
+        for (_score, cap) in other_cap_list {
+            match self.search_mov(state, false, in_check, on_scout, pv_table, cap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                Return(score) => return score,
+                RaiseAlpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
+        if state.cas_rights != 0 {
             let mut cas_list = [0; def::MAX_CAS_COUNT];
-            self.mov_table.gen_castle_mov_list(state, &mut cas_list);
+            mov_table::gen_castle_mov_list(state, &mut cas_list);
 
             for cas_index in 0..def::MAX_CAS_COUNT {
                 let cas_mov = cas_list[cas_index];
@@ -613,11 +627,11 @@ impl SearchEngine {
             }
         }
 
-        scored_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+        other_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        for (_score, non_cap) in scored_non_cap_list {
+        for (_score, non_cap) in other_non_cap_list {
             match self.search_mov(state, false, in_check, on_scout,pv_table, non_cap, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                 Return(score) => return score,
                 RaiseAlpha(score) => {
@@ -649,7 +663,7 @@ impl SearchEngine {
 
         state.do_mov(from, to, tp, promo);
 
-        let gives_check = self.mov_table.is_in_check(state, state.player);
+        let gives_check = mov_table::is_in_check(state, state.player);
 
         if def::near_horizon(depth) {
             if gives_check || def::is_q(promo) {
@@ -715,7 +729,7 @@ impl SearchEngine {
             return 0
         }
 
-        if self.mov_table.is_in_check(state, def::get_opposite_player(state.player)) {
+        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
             return eval::MATE_VAL - ply as i32
         }
 
@@ -723,7 +737,7 @@ impl SearchEngine {
             *seldepth = ply;
         }
 
-        let score = eval::eval_state(state, &self.mov_table);
+        let score = eval::eval_state(state);
 
         if score >= beta {
             return score
@@ -734,13 +748,12 @@ impl SearchEngine {
         }
 
         let mut cap_list = [0; def::MAX_CAP_COUNT];
-        self.mov_table.gen_capture_list(state, &mut cap_list);
+        mov_table::gen_capture_list(state, &mut cap_list);
 
         if cap_list[0] == 0 {
             return alpha
         }
 
-        let squares = state.squares;
         let mut scored_cap_list = Vec::new();
 
         for mov_index in 0..def::MAX_CAP_COUNT {
@@ -750,7 +763,7 @@ impl SearchEngine {
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-            scored_cap_list.push((eval::val_of(squares[to]) + eval::val_of(promo) - eval::val_of(squares[from]), cap));
+            scored_cap_list.push((see(state, from, to, promo), cap));
         }
 
         scored_cap_list.sort_by(|(score_a, _), (score_b, _)| {
@@ -800,7 +813,7 @@ impl SearchEngine {
         let mut cap_list = [0; def::MAX_CAP_COUNT];
         let mut non_cap_list = [0; def::MAX_MOV_COUNT];
 
-        self.mov_table.gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+        mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
 
         for cap_index in 0..def::MAX_CAP_COUNT {
             let cap = cap_list[cap_index];
@@ -812,7 +825,7 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
             state.do_mov(from, to, tp, promo);
 
-            if !self.mov_table.is_in_check(state, player) {
+            if !mov_table::is_in_check(state, player) {
                 state.undo_mov(from, to, tp);
                 return false
             }
@@ -830,7 +843,7 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
             state.do_mov(from, to, tp, promo);
 
-            if !self.mov_table.is_in_check(state, player) {
+            if !mov_table::is_in_check(state, player) {
                 state.undo_mov(from, to, tp);
                 return false
             }
@@ -842,6 +855,52 @@ impl SearchEngine {
     }
 }
 
+pub fn see(state: &State, from: usize, to: usize, promo: u8) -> i32 {
+    let mut w_attacker_list = [0; def::MAX_ATTACKERS_COUNT];
+    let mut b_attacker_list = [0; def::MAX_ATTACKERS_COUNT];
+
+    mov_table::get_attackers(state, from, to, &mut w_attacker_list, &mut b_attacker_list);
+
+    w_attacker_list.sort_by(|a, b| eval::see_val_of(*a).cmp(&eval::see_val_of(*b)));
+    b_attacker_list.sort_by(|a, b| eval::see_val_of(*a).cmp(&eval::see_val_of(*b)));
+
+    let (own_attacker_list, opponent_attacker_list) = if state.player == def::PLAYER_W {
+        (w_attacker_list, b_attacker_list)
+    } else {
+        (b_attacker_list, w_attacker_list)
+    };
+
+    let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
+    let lost = if promo == 0 {
+        sim_exchange(state.squares[from], 0, 0, &opponent_attacker_list, &own_attacker_list)
+    } else {
+        sim_exchange(promo, 0, 0, &opponent_attacker_list, &own_attacker_list)
+    };
+
+    gain - lost
+}
+
+fn sim_exchange(last_attacker: u8, current_attacker_index: usize, next_attacker_index: usize, current_attacker_list: &[u8; 32], next_attacker_list: &[u8; 32]) -> i32 {
+    if current_attacker_index >= def::MAX_ATTACKERS_COUNT {
+        return 0
+    }
+
+    let attacker = current_attacker_list[current_attacker_index];
+
+    if attacker == 0 {
+        return 0
+    }
+
+    if def::is_k(last_attacker) {
+        return eval::MATE_VAL
+    }
+
+    let gain = eval::val_of(last_attacker);
+    let lost = sim_exchange(attacker, next_attacker_index, current_attacker_index + 1, next_attacker_list, current_attacker_list);
+
+    return 0.max(gain - lost)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -851,6 +910,38 @@ mod tests {
         prng::XorshiftPrng,
         util,
     };
+
+    #[test]
+    fn test_see_1() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("pnkq3r/pb2nppp/2p1b3/1r1N2R1/2PPP3/1Q3B2/PPP2PPP/RNB1K1NR b - - 0 1", &zob_keys, &bitmask);
+
+        assert_eq!(245, see(&state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), 0));
+        assert_eq!(95, see(&state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), 0));
+    }
+
+    #[test]
+    fn test_see_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("pnkq3r/pbr2ppp/P1pnb3/N5R1/3PP3/1R1Q1B2/PPP2PPP/1NB1K1NR w - - 0 1", &zob_keys, &bitmask);
+
+        assert_eq!(-175, see(&state, util::map_sqr_notation_to_index("b3"), util::map_sqr_notation_to_index("b7"), 0));
+        assert_eq!(250, see(&state, util::map_sqr_notation_to_index("a6"), util::map_sqr_notation_to_index("b7"), 0));
+        assert_eq!(5, see(&state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), 0));
+    }
+
+    #[test]
+    fn test_see_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("4n2r/5P2/8/7B/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
+
+        assert_eq!(870, see(&state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::WQ));
+        assert_eq!(690, see(&state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::WN));
+        assert_eq!(870, see(&state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::WR));
+    }
 
     #[test]
     fn test_in_stale_mate_1() {

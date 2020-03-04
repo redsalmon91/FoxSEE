@@ -5,17 +5,20 @@
 use crate::{
     def,
     state::State,
-    mov_table::MoveTable,
+    mov_table,
 };
 
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
+pub static EQUAL_EXCHANGE_VAL: i32 = -5;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
 static B_VAL: i32 = 350;
 static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
+
+static SEE_EMPTY_VAL: i32 = 20001;
 
 static KING_PROTECTED_BASE_VAL: i32 = 10;
 static KING_EXPOSED_BASE_PEN: i32 = -50;
@@ -153,11 +156,32 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
+pub fn see_val_of(piece: u8) -> i32 {
+    match piece {
+        0 => SEE_EMPTY_VAL,
+        def::WK => MATE_VAL,
+        def::WQ => Q_VAL,
+        def::WR => R_VAL,
+        def::WB => B_VAL,
+        def::WN => N_VAL,
+        def::WP => P_VAL,
+
+        def::BK => MATE_VAL,
+        def::BQ => Q_VAL,
+        def::BR => R_VAL,
+        def::BB => B_VAL,
+        def::BN => N_VAL,
+        def::BP => P_VAL,
+
+        _ => SEE_EMPTY_VAL,
+    }
+}
+
 pub fn is_term_val(val: i32) -> bool {
     val < -TERM_VAL || val > TERM_VAL
 }
 
-pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
+pub fn eval_state(state: &State) -> i32 {
     let bitboard = state.bitboard;
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
         if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
@@ -171,7 +195,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
         -1
     };
 
-    let (w_features_map, b_features_map) = extract_features(state, mov_table);
+    let (w_features_map, b_features_map) = extract_features(state);
 
     let material_score =
         w_features_map.queen_count * Q_VAL
@@ -246,7 +270,7 @@ pub fn eval_state(state: &State, mov_table: &MoveTable) -> i32 {
     (material_score + extra_score) * score_sign
 }
 
-pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, FeatureMap) {
+pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
     let index_masks = state.bitmask.index_masks;
     let file_masks = state.bitmask.file_masks;
@@ -325,21 +349,21 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
             },
 
             def::WN => {
-                w_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_W);
+                w_feature_map.knight_mobility += mov_table::count_knight_mobility(state, index, def::PLAYER_W);
             },
             def::BN => {
-                b_feature_map.knight_mobility += mov_table.count_knight_mobility(state, index, def::PLAYER_B);
+                b_feature_map.knight_mobility += mov_table::count_knight_mobility(state, index, def::PLAYER_B);
             },
 
             def::WB => {
-                w_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_W);
+                w_feature_map.bishop_mobility += mov_table::count_bishop_mobility(state, index, def::PLAYER_W);
             },
             def::BB => {
-                b_feature_map.bishop_mobility += mov_table.count_bishop_mobility(state, index, def::PLAYER_B);
+                b_feature_map.bishop_mobility += mov_table::count_bishop_mobility(state, index, def::PLAYER_B);
             },
 
             def::WR => {
-                w_feature_map.rook_mobility += mov_table.count_rook_mobility(state, index, def::PLAYER_W);
+                w_feature_map.rook_mobility += mov_table::count_rook_mobility(state, index, def::PLAYER_W);
 
                 let file_mask = file_masks[index];
                 if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
@@ -351,7 +375,7 @@ pub fn extract_features(state: &State, mov_table: &MoveTable) -> (FeatureMap, Fe
                 }
             },
             def::BR => {
-                b_feature_map.rook_mobility += mov_table.count_rook_mobility(state, index, def::PLAYER_B);
+                b_feature_map.rook_mobility += mov_table::count_rook_mobility(state, index, def::PLAYER_B);
 
                 let file_mask = file_masks[index];
                 if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
@@ -463,7 +487,6 @@ mod tests {
     use super::*;
     use crate::{
         bitboard::BitMask,
-        mov_table::MoveTable,
         state::State,
         prng::XorshiftPrng,
    };
@@ -472,10 +495,9 @@ mod tests {
     fn test_extract_features_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
 
         let state = State::new("1kr2r2/pp2nppp/1bn2q2/3pp3/3P4/1BN1P3/PPP1NP1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state, &mov_table);
+        let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(FeatureMap {
             pawn_count: 7,
@@ -544,10 +566,9 @@ mod tests {
     fn test_extract_features_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
 
         let state = State::new("1kr2r2/1p4pp/1p1P1qn1/p2pp3/3P4/RB2P3/P1P1NP1P/3Q1RK1 b - - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state, &mov_table);
+        let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(FeatureMap {
             pawn_count: 7,
@@ -616,10 +637,9 @@ mod tests {
     fn test_extract_features_3() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mov_table = MoveTable::new();
 
         let state = State::new("1kr2r2/pp2qpp1/1bn2n2/1p1p4/1P1P4/1BN3N1/PPP2P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state, &mov_table);
+        let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(FeatureMap {
             pawn_count: 7,
