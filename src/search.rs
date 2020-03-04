@@ -739,6 +739,8 @@ impl SearchEngine {
             return alpha
         }
 
+        let squares = state.squares;
+
         let mut scored_cap_list = Vec::new();
 
         for mov_index in 0..def::MAX_CAP_COUNT {
@@ -748,7 +750,7 @@ impl SearchEngine {
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-            scored_cap_list.push((see(state, from, to, promo), cap));
+            scored_cap_list.push((eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo), cap));
         }
 
         scored_cap_list.sort_by(|(score_a, _), (score_b, _)| {

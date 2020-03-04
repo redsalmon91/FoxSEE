@@ -14,6 +14,7 @@ Strong UCI chess engine written in Rust!
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
+- MVV/LVA
 - Late Move Reduction
 - Check Extension
 - History Heuristic
