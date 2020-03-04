@@ -457,8 +457,6 @@ impl SearchEngine {
             }
         }
 
-        let squares = state.squares;
-
         if hash_mov != 0 {
             let (_from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
 
@@ -479,8 +477,6 @@ impl SearchEngine {
         let mut good_cap_list = Vec::new();
         let mut other_cap_list = Vec::new();
 
-        let (last_to, last_captured) = *(state.history_mov_stack.last().unwrap());
-
         for cap_index in 0..def::MAX_CAP_COUNT {
             let cap = cap_list[cap_index];
 
@@ -493,17 +489,6 @@ impl SearchEngine {
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-
-            let reply_score = if last_captured != 0 && to == last_to {
-                eval::TERM_VAL - eval::val_of(squares[from])
-            } else {
-                0
-            };
-
-            if reply_score != 0 {
-                good_cap_list.push((reply_score, cap));
-                continue
-            }
 
             let see_score = see(state, from, to, promo);
 

@@ -85,7 +85,6 @@ impl <'state> State<'state> {
         let mut bitboard = BitBoard::new();
 
         let rank_string_list: Vec<&str> = fen_segment_list[FEN_SQRS_INDEX].split("/").collect();
-        assert_eq!(def::DIM_SIZE, rank_string_list.len());
 
         let mut index = 56;
         for rank_index in 0..def::DIM_SIZE {
@@ -221,13 +220,11 @@ impl <'state> State<'state> {
         self.player = def::get_opposite_player(self.player);
         self.enp_sqr_stack.push(self.enp_square);
         self.enp_square = 0;
-        self.history_mov_stack.push((0, 0));
     }
 
     pub fn undo_null_mov(&mut self) {
         self.player = def::get_opposite_player(self.player);
         self.enp_square = self.enp_sqr_stack.pop().unwrap();
-        self.history_mov_stack.pop();
     }
 
     pub fn do_mov(&mut self, from: usize, to: usize, mov_type: u8, promo: u8) {
