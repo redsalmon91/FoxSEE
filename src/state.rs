@@ -16,7 +16,7 @@ const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const LAST_MOV_POS_INDEX: usize = 4;
-const MAX_NON_CAP_MOV_COUNT: usize = 99;
+const MAX_NON_CAP_MOV_COUNT: usize = 100;
 
 const K_CAS_SQR_SIZE: usize = 4;
 const Q_CAS_SQR_SIZE: usize = 5;
@@ -845,7 +845,7 @@ impl <'state> State<'state> {
             to + 8
         };
 
-        self.non_cap_mov_count += 1;
+        self.non_cap_mov_count = 0;
 
         let moving_piece = self.squares[from];
         let move_index_mask = self.bitmask.index_masks[from] ^ self.bitmask.index_masks[to];
