@@ -7,22 +7,22 @@ Strong UCI chess engine written in Rust!
 
 ## Features
 
-- Negamax Search with Alpha-Beta Pruning
-- Quiescence Search
-- Iterative Deepening
-- Bitboards
-- Zobrist Hashing
-- Transposition Table
-- Static Exchange Evalution (SEE)
-- MVV/LVA
-- Late Move Reduction
-- Check Extension
-- History Heuristic
-- Killer Heuristic
-- Aspiration Window
-- Linear Evaluation
-- Null-Move Pruning
-- Perft
+  - Negamax Search with Alpha-Beta Pruning
+  - Quiescence Search
+  - Iterative Deepening
+  - Bitboards
+  - Zobrist Hashing
+  - Transposition Table
+  - Static Exchange Evalution (SEE)
+  - MVV/LVA
+  - Late Move Reduction
+  - Check Extension
+  - History Heuristic
+  - Killer Heuristic
+  - Aspiration Window
+  - Linear Evaluation
+  - Null-Move Pruning
+  - Perft
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/)
@@ -34,8 +34,8 @@ This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCI
 Aside from the standard set of UCI commands, `perft x` is also supported.
 
 ## Limitations
-- Search `x` nodes is currently not supported
-- Search `mate` in in `x` moves is currently not supported
-- Search specific moves under a given position is currently not supported
-- `ponder` is currently not supported
-- Big-Endian systems are not supported
+  - Search `x` nodes is currently not supported
+  - Search `mate` in in `x` moves is currently not supported
+  - Search specific moves under a given position is currently not supported
+  - `ponder` is currently not supported
+  - Big-Endian systems are not supported
