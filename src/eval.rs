@@ -27,7 +27,7 @@ static KING_ENDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
 static PASS_PAWN_VAL: i32 = 30;
-static DUP_PAWN_PEN: i32 = -30;
+static DUP_PAWN_PEN: i32 = -20;
 static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 
