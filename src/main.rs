@@ -93,15 +93,6 @@ fn main() {
 
                     state.do_mov(from, to, def::MOV_REG, 0);
                 }
-
-                println!("{}", state);
-                println!("ENP {}", state.enp_square);
-
-                println!("W:");
-                util::print_bitboard(state.bitboard.w_all);
-
-                println!("B:");
-                util::print_bitboard(state.bitboard.b_all);
             },
             UciProcessResult::StartSearchWithTime(time_millis) => {
                 let best_mov = search_engine.search(&mut state, time_millis, DEFAULT_MAX_DEPTH);

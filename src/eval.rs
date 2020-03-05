@@ -10,7 +10,7 @@ use crate::{
 
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
-pub static EQUAL_EXCHANGE_VAL: i32 = -5;
+pub static LOSING_EXCHANGE_VAL: i32 = -250;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
@@ -156,7 +156,7 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
-pub fn see_val_of(piece: u8) -> i32 {
+pub fn sorting_val_of(piece: u8) -> i32 {
     match piece {
         0 => SEE_EMPTY_VAL,
         def::WK => MATE_VAL,

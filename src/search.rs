@@ -477,6 +477,45 @@ impl SearchEngine {
         let mut good_cap_list = Vec::new();
         let mut other_cap_list = Vec::new();
 
+        let (last_to, last_captured) = state.history_mov_stack.last().unwrap();
+
+        let mut best_recapture = 0;
+        let mut best_recapture_score = eval::TERM_VAL;
+
+        if *last_captured != 0 {
+            for cap_index in 0..def::MAX_CAP_COUNT {
+                let cap = cap_list[cap_index];
+
+                if cap == 0 {
+                    break
+                }
+
+                if cap == pv_mov || cap == hash_mov {
+                    continue
+                }
+
+                let (from, to, _tp, _promo) = util::decode_u32_mov(cap);
+
+                if to == *last_to {
+                    let recap_score = eval::sorting_val_of(state.squares[from]);
+                    if recap_score < best_recapture_score {
+                        best_recapture = cap;
+                        best_recapture_score = recap_score;
+                    }
+                }
+            }
+        }
+
+        if best_recapture != 0 {
+            match self.search_mov(state, false, in_check, on_scout, pv_table, best_recapture, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                Return(score) => return score,
+                RaiseAlpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
         for cap_index in 0..def::MAX_CAP_COUNT {
             let cap = cap_list[cap_index];
 
@@ -484,7 +523,7 @@ impl SearchEngine {
                 break
             }
 
-            if cap == pv_mov || cap == hash_mov {
+            if cap == pv_mov || cap == hash_mov || cap == best_recapture {
                 continue
             }
 
@@ -492,7 +531,7 @@ impl SearchEngine {
 
             let see_score = see(state, from, to, promo);
 
-            if see_score >= eval::EQUAL_EXCHANGE_VAL {
+            if see_score >= eval::LOSING_EXCHANGE_VAL {
                 good_cap_list.push((see_score, cap));
             } else {
                 other_cap_list.push((see_score, cap));
@@ -573,20 +612,6 @@ impl SearchEngine {
             }
         }
 
-        other_cap_list.sort_by(|(score_a, _), (score_b, _)| {
-            score_b.partial_cmp(&score_a).unwrap()
-        });
-
-        for (_score, cap) in other_cap_list {
-            match self.search_mov(state, false, in_check, on_scout, pv_table, cap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
         if state.cas_rights != 0 {
             let mut cas_list = [0; def::MAX_CAS_COUNT];
             mov_table::gen_castle_mov_list(state, &mut cas_list);
@@ -626,6 +651,20 @@ impl SearchEngine {
             }
         }
 
+        other_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+            score_b.partial_cmp(&score_a).unwrap()
+        });
+
+        for (_score, cap) in other_cap_list {
+            match self.search_mov(state, false, in_check, on_scout, pv_table, cap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                Return(score) => return score,
+                RaiseAlpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
         if best_score < -eval::TERM_VAL {
             if !in_check && self.in_stale_mate(state) {
                 return 0
@@ -635,6 +674,7 @@ impl SearchEngine {
         alpha
     }
 
+    #[inline]
     fn search_mov(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mov: u32, mov_count: &mut usize, is_capture: bool, best_score: &mut i32, alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
         if self.abort {
             return Return(0)
@@ -848,8 +888,8 @@ pub fn see(state: &State, from: usize, to: usize, promo: u8) -> i32 {
 
     mov_table::get_attackers(state, from, to, &mut w_attacker_list, &mut b_attacker_list);
 
-    w_attacker_list.sort_by(|a, b| eval::see_val_of(*a).cmp(&eval::see_val_of(*b)));
-    b_attacker_list.sort_by(|a, b| eval::see_val_of(*a).cmp(&eval::see_val_of(*b)));
+    w_attacker_list.sort_by(|a, b| eval::sorting_val_of(*a).cmp(&eval::sorting_val_of(*b)));
+    b_attacker_list.sort_by(|a, b| eval::sorting_val_of(*a).cmp(&eval::sorting_val_of(*b)));
 
     let (own_attacker_list, opponent_attacker_list) = if state.player == def::PLAYER_W {
         (w_attacker_list, b_attacker_list)
