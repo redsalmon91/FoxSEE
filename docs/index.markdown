@@ -49,5 +49,5 @@ Aside from the standard set of UCI commands, `perft x` is also supported.
 - `ponder` is currently not supported
 - Big-Endian systems are not supported
 
-
-##### Copyright (C) 2020 Zixiao Han. All Rights Reserved.
+_____
+Copyright (C) 2020 Zixiao Han. All Rights Reserved.
