@@ -1,5 +1,7 @@
 A strong UCI chess engine written in Rust!
 
+[View on GitHub](https://github.com/redsalmon91/FoxSEE)
+
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)
 
