@@ -11,7 +11,11 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 pub static LOSING_EXCHANGE_VAL: i32 = -250;
+
 pub static DELTA_MARGIN: i32 = 90;
+pub static FUTILITY_MARGIN: i32 = 340;
+
+pub static MAX_POSITION_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
@@ -185,7 +189,28 @@ pub fn is_term_val(val: i32) -> bool {
     val < -TERM_VAL || val > TERM_VAL
 }
 
-pub fn eval_state(state: &State) -> i32 {
+pub fn eval_materials(state: &State) -> i32 {
+    let bitboard = state.bitboard;
+
+    let score_sign = if state.player == def::PLAYER_W {
+        1
+    } else {
+        -1
+    };
+
+    (bitboard.w_queen.count_ones() as i32 * Q_VAL
+    + bitboard.w_rook.count_ones() as i32 * R_VAL
+    + bitboard.w_bishop.count_ones() as i32 * B_VAL
+    + bitboard.w_knight.count_ones() as i32 * N_VAL
+    + bitboard.w_pawn.count_ones() as i32 * P_VAL
+    - bitboard.b_queen.count_ones() as i32 * Q_VAL
+    - bitboard.b_rook.count_ones() as i32 * R_VAL
+    - bitboard.b_bishop.count_ones() as i32 * B_VAL
+    - bitboard.b_knight.count_ones() as i32 * N_VAL
+    - bitboard.b_pawn.count_ones() as i32 * P_VAL) * score_sign
+}
+
+pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let bitboard = state.bitboard;
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
         if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
@@ -200,18 +225,6 @@ pub fn eval_state(state: &State) -> i32 {
     };
 
     let (w_features_map, b_features_map) = extract_features(state);
-
-    let material_score =
-        w_features_map.queen_count * Q_VAL
-        + w_features_map.rook_count * R_VAL
-        + w_features_map.bishop_count * B_VAL
-        + w_features_map.knight_count * N_VAL
-        + w_features_map.pawn_count * P_VAL
-        - b_features_map.queen_count * Q_VAL
-        - b_features_map.rook_count * R_VAL
-        - b_features_map.bishop_count * B_VAL
-        - b_features_map.knight_count * N_VAL
-        - b_features_map.pawn_count * P_VAL;
 
     let midgame_extra_score =
         w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
@@ -273,7 +286,7 @@ pub fn eval_state(state: &State) -> i32 {
 
     let extra_score = (midgame_extra_score * phase + endgame_extra_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
 
-    (material_score + extra_score) * score_sign
+    material_score + extra_score * score_sign
 }
 
 pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {

@@ -732,6 +732,15 @@ impl SearchEngine {
 
         let gives_check = mov_table::is_in_check(state, state.player);
 
+        if *mov_count > 1 && depth == 1 && !on_pv && !in_check && !gives_check && !is_capture && alpha > -eval::TERM_VAL && beta < eval::TERM_VAL {
+            let material_score = eval::eval_materials(state);
+
+            if material_score + eval::val_of(promo) + eval::FUTILITY_MARGIN < alpha {
+                state.undo_mov(from, to, tp);
+                return Noop
+            }
+        }
+
         if def::near_horizon(depth) {
             if gives_check || def::is_q(promo) {
                 depth += 1;
@@ -809,7 +818,13 @@ impl SearchEngine {
             *seldepth = ply;
         }
 
-        let score = eval::eval_state(state);
+        let material_score = eval::eval_materials(state);
+
+        if material_score - eval::MAX_POSITION_VAL >= beta {
+            return beta
+        }
+
+        let score = eval::eval_state(state, material_score);
 
         if score >= beta {
             return score
