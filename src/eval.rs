@@ -21,7 +21,8 @@ static P_VAL: i32 = 100;
 static SEE_EMPTY_VAL: i32 = 20001;
 
 static KING_PROTECTED_BASE_VAL: i32 = 10;
-static KING_EXPOSED_BASE_PEN: i32 = -50;
+static KING_EXPOSED_BASE_PEN: i32 = -30;
+static KING_SEMI_EXPOSED_BASE_PEN: i32 = -10;
 static KING_MIDGAME_SQR_VAL: i32 = 50;
 static KING_ENDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
@@ -94,6 +95,7 @@ pub struct FeatureMap {
     trapped_count: i32,
 
     king_expose_count: i32,
+    king_semi_expose_count: i32,
     king_protector_count: i32,
     king_midgame_safe_sqr_count: i32,
     king_endgame_pref_sqr_count: i32,
@@ -127,6 +129,7 @@ impl FeatureMap {
             trapped_count: 0,
 
             king_expose_count: 0,
+            king_semi_expose_count: 0,
             king_protector_count: 0,
             king_midgame_safe_sqr_count: 0,
             king_endgame_pref_sqr_count: 0,
@@ -221,6 +224,7 @@ pub fn eval_state(state: &State) -> i32 {
         + w_features_map.king_protector_count * KING_PROTECTED_BASE_VAL
         + w_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         + w_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
+        + w_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         + w_features_map.center_count * CENTER_CONTROL_VAL
         + w_features_map.invasion_count * INVASION_VAL
         + w_features_map.trapped_count * EDGE_TRAPPED_PEN
@@ -235,6 +239,7 @@ pub fn eval_state(state: &State) -> i32 {
         - b_features_map.king_protector_count * KING_PROTECTED_BASE_VAL
         - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
+        - b_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         - b_features_map.center_count * CENTER_CONTROL_VAL
         - b_features_map.invasion_count * INVASION_VAL
         - b_features_map.trapped_count * EDGE_TRAPPED_PEN
@@ -422,6 +427,28 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.king_expose_count += 1;
                 }
 
+                if index % 8 != 7 {
+                    let right_file_mask = file_masks[index + 1];
+                    if right_file_mask & bitboard.w_pawn == 0 {
+                        w_feature_map.king_semi_expose_count += 1;
+                    }
+
+                    if right_file_mask & bitboard.b_pawn == 0 {
+                        w_feature_map.king_semi_expose_count += 1;
+                    }
+                }
+
+                if index % 8 != 0 {
+                    let left_file_mask = file_masks[index - 1];
+                    if left_file_mask & bitboard.w_pawn == 0 {
+                        w_feature_map.king_semi_expose_count += 1;
+                    }
+
+                    if left_file_mask & bitboard.b_pawn == 0 {
+                        w_feature_map.king_semi_expose_count += 1;
+                    }
+                }
+
                 w_feature_map.king_protector_count += (protect_mask & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop)).count_ones() as i32;
             },
             def::BK => {
@@ -444,6 +471,28 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if file_mask & bitboard.w_pawn == 0 {
                     b_feature_map.king_expose_count += 1;
+                }
+
+                if index % 8 != 7 {
+                    let right_file_mask = file_masks[index + 1];
+                    if right_file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.king_semi_expose_count += 1;
+                    }
+
+                    if right_file_mask & bitboard.w_pawn == 0 {
+                        b_feature_map.king_semi_expose_count += 1;
+                    }
+                }
+
+                if index % 8 != 0 {
+                    let left_file_mask = file_masks[index - 1];
+                    if left_file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.king_semi_expose_count += 1;
+                    }
+
+                    if left_file_mask & bitboard.w_pawn == 0 {
+                        b_feature_map.king_semi_expose_count += 1;
+                    }
                 }
 
                 b_feature_map.king_protector_count += (protect_mask & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop)).count_ones() as i32;
@@ -524,6 +573,7 @@ mod tests {
             trapped_count: 0,
 
             king_expose_count: 1,
+            king_semi_expose_count: 0,
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -555,6 +605,7 @@ mod tests {
             trapped_count: 0,
 
             king_expose_count: 0,
+            king_semi_expose_count: 1,
             king_protector_count: 4,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -595,6 +646,7 @@ mod tests {
             trapped_count: 1,
 
             king_expose_count: 1,
+            king_semi_expose_count: 1,
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -626,6 +678,7 @@ mod tests {
             trapped_count: 0,
 
             king_expose_count: 1,
+            king_semi_expose_count: 1,
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -666,6 +719,7 @@ mod tests {
             trapped_count: 0,
 
             king_expose_count: 1,
+            king_semi_expose_count: 1,
             king_protector_count: 3,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -697,6 +751,7 @@ mod tests {
             trapped_count: 0,
 
             king_expose_count: 0,
+            king_semi_expose_count: 1,
             king_protector_count: 4,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
