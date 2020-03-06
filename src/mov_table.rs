@@ -103,14 +103,14 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
         cap_count += 1;
     };
 
-    let moving_side_mask = if player == def::PLAYER_W {
-        bitboard.w_all
+    let (opponent_mask, self_mask) = if player == def::PLAYER_W {
+        (bitboard.b_all, bitboard.w_all)
     } else {
-        bitboard.b_all
+        (bitboard.w_all, bitboard.b_all)
     };
 
-    let start_index = moving_side_mask.trailing_zeros() as usize;
-    let end_index = def::BOARD_SIZE - moving_side_mask.leading_zeros() as usize;
+    let start_index = self_mask.trailing_zeros() as usize;
+    let end_index = def::BOARD_SIZE - self_mask.leading_zeros() as usize;
 
     for from_index in start_index..end_index {
         let moving_piece = state.squares[from_index];
@@ -202,12 +202,6 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 }
             }
         } else if def::is_n(moving_piece) {
-            let (opponent_mask, self_mask) = if player == def::PLAYER_W {
-                (bitboard.b_all, bitboard.w_all)
-            } else {
-                (bitboard.w_all, bitboard.b_all)
-            };
-
             let reach_mask = bitmask.n_attack_masks[from_index] & !self_mask;
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
@@ -232,12 +226,6 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 mov_index += 1;
             }
         } else if def::is_b(moving_piece) {
-            let (opponent_mask, self_mask) = if player == def::PLAYER_W {
-                (bitboard.b_all, bitboard.w_all)
-            } else {
-                (bitboard.w_all, bitboard.b_all)
-            };
-
             let mut reach_mask = 0;
 
             let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
@@ -293,12 +281,6 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 mov_index += 1;
             }
         } else if def::is_r(moving_piece) {
-            let (opponent_mask, self_mask) = if player == def::PLAYER_W {
-                (bitboard.b_all, bitboard.w_all)
-            } else {
-                (bitboard.w_all, bitboard.b_all)
-            };
-
             let mut reach_mask = 0;
 
             let up_attack_mask = bitmask.up_attack_masks[from_index];
@@ -354,12 +336,6 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 mov_index += 1;
             }
         } else if def::is_q(moving_piece) {
-            let (opponent_mask, self_mask) = if player == def::PLAYER_W {
-                (bitboard.b_all, bitboard.w_all)
-            } else {
-                (bitboard.w_all, bitboard.b_all)
-            };
-
             let mut reach_mask = 0;
 
             let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
@@ -443,12 +419,6 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 mov_index += 1;
             }
         } else if def::is_k(moving_piece) {
-            let (opponent_mask, self_mask) = if player == def::PLAYER_W {
-                (bitboard.b_all, bitboard.w_all)
-            } else {
-                (bitboard.w_all, bitboard.b_all)
-            };
-
             let reach_mask = bitmask.k_attack_masks[from_index] & !self_mask;
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
@@ -490,14 +460,14 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
         cap_count += 1;
     };
 
-    let moving_side_mask = if player == def::PLAYER_W {
-        bitboard.w_all
+    let (self_mask, opponent_mask) = if player == def::PLAYER_W {
+        (bitboard.w_all, bitboard.b_all)
     } else {
-        bitboard.b_all
+        (bitboard.b_all, bitboard.w_all)
     };
 
-    let start_index = moving_side_mask.trailing_zeros() as usize;
-    let end_index = def::BOARD_SIZE - moving_side_mask.leading_zeros() as usize;
+    let start_index = self_mask.trailing_zeros() as usize;
+    let end_index = def::BOARD_SIZE - self_mask.leading_zeros() as usize;
 
     for from_index in start_index..end_index {
         let moving_piece = state.squares[from_index];
@@ -557,12 +527,6 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 }
             }
         } else if def::is_n(moving_piece) {
-            let opponent_mask = if player == def::PLAYER_W {
-                bitboard.b_all
-            } else {
-                bitboard.w_all
-            };
-
             let mut attack_mask = bitmask.n_attack_masks[from_index] & opponent_mask;
 
             let mut attack_index = 0;
@@ -575,12 +539,6 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 attack_index += 1;
             }
         } else if def::is_b(moving_piece) {
-            let opponent_mask = if player == def::PLAYER_W {
-                bitboard.b_all
-            } else {
-                bitboard.w_all
-            };
-
             let mut reach_mask = 0;
 
             let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
@@ -623,12 +581,6 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 attack_index += 1;
             }
         } else if def::is_r(moving_piece) {
-            let opponent_mask = if player == def::PLAYER_W {
-                bitboard.b_all
-            } else {
-                bitboard.w_all
-            };
-
             let mut reach_mask = 0;
 
             let up_attack_mask = bitmask.up_attack_masks[from_index];
@@ -671,12 +623,6 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 attack_index += 1;
             }
         } else if def::is_q(moving_piece) {
-            let opponent_mask = if player == def::PLAYER_W {
-                bitboard.b_all
-            } else {
-                bitboard.w_all
-            };
-
             let mut reach_mask = 0;
 
             let up_left_attack_mask = bitmask.up_left_attack_masks[from_index];
@@ -747,12 +693,6 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 attack_index += 1;
             }
         } else if def::is_k(moving_piece) {
-            let opponent_mask = if player == def::PLAYER_W {
-                bitboard.b_all
-            } else {
-                bitboard.w_all
-            };
-
             let mut attack_mask = bitmask.k_attack_masks[from_index] & opponent_mask;
 
             let mut attack_index = 0;

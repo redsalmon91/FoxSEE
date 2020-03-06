@@ -16,7 +16,9 @@ use std::u64;
 const PV_TRACK_LENGTH: usize = 64;
 const KILLER_TABLE_LENGTH: usize = 256;
 const MAX_HISTORY_SCORE: u64 = u64::MAX >> 1;
-const WINDOW_SIZE: i32 = 50;
+
+const SM_WINDOW_SIZE: i32 = 50;
+const LG_WINDOW_SIZE: i32 = 200;
 
 const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
@@ -43,6 +45,7 @@ pub struct SearchEngine {
 
     abort: bool,
     max_time_millis: u128,
+    recent_search_score: i32,
 }
 
 impl SearchEngine {
@@ -58,6 +61,7 @@ impl SearchEngine {
 
             abort: false,
             max_time_millis: 0,
+            recent_search_score: 0,
         }
     }
 
@@ -147,8 +151,9 @@ impl SearchEngine {
         self.master_pv_table = [0; PV_TRACK_LENGTH];
         self.root_node_mov_list = Vec::new();
 
-        let mut alpha = -eval::MATE_VAL;
-        let mut beta = eval::MATE_VAL;
+        let mut alpha = self.recent_search_score - LG_WINDOW_SIZE;
+        let mut beta = self.recent_search_score + LG_WINDOW_SIZE;
+        let mut window_expanded = false;
 
         let mut depth = 1;
         let mut best_mov = 0;
@@ -185,19 +190,30 @@ impl SearchEngine {
                 }
             }
 
+            let pv_changed = best_mov != pv_table[0];
+            best_mov = pv_table[0];
+
             if score <= alpha {
-                alpha = -eval::MATE_VAL;
+                if !window_expanded {
+                    alpha = score - LG_WINDOW_SIZE;
+                    window_expanded = true;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
+
                 continue
             }
 
             if score >= beta {
-                beta = eval::MATE_VAL;
+                if !window_expanded {
+                    beta = score + LG_WINDOW_SIZE;
+                    window_expanded = true;
+                } else {
+                    beta = eval::MATE_VAL;
+                }
+
                 continue
             }
-
-            let pv_changed = best_mov != pv_table[0];
-
-            best_mov = pv_table[0];
 
             if checkmate {
                 break
@@ -216,8 +232,9 @@ impl SearchEngine {
                 break
             }
 
-            alpha = score - WINDOW_SIZE;
-            beta = score + WINDOW_SIZE;
+            alpha = score - SM_WINDOW_SIZE;
+            beta = score + SM_WINDOW_SIZE;
+            window_expanded = false;
 
             self.master_pv_table.copy_from_slice(&pv_table);
         }
@@ -552,6 +569,20 @@ impl SearchEngine {
             }
         }
 
+        let killer_mov = self.get_killer_mov(ply);
+
+        if killer_mov != 0 && killer_mov != hash_mov && killer_mov != pv_mov && non_cap_list.contains(&killer_mov) {
+            let (_from, to, _tp, _promo) = util::decode_u32_mov(killer_mov);
+
+            match self.search_mov(state, false, in_check, on_scout, pv_table, killer_mov, &mut mov_count, state.squares[to] != 0, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                Return(score) => return score,
+                RaiseAlpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
         let mut promo_non_cap_list = Vec::new();
         let mut other_non_cap_list = Vec::new();
 
@@ -562,7 +593,7 @@ impl SearchEngine {
                 break
             }
 
-            if non_cap == pv_mov || non_cap == hash_mov {
+            if non_cap == pv_mov || non_cap == hash_mov || non_cap == killer_mov {
                 continue
             }
 
@@ -581,29 +612,6 @@ impl SearchEngine {
 
         for (_score, non_cap) in promo_non_cap_list {
             match self.search_mov(state, false, in_check, on_scout,pv_table, non_cap, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
-        let mut killer_mov = 0;
-        let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize].0;
-        if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
-            killer_mov = saved_killer_mov;
-        } else {
-            let (_killer_score, saved_killer_mov) = self.killer_table[ply as usize].1;
-            if saved_killer_mov != 0 && saved_killer_mov != pv_mov && saved_killer_mov != hash_mov && non_cap_list.contains(&saved_killer_mov) {
-                killer_mov = saved_killer_mov;
-            }
-        }
-
-        if killer_mov != 0 {
-            let (_from, to, _tp, _promo) = util::decode_u32_mov(killer_mov);
-
-            match self.search_mov(state, false, in_check, on_scout, pv_table, killer_mov, &mut mov_count, state.squares[to] != 0, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                 Return(score) => return score,
                 RaiseAlpha(score) => {
                     alpha = score;
@@ -675,6 +683,37 @@ impl SearchEngine {
     }
 
     #[inline]
+    fn get_killer_mov(&self, ply: u8) -> u32 {
+        let ply_index = ply as usize;
+        let same_ply_killer_entry = self.killer_table[ply_index];
+
+        let mut killer_mov = 0;
+        let (_killer_score, saved_killer_mov) = same_ply_killer_entry.0;
+        if saved_killer_mov != 0 {
+            killer_mov = saved_killer_mov;
+        } else {
+            let (_killer_score, saved_killer_mov) = same_ply_killer_entry.1;
+            if saved_killer_mov != 0 {
+                killer_mov = saved_killer_mov;
+            } else if ply > 2 {
+                let early_ply_killer_entry = self.killer_table[ply_index - 2];
+
+                let (_killer_score, saved_killer_mov) = early_ply_killer_entry.0;
+                if saved_killer_mov != 0 {
+                    killer_mov = saved_killer_mov;
+                } else {
+                    let (_killer_score, saved_killer_mov) = early_ply_killer_entry.1;
+                    if saved_killer_mov != 0 {
+                        killer_mov = saved_killer_mov;
+                    }
+                }
+            }
+        }
+
+        killer_mov
+    }
+
+    #[inline]
     fn search_mov(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mov: u32, mov_count: &mut usize, is_capture: bool, best_score: &mut i32, alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
         if self.abort {
             return Return(0)
@@ -710,7 +749,7 @@ impl SearchEngine {
         state.undo_mov(from, to, tp);
 
         if score >= beta {
-            if !is_capture && promo == 0 {
+            if !is_capture {
                 let (killer_score, _killer_mov) = self.killer_table[ply as usize].0;
                 if score > killer_score || killer_score == 0 {
                     self.killer_table[ply as usize].1 = self.killer_table[ply as usize].0;
@@ -785,12 +824,13 @@ impl SearchEngine {
 
         for mov_index in 0..def::MAX_CAP_COUNT {
             let cap = cap_list[mov_index];
+
             if cap == 0 {
                 break
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-            scored_cap_list.push((eval::val_of(squares[to]) - eval::val_of(squares[from]) + eval::val_of(promo), cap));
+            scored_cap_list.push((eval::val_of(squares[to]) + eval::val_of(promo) - eval::val_of(squares[from]), cap));
         }
 
         scored_cap_list.sort_by(|(score_a, _), (score_b, _)| {
