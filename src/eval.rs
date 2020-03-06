@@ -12,10 +12,11 @@ pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 pub static LOSING_EXCHANGE_VAL: i32 = -250;
 
-pub static DELTA_MARGIN: i32 = 90;
+pub static DELTA_MARGIN: i32 = 340;
+pub static DELTA_MAX_MARGIN: i32 = 1090;
 pub static FUTILITY_MARGIN: i32 = 340;
 
-pub static MAX_POSITION_VAL: i32 = 90;
+pub static MAX_POSITIONAL_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;

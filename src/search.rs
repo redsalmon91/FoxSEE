@@ -3,6 +3,7 @@
  */
 
 use crate::{
+    bitboard,
     def,
     eval,
     hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA},
@@ -391,7 +392,7 @@ impl SearchEngine {
         }
 
         if depth == 0 {
-            return self.q_search(state, alpha, beta, ply, seldepth)
+            return self.q_search(state, alpha, beta, ply, node_count, seldepth)
         }
 
         if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
@@ -800,18 +801,19 @@ impl SearchEngine {
         Noop
     }
 
-    pub fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8, seldepth: &mut u8) -> i32 {
+    pub fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
         if self.abort {
             return 0
         }
+
+        *node_count += 1;
 
         if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
             return eval::MATE_VAL - ply as i32
         }
 
         if mov_table::is_in_check(state, state.player) {
-            let mut node_count = 0;
-            return self.ab_search(state, false, true, true, &mut EMPTY_PV_TABLE, alpha, beta, 1, ply + 1, &mut node_count, seldepth)
+            return self.ab_search(state, false, true, true, &mut EMPTY_PV_TABLE, alpha, beta, 1, ply + 1, node_count, seldepth)
         }
 
         if ply > *seldepth {
@@ -820,7 +822,7 @@ impl SearchEngine {
 
         let material_score = eval::eval_materials(state);
 
-        if material_score - eval::MAX_POSITION_VAL >= beta {
+        if material_score - eval::MAX_POSITIONAL_VAL >= beta {
             return beta
         }
 
@@ -834,7 +836,19 @@ impl SearchEngine {
             alpha = score;
         }
 
-        let delta = alpha - score + eval::DELTA_MARGIN;
+        if score + eval::DELTA_MAX_MARGIN < alpha {
+            let promoting_pawn_mask = if state.player == def::PLAYER_W {
+                state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK
+            } else {
+                state.bitboard.b_pawn & bitboard::BP_PROMO_PAWNS_MASK
+            };
+
+            if promoting_pawn_mask == 0 {
+                return alpha
+            }
+        }
+
+        let delta = alpha - score - eval::DELTA_MARGIN;
 
         let mut cap_list = [0; def::MAX_CAP_COUNT];
         mov_table::gen_capture_list(state, &mut cap_list);
@@ -877,7 +891,7 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
             state.do_mov(from, to, tp, promo);
-            let score = -self.q_search(state, -beta, -alpha, ply + 1, seldepth);
+            let score = -self.q_search(state, -beta, -alpha, ply + 1, node_count, seldepth);
             state.undo_mov(from, to, tp);
 
             if score >= beta {
