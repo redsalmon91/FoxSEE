@@ -22,7 +22,7 @@ const LG_WINDOW_SIZE: i32 = 200;
 
 const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
-const NM_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
+const EMPTY_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
 
 pub enum SearchMovResult {
     Return(i32),
@@ -191,7 +191,10 @@ impl SearchEngine {
             }
 
             let pv_changed = best_mov != pv_table[0];
-            best_mov = pv_table[0];
+
+            if pv_table[0] != 0 {
+                best_mov = pv_table[0];
+            }
 
             if score <= alpha {
                 if !window_expanded {
@@ -400,7 +403,7 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let scout_score = -self.ab_search(state, false, gives_check, true, &mut NM_PV_TABLE, -beta, -beta+1, depth - NM_DEPTH_REDUCTION - 1, ply + 1, node_count, seldepth);
+            let scout_score = -self.ab_search(state, false, gives_check, true, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - NM_DEPTH_REDUCTION - 1, ply + 1, node_count, seldepth);
             state.undo_null_mov();
 
             if scout_score >= beta {
@@ -797,6 +800,11 @@ impl SearchEngine {
             return eval::MATE_VAL - ply as i32
         }
 
+        if mov_table::is_in_check(state, state.player) {
+            let mut node_count = 0;
+            return self.ab_search(state, false, true, true, &mut EMPTY_PV_TABLE, alpha, beta, 1, ply + 1, &mut node_count, seldepth)
+        }
+
         if ply > *seldepth {
             *seldepth = ply;
         }
@@ -810,6 +818,8 @@ impl SearchEngine {
         if score > alpha {
             alpha = score;
         }
+
+        let delta = alpha - score + eval::DELTA_MARGIN;
 
         let mut cap_list = [0; def::MAX_CAP_COUNT];
         mov_table::gen_capture_list(state, &mut cap_list);
@@ -830,7 +840,18 @@ impl SearchEngine {
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-            scored_cap_list.push((eval::val_of(squares[to]) + eval::val_of(promo) - eval::val_of(squares[from]), cap));
+
+            let gain = eval::val_of(squares[to]) + eval::val_of(promo);
+
+            if gain < delta {
+                continue
+            }
+
+            scored_cap_list.push((gain - eval::val_of(squares[from]), cap));
+        }
+
+        if scored_cap_list.is_empty() {
+            return alpha
         }
 
         scored_cap_list.sort_by(|(score_a, _), (score_b, _)| {

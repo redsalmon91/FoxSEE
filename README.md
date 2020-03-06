@@ -22,6 +22,7 @@ A strong UCI chess engine written in Rust!
 - Aspiration Window
 - Linear Evaluation
 - Null-Move Pruning
+- Delta Pruning
 - Perft
 
 ## How to build
