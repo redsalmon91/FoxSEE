@@ -38,14 +38,15 @@ static DUP_PAWN_PEN: i32 = -20;
 static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 
-static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
-static ROOK_OPEN_LINE_VAL: i32 = 20;
+static ROOK_SEMI_OPEN_LINE_VAL: i32 = 10;
+static ROOK_OPEN_LINE_VAL: i32 = 10;
 
-static QUEEN_OPEN_LINE_VAL: i32 = 10;
+static QUEEN_OPEN_LINE_VAL: i32 = 5;
 
-static CENTER_CONTROL_VAL: i32 = 20;
-static INVASION_VAL: i32 = 10;
-static EDGE_TRAPPED_PEN: i32 = -20;
+static CENTER_CONTROL_VAL: i32 = 10;
+static THREAT_VAL: i32 = 10;
+static INVASION_VAL: i32 = 5;
+static TRAPPED_PEN: i32 = -5;
 
 static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
@@ -64,10 +65,17 @@ static N_PHASE_WEIGHT: i32 = 4;
 static TEMPO_VAL: i32 = 10;
 
 static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
-static EDGE_MASK: u64 = 0b00000000_10000001_10000001_10000001_10000001_10000001_10000001_00000000;
+
+static ALL_TRAP_MASK: u64 = 0b00000000_10000001_10000001_10000001_10000001_10000001_10000001_00000000;
+static N_TRAP_MASK: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
+static B_TRAP_MASK: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
+static R_TRAP_MASK: u64 = 0b00000000_00000000_00000000_11111111_11111111_00000000_00000000_00000000;
 
 static W_INVASION_MASK: u64 = 0b01111110_01111110_01111110_00111100_00000000_00000000_00000000_00000000;
 static B_INVASION_MASK: u64 = 0b00000000_00000000_00000000_00000000_00111100_01111110_01111110_01111110;
+
+static WR_THREAT_MASK: u64 = 0b00000000_01111110_00000000_00000000_00000000_00000000_00000000_00000000;
+static BR_THREAT_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_01111110_00000000;
 
 static WK_MIDGAME_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
 static BK_MIDGAME_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
@@ -98,6 +106,7 @@ pub struct FeatureMap {
 
     center_count: i32,
     invasion_count: i32,
+    threat_count: i32,
     trapped_count: i32,
 
     king_expose_count: i32,
@@ -132,6 +141,7 @@ impl FeatureMap {
 
             center_count: 0,
             invasion_count: 0,
+            threat_count: 0,
             trapped_count: 0,
 
             king_expose_count: 0,
@@ -242,7 +252,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         + w_features_map.center_count * CENTER_CONTROL_VAL
         + w_features_map.invasion_count * INVASION_VAL
-        + w_features_map.trapped_count * EDGE_TRAPPED_PEN
+        + w_features_map.threat_count * THREAT_VAL
+        + w_features_map.trapped_count * TRAPPED_PEN
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         - b_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
@@ -257,7 +268,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         - b_features_map.center_count * CENTER_CONTROL_VAL
         - b_features_map.invasion_count * INVASION_VAL
-        - b_features_map.trapped_count * EDGE_TRAPPED_PEN
+        - b_features_map.threat_count * THREAT_VAL
+        - b_features_map.trapped_count * TRAPPED_PEN
         + TEMPO_VAL * score_sign;
 
     let endgame_extra_score =
@@ -537,8 +549,16 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.invasion_count = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_count = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
 
-    let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & EDGE_MASK) | ((bitboard.w_queen | bitboard.w_rook) & CENTER_CONTROL_MASK);
-    let b_trapped_piece_mask = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & EDGE_MASK) | ((bitboard.b_queen | bitboard.b_rook) & CENTER_CONTROL_MASK);
+    w_feature_map.threat_count = (bitboard.w_rook & WR_THREAT_MASK).count_ones() as i32;
+    b_feature_map.threat_count = (bitboard.b_rook & BR_THREAT_MASK).count_ones() as i32;
+
+    let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & ALL_TRAP_MASK)
+        | ((bitboard.w_knight & N_TRAP_MASK) | (bitboard.w_bishop & B_TRAP_MASK))
+        | ((bitboard.w_rook | bitboard.w_queen) & R_TRAP_MASK);
+
+    let b_trapped_piece_mask = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & ALL_TRAP_MASK)
+        | ((bitboard.b_knight & N_TRAP_MASK) | (bitboard.b_bishop & B_TRAP_MASK))
+        | ((bitboard.b_rook | bitboard.b_queen) & R_TRAP_MASK);
 
     w_feature_map.trapped_count = w_trapped_piece_mask.count_ones() as i32;
     b_feature_map.trapped_count = b_trapped_piece_mask.count_ones() as i32;
@@ -585,6 +605,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
+            threat_count: 0,
             trapped_count: 0,
 
             king_expose_count: 1,
@@ -617,6 +638,7 @@ mod tests {
 
             center_count: 2,
             invasion_count: 0,
+            threat_count: 0,
             trapped_count: 0,
 
             king_expose_count: 0,
@@ -658,6 +680,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 1,
+            threat_count: 0,
             trapped_count: 1,
 
             king_expose_count: 1,
@@ -690,6 +713,7 @@ mod tests {
 
             center_count: 2,
             invasion_count: 0,
+            threat_count: 0,
             trapped_count: 0,
 
             king_expose_count: 1,
@@ -731,6 +755,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
+            threat_count: 0,
             trapped_count: 0,
 
             king_expose_count: 1,
@@ -763,6 +788,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
+            threat_count: 0,
             trapped_count: 0,
 
             king_expose_count: 0,
@@ -772,5 +798,29 @@ mod tests {
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 1,
         }, b_features);
+    }
+
+    #[test]
+    fn test_extract_features_4() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("n2qk2b/pppppppp/8/r7/2R1Q3/8/PPPPPPPP/N3K2B w - - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(4, w_features.trapped_count);
+        assert_eq!(3, b_features.trapped_count);
+    }
+
+    #[test]
+    fn test_extract_features_5() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("8/p2R2p1/1p3p1p/2p5/8/1P6/Pr1r1PPP/8 w - - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(1, w_features.threat_count);
+        assert_eq!(2, b_features.threat_count);
     }
 }
