@@ -14,7 +14,7 @@ pub static LOSING_EXCHANGE_VAL: i32 = -250;
 
 pub static DELTA_MARGIN: i32 = 90;
 pub static DELTA_MAX_MARGIN: i32 = 1090;
-pub static FUTILITY_MARGIN: i32 = 340;
+pub static FUTILITY_MARGIN: i32 = 515;
 
 pub static MAX_POSITIONAL_VAL: i32 = 90;
 
