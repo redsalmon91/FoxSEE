@@ -120,6 +120,9 @@ fn main() {
                 let perft_val = search_engine.perft(&mut state, depth);
                 println!("depth {} perft {}", depth, perft_val);
             },
+            UciProcessResult::PrintDebugInfo => {
+                println!("{}", &state);
+            }
             UciProcessResult::Stop => {
                 search_engine.stop();
                 print_uci_ok();

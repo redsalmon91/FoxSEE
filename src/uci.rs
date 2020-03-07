@@ -33,6 +33,7 @@ pub enum UciProcessResult {
     SetHashSize(usize),
     Perft(u8),
     Position(String, Vec<Rawmov>),
+    PrintDebugInfo,
     StartSearchWithTime(u128),
     StartSearchWithComplextTimeControl(TimeInfo),
     StartSearchToDepth(u8),
@@ -51,13 +52,13 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             println!("uciok");
             io::stdout().flush().ok();
             UciProcessResult::Noop
-        }
-        "debug" => UciProcessResult::Noop,
+        },
+        "debug" => UciProcessResult::PrintDebugInfo,
         "isready" => {
             println!("readyok");
             io::stdout().flush().ok();
             UciProcessResult::Noop
-        }
+        },
         "setoption" => {
             match cmd_seq[2] {
                 "Hash" => {
@@ -96,7 +97,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             }
         },
         "go" => process_go_cmd(cmd_seq.split_off(0)),
-        "perft" => process_perft_cmd(cmd_seq[1]),
+        "perft" => UciProcessResult::Perft(cmd_seq[1].parse::<u8>().unwrap()),
         "stop" => UciProcessResult::Stop,
         "ponderhit" => UciProcessResult::Noop,
         "quit" => UciProcessResult::Quit,
@@ -187,10 +188,6 @@ fn process_position_with_mov_list(fen_str: &str, mov_str_list: Vec<&str>) -> Uci
     }
 
     UciProcessResult::Position(fen_str.to_owned(), mov_list)
-}
-
-fn process_perft_cmd(depth: &str) -> UciProcessResult {
-    UciProcessResult::Perft(depth.parse::<u8>().unwrap())
 }
 
 fn parse_mov_str(mov_str: &str) -> Rawmov {

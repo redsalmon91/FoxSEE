@@ -890,6 +890,7 @@ impl <'state> fmt::Display for State <'state> {
         loop {
             for file_index in 0..def::DIM_SIZE {
                 display_string.push(util::map_piece_code_to_char(self.squares[rank_left_index + file_index]));
+                display_string.push_str(" ");
             }
 
             display_string.push('\n');
