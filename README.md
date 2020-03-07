@@ -29,7 +29,6 @@ A strong UCI chess engine written in Rust!
 ## Posts
 
 - [Choose a margin for Futility Pruning](https://github.com/redsalmon91/FoxSEE/wiki/Choose-a-margin-for-Futility-Pruning)
-- [My Approach in Late-Move Reduction](https://github.com/redsalmon91/FoxSEE/wiki/My-Approach-in-Late-Move-Reduction)
 - [Static Exchange Evaluation (SEE) in FoxSEE](https://github.com/redsalmon91/FoxSEE/wiki/Static-Exchange-Evaluation-(SEE)-in-FoxSEE)
 
 ## How to build
