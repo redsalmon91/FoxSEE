@@ -1305,6 +1305,20 @@ mod tests {
     }
 
     #[test]
+    fn test_search_17() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2r3k1/ppr1bppp/4p3/3P3q/2n1Q3/PB2B2P/1P3PP1/2RR2K1 b - - 0 24", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(65536);
+
+        let best_mov = search_engine.search(&mut state, 15500, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c4"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e3"));
+    }
+
+    #[test]
     fn test_search_perft_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
