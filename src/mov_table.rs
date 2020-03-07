@@ -140,7 +140,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 let enp_square_index = state.enp_square;
                 let mut attack_mask = bitmask.wp_attack_masks[from_index] & (bitboard.b_all | bitmask.index_masks[enp_square_index]);
 
-                let mut attack_index = 0;
+                let start_index = get_lowest_index(attack_mask);
+                attack_mask >>= start_index;
+
+                let mut attack_index = start_index;
                 while attack_mask != 0 {
                     if attack_mask & 1u64 != 0 {
                         if attack_index > 55 {
@@ -180,7 +183,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 let enp_square_index = state.enp_square;
                 let mut attack_mask = bitmask.bp_attack_masks[from_index] & (bitboard.w_all | (bitmask.index_masks[enp_square_index] & ENP_SQRS_MASK));
 
-                let mut attack_index = 0;
+                let start_index = get_lowest_index(attack_mask);
+                attack_mask >>= start_index;
+
+                let mut attack_index = start_index;
                 while attack_mask != 0 {
                     if attack_mask & 1u64 != 0 {
                         if attack_index < 8 {
@@ -206,7 +212,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -216,7 +225,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 attack_index += 1;
             }
 
-            let mut mov_index = 0;
+            let start_index = get_lowest_index(mov_mask);
+            mov_mask >>= start_index;
+
+            let mut mov_index = start_index;
             while mov_mask != 0 {
                 if mov_mask & 1u64 != 0 {
                     add_mov(from_index, mov_index, def::MOV_REG, 0);
@@ -261,7 +273,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -271,7 +286,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 attack_index += 1;
             }
 
-            let mut mov_index = 0;
+            let start_index = get_lowest_index(mov_mask);
+            mov_mask >>= start_index;
+
+            let mut mov_index = start_index;
             while mov_mask != 0 {
                 if mov_mask & 1u64 != 0 {
                     add_mov(from_index, mov_index, def::MOV_REG, 0);
@@ -316,7 +334,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -326,7 +347,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 attack_index += 1;
             }
 
-            let mut mov_index = 0;
+            let start_index = get_lowest_index(mov_mask);
+            mov_mask >>= start_index;
+
+            let mut mov_index = start_index;
             while mov_mask != 0 {
                 if mov_mask & 1u64 != 0 {
                     add_mov(from_index, mov_index, def::MOV_REG, 0);
@@ -399,7 +423,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -409,7 +436,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 attack_index += 1;
             }
 
-            let mut mov_index = 0;
+            let start_index = get_lowest_index(mov_mask);
+            mov_mask >>= start_index;
+
+            let mut mov_index = start_index;
             while mov_mask != 0 {
                 if mov_mask & 1u64 != 0 {
                     add_mov(from_index, mov_index, def::MOV_REG, 0);
@@ -423,7 +453,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
             let mut attack_mask = reach_mask & opponent_mask;
             let mut mov_mask = reach_mask ^ attack_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -433,7 +466,10 @@ pub fn gen_reg_mov_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT],
                 attack_index += 1;
             }
 
-            let mut mov_index = 0;
+            let start_index = get_lowest_index(mov_mask);
+            mov_mask >>= start_index;
+
+            let mut mov_index = start_index;
             while mov_mask != 0 {
                 if mov_mask & 1u64 != 0 {
                     add_mov(from_index, mov_index, def::MOV_REG, 0);
@@ -481,7 +517,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 let enp_square_index = state.enp_square;
                 let mut attack_mask = bitmask.wp_attack_masks[from_index] & (bitboard.b_all | bitmask.index_masks[enp_square_index]);
 
-                let mut attack_index = 0;
+                let start_index = get_lowest_index(attack_mask);
+                attack_mask >>= start_index;
+
+                let mut attack_index = start_index;
                 while attack_mask != 0 {
                     if attack_mask & 1u64 != 0 {
                         if attack_index > 55 {
@@ -505,7 +544,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                 let enp_square_index = state.enp_square;
                 let mut attack_mask = bitmask.bp_attack_masks[from_index] & (bitboard.w_all | (bitmask.index_masks[enp_square_index] & ENP_SQRS_MASK));
 
-                let mut attack_index = 0;
+                let start_index = get_lowest_index(attack_mask);
+                attack_mask >>= start_index;
+
+                let mut attack_index = start_index;
                 while attack_mask != 0 {
                     if attack_mask & 1u64 != 0 {
                         if attack_index < 8 {
@@ -529,7 +571,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
         } else if def::is_n(moving_piece) {
             let mut attack_mask = bitmask.n_attack_masks[from_index] & opponent_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -571,7 +616,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
 
             let mut attack_mask = reach_mask & opponent_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -613,7 +661,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
 
             let mut attack_mask = reach_mask & opponent_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -683,7 +734,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
 
             let mut attack_mask = reach_mask & opponent_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);
@@ -695,7 +749,10 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
         } else if def::is_k(moving_piece) {
             let mut attack_mask = bitmask.k_attack_masks[from_index] & opponent_mask;
 
-            let mut attack_index = 0;
+            let start_index = get_lowest_index(attack_mask);
+            attack_mask >>= start_index;
+
+            let mut attack_index = start_index;
             while attack_mask != 0 {
                 if attack_mask & 1u64 != 0 {
                     add_cap(from_index, attack_index, def::MOV_REG, 0);

@@ -997,7 +997,7 @@ pub fn see(state: &State, from: usize, to: usize, promo: u8) -> i32 {
     gain - lost
 }
 
-fn sim_exchange(last_attacker: u8, current_attacker_index: usize, next_attacker_index: usize, current_attacker_list: &[u8; 32], next_attacker_list: &[u8; 32]) -> i32 {
+fn sim_exchange(last_attacker: u8, current_attacker_index: usize, next_attacker_index: usize, current_attacker_list: &[u8; def::MAX_ATTACKERS_COUNT], next_attacker_list: &[u8; def::MAX_ATTACKERS_COUNT]) -> i32 {
     if current_attacker_index >= def::MAX_ATTACKERS_COUNT {
         return 0
     }
