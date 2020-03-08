@@ -38,7 +38,7 @@ use std::time::Instant;
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
-    killer_table: [((i32, u32), (i32, u32)); KILLER_TABLE_LENGTH],
+    killer_table: [((u64, i32, u32), (u64, i32, u32)); KILLER_TABLE_LENGTH],
     history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
     master_pv_table: [u32; PV_TRACK_LENGTH],
     root_node_mov_list: Vec<(u8, i32, u32)>,
@@ -54,7 +54,7 @@ impl SearchEngine {
         SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
-            killer_table: [((0, 0), (0, 0)); KILLER_TABLE_LENGTH],
+            killer_table: [((0, 0, 0), (0, 0, 0)); KILLER_TABLE_LENGTH],
             history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
             master_pv_table: [0; PV_TRACK_LENGTH],
             root_node_mov_list: Vec::new(),
@@ -91,52 +91,23 @@ impl SearchEngine {
 
         let mut node_count = 0;
 
-        let mut cap_list = [0; def::MAX_CAP_COUNT];
-        let mut non_cap_list = [0; def::MAX_MOV_COUNT];
-        let mut cas_list = [0; def::MAX_CAS_COUNT];
+        let mut mov_list = [0; def::MAX_MOV_COUNT];
 
-        mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
-        mov_table::gen_castle_mov_list(state, &mut cas_list);
+        mov_table::gen_reg_mov_list(state, &mut mov_list);
 
-        for cap_index in 0..def::MAX_CAP_COUNT {
-            let cap = cap_list[cap_index];
+        for mov_index in 0..def::MAX_MOV_COUNT {
+            let mov = mov_list[mov_index];
 
-            if cap == 0 {
+            if mov == 0 {
                 break
             }
 
-            let (from, to, tp, promo) = util::decode_u32_mov(cap);
+            let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             if def::is_k(state.squares[to]) {
                 return 0
             }
 
-            state.do_mov(from, to, tp, promo);
-            node_count += self.perft(state, depth - 1);
-            state.undo_mov(from, to, tp);
-        }
-
-        for non_cap_index in 0..def::MAX_MOV_COUNT {
-            let non_cap = non_cap_list[non_cap_index];
-
-            if non_cap == 0 {
-                break
-            }
-
-            let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
-            state.do_mov(from, to, tp, promo);
-            node_count += self.perft(state, depth - 1);
-            state.undo_mov(from, to, tp);
-        }
-
-        for cas_index in 0..def::MAX_CAS_COUNT {
-            let cas_mov = cas_list[cas_index];
-
-            if cas_mov == 0 {
-                break
-            }
-
-            let (from, to, tp, promo) = util::decode_u32_mov(cas_mov);
             state.do_mov(from, to, tp, promo);
             node_count += self.perft(state, depth - 1);
             state.undo_mov(from, to, tp);
@@ -161,7 +132,7 @@ impl SearchEngine {
         let mut accumulated_time_taken = 0;
 
         loop {
-            self.killer_table = [((0, 0), (0, 0)); KILLER_TABLE_LENGTH];
+            self.killer_table = [((0, 0, 0), (0, 0, 0)); KILLER_TABLE_LENGTH];
             self.history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
 
             let mut node_count = 0;
@@ -246,7 +217,7 @@ impl SearchEngine {
         best_mov
     }
 
-    pub fn validate_pv(&self, state: &mut State, pv_table: &mut [u32], mov_index: usize) {
+    fn validate_pv(&self, state: &mut State, pv_table: &mut [u32], mov_index: usize) {
         if mov_index == PV_TRACK_LENGTH - 1 {
             return
         }
@@ -272,47 +243,25 @@ impl SearchEngine {
         state.undo_mov(from, to, tp);
     }
 
-    pub fn root_search(&mut self, state: &mut State, pv_table: &mut [u32], mut alpha: i32, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
+    fn root_search(&mut self, state: &mut State, pv_table: &mut [u32], mut alpha: i32, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
         if self.root_node_mov_list.is_empty() {
-            let mut cap_list = [0; def::MAX_CAP_COUNT];
-            let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+            let mut mov_list = [0; def::MAX_MOV_COUNT];
 
-            mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+            mov_table::gen_reg_mov_list(state, &mut mov_list);
 
-            for cap_index in 0..def::MAX_CAP_COUNT {
-                let cap = cap_list[cap_index];
+            for mov_index in 0..def::MAX_CAP_COUNT {
+                let mov = mov_list[mov_index];
 
-                if cap == 0 {
+                if mov == 0 {
                     break
                 }
 
-                let (from, to, _tp, promo) = util::decode_u32_mov(cap);
-                self.root_node_mov_list.push((depth, see(state, from, to, promo), cap));
-            }
+                let (from, to, _tp, promo) = util::decode_u32_mov(mov);
 
-            for non_cap_index in 0..def::MAX_MOV_COUNT {
-                let non_cap = non_cap_list[non_cap_index];
-
-                if non_cap == 0  {
-                    break
-                }
-
-                let (_from, _to, _tp, promo) = util::decode_u32_mov(non_cap);
-                self.root_node_mov_list.push((depth, eval::val_of(promo), non_cap));
-            }
-
-            if state.cas_rights != 0 {
-                let mut cas_list = [0; def::MAX_CAS_COUNT];
-                mov_table::gen_castle_mov_list(state, &mut cas_list);
-
-                for cas_index in 0..def::MAX_CAS_COUNT {
-                    let cas_mov = cas_list[cas_index];
-
-                    if cas_mov == 0  {
-                        break
-                    }
-
-                    self.root_node_mov_list.push((depth, eval::TERM_VAL, cas_mov));
+                if state.squares[to] != 0 {
+                    self.root_node_mov_list.push((depth, see(state, from, to, promo), mov));
+                } else {
+                    self.root_node_mov_list.push((depth, -eval::val_of(state.squares[from]), mov));
                 }
             }
         }
@@ -375,7 +324,7 @@ impl SearchEngine {
         alpha
     }
 
-    pub fn ab_search(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mut alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
+    fn ab_search(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mut alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
         if self.abort {
             return 0
         }
@@ -490,81 +439,52 @@ impl SearchEngine {
             }
         }
 
-        let mut cap_list = [0; def::MAX_CAP_COUNT];
-        let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+        let mut mov_list = [0; def::MAX_MOV_COUNT];
 
-        mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+        mov_table::gen_reg_mov_list(state, &mut mov_list);
 
-        let mut good_cap_list = Vec::new();
+        let mut priority_mov_list = Vec::new();
         let mut other_cap_list = Vec::new();
+        let mut other_non_cap_list = Vec::new();
 
-        let (last_to, last_captured) = state.history_mov_stack.last().unwrap();
+        let (last_to, _last_captured) = state.history_mov_stack.last().unwrap();
 
-        let mut best_recapture = 0;
-        let mut best_recapture_score = eval::TERM_VAL;
+        for mov_index in 0..def::MAX_MOV_COUNT {
+            let mov = mov_list[mov_index];
 
-        if *last_captured != 0 {
-            for cap_index in 0..def::MAX_CAP_COUNT {
-                let cap = cap_list[cap_index];
-
-                if cap == 0 {
-                    break
-                }
-
-                if cap == pv_mov || cap == hash_mov {
-                    continue
-                }
-
-                let (from, to, _tp, _promo) = util::decode_u32_mov(cap);
-
-                if to == *last_to {
-                    let recap_score = eval::sorting_val_of(state.squares[from]);
-                    if recap_score < best_recapture_score {
-                        best_recapture = cap;
-                        best_recapture_score = recap_score;
-                    }
-                }
-            }
-        }
-
-        if best_recapture != 0 {
-            match self.search_mov(state, false, in_check, on_scout, pv_table, best_recapture, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
-        for cap_index in 0..def::MAX_CAP_COUNT {
-            let cap = cap_list[cap_index];
-
-            if cap == 0 {
+            if mov == 0 {
                 break
             }
 
-            if cap == pv_mov || cap == hash_mov || cap == best_recapture {
+            if mov == pv_mov || mov == hash_mov {
                 continue
             }
 
-            let (from, to, _tp, promo) = util::decode_u32_mov(cap);
+            let (from, to, _tp, promo) = util::decode_u32_mov(mov);
 
-            let see_score = see(state, from, to, promo);
+            if to == *last_to {
+                priority_mov_list.push((eval::TERM_VAL - eval::val_of(state.squares[from]), true, mov));
+            } else if state.squares[to] != 0 {
+                let see_score = see(state, from, to, promo);
 
-            if see_score >= eval::LOSING_EXCHANGE_VAL {
-                good_cap_list.push((see_score, cap));
+                if see_score >= eval::LOSING_EXCHANGE_VAL {
+                    priority_mov_list.push((see_score, true, mov));
+                } else {
+                    other_cap_list.push((see_score, mov));
+                }
+            } else if promo != 0 {
+                priority_mov_list.push((eval::val_of(promo), false, mov));
             } else {
-                other_cap_list.push((see_score, cap));
+                other_non_cap_list.push((self.history_table[from][to], mov));
             }
         }
 
-        good_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+        priority_mov_list.sort_by(|(score_a, _, _), (score_b, _, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        for (_score, cap) in good_cap_list {
-            match self.search_mov(state, false, in_check, on_scout, pv_table, cap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+        for (_score, is_cap, mov) in priority_mov_list {
+            match self.search_mov(state, false, in_check, on_scout, pv_table, mov, &mut mov_count, is_cap, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                 Return(score) => return score,
                 RaiseAlpha(score) => {
                     alpha = score;
@@ -573,88 +493,12 @@ impl SearchEngine {
             }
         }
 
-        let killer_mov = self.get_killer_mov(ply);
+        let killer_mov = self.get_killer_mov(ply, state.hash_key);
 
-        if killer_mov != 0 && killer_mov != hash_mov && killer_mov != pv_mov && non_cap_list.contains(&killer_mov) {
+        if killer_mov != 0 && killer_mov != hash_mov && killer_mov != pv_mov {
             let (_from, to, _tp, _promo) = util::decode_u32_mov(killer_mov);
 
             match self.search_mov(state, false, in_check, on_scout, pv_table, killer_mov, &mut mov_count, state.squares[to] != 0, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
-        let mut promo_non_cap_list = Vec::new();
-        let mut other_non_cap_list = Vec::new();
-
-        for non_cap_index in 0..def::MAX_MOV_COUNT {
-            let non_cap = non_cap_list[non_cap_index];
-
-            if non_cap == 0 {
-                break
-            }
-
-            if non_cap == pv_mov || non_cap == hash_mov || non_cap == killer_mov {
-                continue
-            }
-
-            let (from, to, _tp, promo) = util::decode_u32_mov(non_cap);
-            if promo != 0 {
-                promo_non_cap_list.push((eval::val_of(promo), non_cap));
-                continue
-            }
-
-            other_non_cap_list.push((self.history_table[from][to], non_cap));
-        }
-
-        promo_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
-            score_b.partial_cmp(&score_a).unwrap()
-        });
-
-        for (_score, non_cap) in promo_non_cap_list {
-            match self.search_mov(state, false, in_check, on_scout,pv_table, non_cap, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
-        if state.cas_rights != 0 {
-            let mut cas_list = [0; def::MAX_CAS_COUNT];
-            mov_table::gen_castle_mov_list(state, &mut cas_list);
-
-            for cas_index in 0..def::MAX_CAS_COUNT {
-                let cas_mov = cas_list[cas_index];
-
-                if cas_mov == 0 {
-                    break
-                }
-
-                if cas_mov == pv_mov || cas_mov == hash_mov || cas_mov == killer_mov {
-                    continue
-                }
-
-                match self.search_mov(state, false, in_check, on_scout, pv_table, cas_mov, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                    Return(score) => return score,
-                    RaiseAlpha(score) => {
-                        alpha = score;
-                    },
-                    Noop => (),
-                }
-            }
-        }
-
-        other_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
-            score_b.partial_cmp(&score_a).unwrap()
-        });
-
-        for (_score, non_cap) in other_non_cap_list {
-            match self.search_mov(state, false, in_check, on_scout,pv_table, non_cap, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                 Return(score) => return score,
                 RaiseAlpha(score) => {
                     alpha = score;
@@ -667,8 +511,22 @@ impl SearchEngine {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        for (_score, cap) in other_cap_list {
-            match self.search_mov(state, false, in_check, on_scout, pv_table, cap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+        for (_score, mov) in other_cap_list {
+            match self.search_mov(state, false, in_check, on_scout, pv_table, mov, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                Return(score) => return score,
+                RaiseAlpha(score) => {
+                    alpha = score;
+                },
+                Noop => (),
+            }
+        }
+
+        other_non_cap_list.sort_by(|(score_a, _), (score_b, _)| {
+            score_b.partial_cmp(&score_a).unwrap()
+        });
+
+        for (_score, mov) in other_non_cap_list {
+            match self.search_mov(state, false, in_check, on_scout, pv_table, mov, &mut mov_count, false, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                 Return(score) => return score,
                 RaiseAlpha(score) => {
                     alpha = score;
@@ -687,27 +545,27 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn get_killer_mov(&self, ply: u8) -> u32 {
+    fn get_killer_mov(&self, ply: u8, hash_key: u64) -> u32 {
         let ply_index = ply as usize;
         let same_ply_killer_entry = self.killer_table[ply_index];
 
         let mut killer_mov = 0;
-        let (_killer_score, saved_killer_mov) = same_ply_killer_entry.0;
-        if saved_killer_mov != 0 {
+        let (hash, _killer_score, saved_killer_mov) = same_ply_killer_entry.0;
+        if saved_killer_mov != 0 && hash == hash_key {
             killer_mov = saved_killer_mov;
         } else {
-            let (_killer_score, saved_killer_mov) = same_ply_killer_entry.1;
-            if saved_killer_mov != 0 {
+            let (hash, _killer_score, saved_killer_mov) = same_ply_killer_entry.1;
+            if saved_killer_mov != 0 && hash == hash_key {
                 killer_mov = saved_killer_mov;
             } else if ply > 2 {
                 let early_ply_killer_entry = self.killer_table[ply_index - 2];
 
-                let (_killer_score, saved_killer_mov) = early_ply_killer_entry.0;
-                if saved_killer_mov != 0 {
+                let (hash, _killer_score, saved_killer_mov) = early_ply_killer_entry.0;
+                if saved_killer_mov != 0 && hash == hash_key {
                     killer_mov = saved_killer_mov;
                 } else {
-                    let (_killer_score, saved_killer_mov) = early_ply_killer_entry.1;
-                    if saved_killer_mov != 0 {
+                    let (hash, _killer_score, saved_killer_mov) = early_ply_killer_entry.1;
+                    if saved_killer_mov != 0 && hash == hash_key {
                         killer_mov = saved_killer_mov;
                     }
                 }
@@ -763,18 +621,10 @@ impl SearchEngine {
 
         if score >= beta {
             if !is_capture {
-                let (killer_score, _killer_mov) = self.killer_table[ply as usize].0;
-                if score > killer_score || killer_score == 0 {
-                    self.killer_table[ply as usize].1 = self.killer_table[ply as usize].0;
-                    self.killer_table[ply as usize].0 = (score, mov);
-                } else {
-                    self.killer_table[ply as usize].1 = (score, mov);
-                }
+                self.update_history_table(depth, from, to);
 
-                let history_score_increment = depth as u64;
-                let current_history_score = self.history_table[from][to];
-                if current_history_score < MAX_HISTORY_SCORE {
-                    self.history_table[from][to] = current_history_score + history_score_increment * history_score_increment;
+                if promo == 0 {
+                    self.update_killer_table(score, ply, state.hash_key, mov);
                 }
             }
 
@@ -801,7 +651,7 @@ impl SearchEngine {
         Noop
     }
 
-    pub fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
+    fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
         if self.abort {
             return 0
         }
@@ -907,7 +757,7 @@ impl SearchEngine {
     }
 
     #[inline]
-    pub fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
+    fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
         match self.depth_preferred_hash_table.get(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square) {
             NoMatch => {
                 self.always_replace_hash_table.get(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square)
@@ -917,47 +767,48 @@ impl SearchEngine {
     }
 
     #[inline]
-    pub fn set_hash(&mut self, state: &State, depth: u8, hash_flag: u8, score: i32, mov: u32) {
+    fn set_hash(&mut self, state: &State, depth: u8, hash_flag: u8, score: i32, mov: u32) {
         if !self.depth_preferred_hash_table.set(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, hash_flag, score, mov) {
             self.always_replace_hash_table.set(state.hash_key, state.bitboard.w_all | state.bitboard.b_all, state.player, depth, state.cas_rights, state.enp_square, hash_flag, score, mov);
         }
     }
 
     #[inline]
-    pub fn in_stale_mate(&self, state: &mut State) -> bool {
+    fn update_killer_table(&mut self, score: i32, ply: u8, hash_key: u64, mov: u32) {
+        let (_hash, killer_score, _killer_mov) = self.killer_table[ply as usize].0;
+        if score > killer_score || killer_score == 0 {
+            self.killer_table[ply as usize].1 = self.killer_table[ply as usize].0;
+            self.killer_table[ply as usize].0 = (hash_key, score, mov);
+        } else {
+            self.killer_table[ply as usize].1 = (hash_key, score, mov);
+        }
+    }
+
+    #[inline]
+    fn update_history_table(&mut self, depth: u8, from: usize, to: usize) {
+        let history_score_increment = depth as u64;
+        let current_history_score = self.history_table[from][to];
+        if current_history_score < MAX_HISTORY_SCORE {
+            self.history_table[from][to] = current_history_score + history_score_increment * history_score_increment;
+        }
+    }
+
+    #[inline]
+    fn in_stale_mate(&self, state: &mut State) -> bool {
         let player = state.player;
 
-        let mut cap_list = [0; def::MAX_CAP_COUNT];
-        let mut non_cap_list = [0; def::MAX_MOV_COUNT];
+        let mut mov_list = [0; def::MAX_MOV_COUNT];
 
-        mov_table::gen_reg_mov_list(state, &mut cap_list, &mut non_cap_list);
+        mov_table::gen_reg_mov_list(state, &mut mov_list);
 
-        for cap_index in 0..def::MAX_CAP_COUNT {
-            let cap = cap_list[cap_index];
+        for mov_index in 0..def::MAX_CAP_COUNT {
+            let mov = mov_list[mov_index];
 
-            if cap == 0 {
+            if mov == 0 {
                 break
             }
 
-            let (from, to, tp, promo) = util::decode_u32_mov(cap);
-            state.do_mov(from, to, tp, promo);
-
-            if !mov_table::is_in_check(state, player) {
-                state.undo_mov(from, to, tp);
-                return false
-            }
-
-            state.undo_mov(from, to, tp);
-        }
-
-        for non_cap_index in 0..def::MAX_MOV_COUNT {
-            let non_cap = non_cap_list[non_cap_index];
-
-            if non_cap == 0 {
-                break
-            }
-
-            let (from, to, tp, promo) = util::decode_u32_mov(non_cap);
+            let (from, to, tp, promo) = util::decode_u32_mov(mov);
             state.do_mov(from, to, tp, promo);
 
             if !mov_table::is_in_check(state, player) {
@@ -972,7 +823,7 @@ impl SearchEngine {
     }
 }
 
-pub fn see(state: &State, from: usize, to: usize, promo: u8) -> i32 {
+fn see(state: &State, from: usize, to: usize, promo: u8) -> i32 {
     let mut w_attacker_list = [0; def::MAX_ATTACKERS_COUNT];
     let mut b_attacker_list = [0; def::MAX_ATTACKERS_COUNT];
 

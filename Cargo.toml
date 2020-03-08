@@ -1,5 +1,5 @@
 [package]
 name = "foxsee"
-version = "2.11.1"
+version = "2.11.2"
 authors = ["Zixiao Han <andyzx.han@aliyun.com>"]
 edition = "2018"
