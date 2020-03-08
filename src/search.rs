@@ -313,6 +313,8 @@ impl SearchEngine {
                 pv_table[0] = mov;
                 pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
 
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
+
                 return score
             }
 
@@ -321,6 +323,8 @@ impl SearchEngine {
 
                 pv_table[0] = mov;
                 pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
+
+                self.set_hash(state, depth, HASH_TYPE_ALPHA, score, mov);
             }
 
             self.root_node_mov_list[mov_index] = (depth, score, mov);
