@@ -127,8 +127,8 @@ impl SearchEngine {
         self.master_pv_table = [0; PV_TRACK_LENGTH];
         self.root_node_mov_list = Vec::new();
 
-        let mut alpha = self.recent_search_score - LG_WINDOW_SIZE;
-        let mut beta = self.recent_search_score + LG_WINDOW_SIZE;
+        let mut alpha = self.recent_search_score - SM_WINDOW_SIZE;
+        let mut beta = self.recent_search_score + SM_WINDOW_SIZE;
         let mut window_expanded = false;
 
         let mut depth = 1;
