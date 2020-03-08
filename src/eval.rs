@@ -12,11 +12,14 @@ pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 pub static LOSING_EXCHANGE_VAL: i32 = -250;
 
-pub static DELTA_MARGIN: i32 = 60;
-pub static DELTA_MAX_MARGIN: i32 = 1090;
-pub static FUTILITY_MARGIN: i32 = 455;
+pub static DELTA_MARGIN: i32 = 70;
+pub static DELTA_MAX_MARGIN: i32 = 1070;
 
-pub static MAX_POSITIONAL_VAL: i32 = 60;
+pub static FUTILITY_MARGIN: i32 = 495;
+
+pub static MAX_POSITIONAL_VAL: i32 = 70;
+
+pub static DRAW_VAL: i32 = 10;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
@@ -46,15 +49,15 @@ static QUEEN_OPEN_LINE_VAL: i32 = 5;
 static CENTER_CONTROL_VAL: i32 = 10;
 static THREAT_VAL: i32 = 10;
 static INVASION_VAL: i32 = 5;
-static TRAPPED_PEN: i32 = -5;
+static TRAPPED_PEN: i32 = -10;
 
 static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 2;
 
-static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 2;
+static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 3;
 static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 3;
-static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 2;
+static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 3;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
