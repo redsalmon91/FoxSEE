@@ -12,14 +12,12 @@ pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 pub static LOSING_EXCHANGE_VAL: i32 = -250;
 
-pub static DELTA_MARGIN: i32 = 70;
-pub static DELTA_MAX_MARGIN: i32 = 1070;
+pub static DELTA_MARGIN: i32 = 90;
+pub static DELTA_MAX_MARGIN: i32 = 1090;
 
-pub static FUTILITY_MARGIN: i32 = 495;
+pub static FUTILITY_MARGIN: i32 = 515;
 
-pub static MAX_POSITIONAL_VAL: i32 = 70;
-
-pub static DRAW_VAL: i32 = 10;
+pub static MAX_POSITIONAL_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
@@ -42,7 +40,7 @@ static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 
 static ROOK_SEMI_OPEN_LINE_VAL: i32 = 10;
-static ROOK_OPEN_LINE_VAL: i32 = 10;
+static ROOK_OPEN_LINE_VAL: i32 = 20;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 5;
 

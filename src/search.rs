@@ -282,7 +282,7 @@ impl SearchEngine {
                 depth
             };
 
-            let mut score = if mov == self.master_pv_table[0] {
+            let score = if mov == self.master_pv_table[0] {
                 -self.ab_search(state, true, gives_check, false, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
             } else {
                 let score = -self.ab_search(state, false, gives_check, true, &mut next_pv_table, -alpha - 1, -alpha, depth - 1, ply + 1, node_count, seldepth);
@@ -303,10 +303,6 @@ impl SearchEngine {
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
 
                 return score
-            }
-
-            if score == 0 {
-                score += eval::DRAW_VAL;
             }
 
             if score > alpha {
