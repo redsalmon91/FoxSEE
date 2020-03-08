@@ -555,11 +555,11 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & ALL_TRAP_MASK)
         | ((bitboard.w_knight & N_TRAP_MASK) | (bitboard.w_bishop & B_TRAP_MASK))
-        | ((bitboard.w_rook | bitboard.w_queen) & R_TRAP_MASK);
+        | (bitboard.w_rook & R_TRAP_MASK);
 
     let b_trapped_piece_mask = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & ALL_TRAP_MASK)
         | ((bitboard.b_knight & N_TRAP_MASK) | (bitboard.b_bishop & B_TRAP_MASK))
-        | ((bitboard.b_rook | bitboard.b_queen) & R_TRAP_MASK);
+        | (bitboard.b_rook & R_TRAP_MASK);
 
     w_feature_map.trapped_count = w_trapped_piece_mask.count_ones() as i32;
     b_feature_map.trapped_count = b_trapped_piece_mask.count_ones() as i32;
