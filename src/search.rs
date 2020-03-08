@@ -21,6 +21,8 @@ const MAX_HISTORY_SCORE: u64 = u64::MAX >> 1;
 const SM_WINDOW_SIZE: i32 = 50;
 const LG_WINDOW_SIZE: i32 = 200;
 
+const HISTORY_TABLE_SIZE: usize = 4096;
+
 const MIN_NM_DEPTH: u8 = 5;
 const NM_DEPTH_REDUCTION: u8 = 3;
 const EMPTY_PV_TABLE: [u32; PV_TRACK_LENGTH] = [0; PV_TRACK_LENGTH];
@@ -39,7 +41,8 @@ pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
     killer_table: [((i32, u32), (i32, u32)); KILLER_TABLE_LENGTH],
-    history_table: [[u64; def::BOARD_SIZE]; def::BOARD_SIZE],
+    history_table: [u64; HISTORY_TABLE_SIZE],
+    counter_table: [u64; HISTORY_TABLE_SIZE],
     master_pv_table: [u32; PV_TRACK_LENGTH],
     root_node_mov_list: Vec<(u8, i32, u32)>,
     time_tracker: Instant,
@@ -55,7 +58,8 @@ impl SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
             killer_table: [((0, 0), (0, 0)); KILLER_TABLE_LENGTH],
-            history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
+            history_table: [0; HISTORY_TABLE_SIZE],
+            counter_table: [0; HISTORY_TABLE_SIZE],
             master_pv_table: [0; PV_TRACK_LENGTH],
             root_node_mov_list: Vec::new(),
             time_tracker: Instant::now(),
@@ -133,7 +137,8 @@ impl SearchEngine {
 
         loop {
             self.killer_table = [((0, 0), (0, 0)); KILLER_TABLE_LENGTH];
-            self.history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
+            self.history_table = [0; HISTORY_TABLE_SIZE];
+            self.counter_table = [0; HISTORY_TABLE_SIZE];
 
             let mut node_count = 0;
             let mut seldepth = 0;
@@ -479,7 +484,7 @@ impl SearchEngine {
             } else if promo != 0 {
                 good_cap_and_promo_mov_list.push((eval::val_of(promo), false, mov));
             } else {
-                let history_score = self.history_table[from][to];
+                let history_score = self.get_relative_history_score(from, to);
 
                 if history_score >= history_threshold {
                     good_non_cap_mov_list.push((history_score, mov));
@@ -575,24 +580,6 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn get_killer_mov(&self, ply: u8, non_cap_mov_list: &[u32; def::MAX_MOV_COUNT]) -> u32 {
-        let ply_index = ply as usize;
-
-        let same_ply_killer_entry = self.killer_table[ply_index];
-        let (_killer_score, saved_killer_mov) = same_ply_killer_entry.0;
-        if saved_killer_mov != 0 && non_cap_mov_list.contains(&saved_killer_mov) {
-            return saved_killer_mov
-        }
-
-        let (_killer_score, saved_killer_mov) = same_ply_killer_entry.1;
-        if saved_killer_mov != 0 && non_cap_mov_list.contains(&saved_killer_mov) {
-            return saved_killer_mov
-        }
-
-        0
-    }
-
-    #[inline]
     fn search_mov(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_scout: bool, pv_table: &mut [u32], mov: u32, mov_count: &mut usize, is_capture: bool, best_score: &mut i32, alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
         if self.abort {
             return Return(0)
@@ -649,6 +636,9 @@ impl SearchEngine {
 
             return Return(score)
         }
+
+        let history_index = from * def::BOARD_SIZE + to;
+        self.counter_table[history_index] += 1;
 
         if score > *best_score {
             *best_score = score;
@@ -801,12 +791,40 @@ impl SearchEngine {
     }
 
     #[inline]
+    fn get_killer_mov(&self, ply: u8, non_cap_mov_list: &[u32; def::MAX_MOV_COUNT]) -> u32 {
+        let ply_index = ply as usize;
+
+        let same_ply_killer_entry = self.killer_table[ply_index];
+        let (_killer_score, saved_killer_mov) = same_ply_killer_entry.0;
+        if saved_killer_mov != 0 && non_cap_mov_list.contains(&saved_killer_mov) {
+            return saved_killer_mov
+        }
+
+        let (_killer_score, saved_killer_mov) = same_ply_killer_entry.1;
+        if saved_killer_mov != 0 && non_cap_mov_list.contains(&saved_killer_mov) {
+            return saved_killer_mov
+        }
+
+        0
+    }
+
+    #[inline]
     fn update_history_table(&mut self, depth: u8, from: usize, to: usize) {
         let history_score_increment = depth as u64;
-        let current_history_score = self.history_table[from][to];
+        let history_index = from * def::BOARD_SIZE + to;
+
+        let current_history_score = self.history_table[history_index];
         if current_history_score < MAX_HISTORY_SCORE {
-            self.history_table[from][to] = current_history_score + history_score_increment * history_score_increment;
+            self.history_table[history_index] = current_history_score + history_score_increment * history_score_increment;
         }
+    }
+
+    #[inline]
+    fn get_relative_history_score(&self, from: usize, to: usize) -> u64 {
+        let history_index = from * def::BOARD_SIZE + to;
+        let counter = 1 + self.counter_table[history_index];
+
+        self.history_table[history_index] / counter
     }
 
     #[inline]

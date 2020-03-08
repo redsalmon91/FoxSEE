@@ -17,7 +17,7 @@ A strong UCI chess engine written in Rust!
 - MVV/LVA
 - Late Move Reduction
 - Check Extension
-- History Heuristic
+- Relative History Heuristic
 - Killer Heuristic
 - Aspiration Window
 - Linear Evaluation
