@@ -450,9 +450,6 @@ impl SearchEngine {
 
         let (last_to, _last_captured) = state.history_mov_stack.last().unwrap();
 
-        let history_threshold_base = (depth - 2) as u64;
-        let history_threshold = history_threshold_base * history_threshold_base;
-
         for mov_index in 0..def::MAX_MOV_COUNT {
             let mov = mov_list[mov_index];
 
@@ -481,7 +478,7 @@ impl SearchEngine {
             } else {
                 let history_score = self.get_relative_history_score(from, to);
 
-                if history_score >= history_threshold {
+                if history_score > 0 {
                     good_non_cap_mov_list.push((history_score, mov));
                 } else {
                     other_non_cap_list.push((history_score, mov));
