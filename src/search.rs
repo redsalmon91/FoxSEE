@@ -667,7 +667,7 @@ impl SearchEngine {
 
         let material_score = eval::eval_materials(state);
 
-        if material_score - eval::MAX_POSITIONAL_VAL >= beta {
+        if material_score - eval::DELTA_MARGIN >= beta {
             return beta
         }
 

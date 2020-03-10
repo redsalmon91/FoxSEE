@@ -12,12 +12,10 @@ pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 pub static LOSING_EXCHANGE_VAL: i32 = -250;
 
-pub static DELTA_MARGIN: i32 = 90;
-pub static DELTA_MAX_MARGIN: i32 = 1090;
+pub static DELTA_MARGIN: i32 = 190;
+pub static DELTA_MAX_MARGIN: i32 = 1190;
 
 pub static FUTILITY_MARGIN: i32 = 515;
-
-pub static MAX_POSITIONAL_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
@@ -809,7 +807,7 @@ mod tests {
         let state = State::new("n2qk2b/pppppppp/8/r7/2R1Q3/8/PPPPPPPP/N3K2B w - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(4, w_features.trapped_count);
+        assert_eq!(3, w_features.trapped_count);
         assert_eq!(3, b_features.trapped_count);
     }
 
