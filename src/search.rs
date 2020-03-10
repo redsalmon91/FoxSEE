@@ -444,7 +444,46 @@ impl SearchEngine {
         let mut other_cap_list = Vec::new();
         let mut other_non_cap_list = Vec::new();
 
-        let (last_to, _last_captured) = state.history_mov_stack.last().unwrap();
+        let (last_to, last_captured) = state.history_mov_stack.last().unwrap();
+
+        let mut best_recap = 0;
+
+        if *last_captured != 0 {
+            let mut best_recap_val = eval::MATE_VAL;
+
+            for mov_index in 0..def::MAX_MOV_COUNT {
+                let mov = mov_list[mov_index];
+
+                if mov == 0 {
+                    break
+                }
+
+                if mov == pv_mov || mov == hash_mov {
+                    continue
+                }
+
+                let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
+
+                if to == *last_to {
+                    let attacker_val = eval::val_of(state.squares[from]);
+
+                    if attacker_val < best_recap_val {
+                        best_recap_val = attacker_val;
+                        best_recap = mov;
+                    }
+                }
+            }
+
+            if best_recap != 0 {
+                match self.search_mov(state, false, in_check, on_scout, pv_table, best_recap, &mut mov_count, true, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                    Return(score) => return score,
+                    RaiseAlpha(score) => {
+                        alpha = score;
+                    },
+                    Noop => (),
+                }
+            }
+        }
 
         for mov_index in 0..def::MAX_MOV_COUNT {
             let mov = mov_list[mov_index];
@@ -453,15 +492,13 @@ impl SearchEngine {
                 break
             }
 
-            if mov == pv_mov || mov == hash_mov {
+            if mov == pv_mov || mov == hash_mov || mov == best_recap {
                 continue
             }
 
             let (from, to, _tp, promo) = util::decode_u32_mov(mov);
 
-            if to == *last_to {
-                good_cap_and_promo_mov_list.push((eval::TERM_VAL - eval::val_of(state.squares[from]), true, mov));
-            } else if state.squares[to] != 0 {
+            if state.squares[to] != 0 {
                 let see_score = see(state, from, to, promo);
 
                 if see_score >= eval::LOSING_EXCHANGE_VAL {
