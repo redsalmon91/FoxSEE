@@ -5,7 +5,7 @@
 use crate::{
     def,
     state::State,
-    util,
+    util::{self, get_lowest_index, get_highest_index},
 };
 
 static CAS_WK_OCCUPY_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10010000;
@@ -1175,16 +1175,6 @@ pub fn count_knight_mobility(state: &State, index: usize, player: u8) -> i32 {
     };
 
     (bitmask.n_attack_masks[index] & !self_mask).count_ones() as i32
-}
-
-#[inline]
-fn get_lowest_index(mask: u64) -> usize {
-    mask.trailing_zeros() as usize
-}
-
-#[inline]
-fn get_highest_index(mask: u64) -> usize {
-    63 - mask.leading_zeros() as usize
 }
 
 #[cfg(test)]

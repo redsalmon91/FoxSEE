@@ -6,6 +6,7 @@ use crate::{
     def,
     state::State,
     mov_table,
+    util::{get_lowest_index, get_highest_index}
 };
 
 pub static MATE_VAL: i32 = 20000;
@@ -32,8 +33,8 @@ static KING_MIDGAME_SQR_VAL: i32 = 50;
 static KING_ENDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
-static PASS_PAWN_VAL: i32 = 30;
-static DUP_PAWN_PEN: i32 = -20;
+static PASS_PAWN_VAL: i32 = 20;
+static DUP_PAWN_PEN: i32 = -10;
 static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 
@@ -42,7 +43,9 @@ static ROOK_OPEN_LINE_VAL: i32 = 20;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 5;
 
-static CENTER_CONTROL_VAL: i32 = 10;
+static GUARDED_PIECE_VAL: i32 = 10;
+
+static CENTER_CONTROL_VAL: i32 = 15;
 static THREAT_VAL: i32 = 10;
 static INVASION_VAL: i32 = 5;
 static TRAPPED_PEN: i32 = -10;
@@ -108,6 +111,8 @@ pub struct FeatureMap {
     threat_count: i32,
     trapped_count: i32,
 
+    guarded_piece_count: i32,
+
     king_expose_count: i32,
     king_semi_expose_count: i32,
     king_protector_count: i32,
@@ -142,6 +147,8 @@ impl FeatureMap {
             invasion_count: 0,
             threat_count: 0,
             trapped_count: 0,
+
+            guarded_piece_count: 0,
 
             king_expose_count: 0,
             king_semi_expose_count: 0,
@@ -253,6 +260,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.invasion_count * INVASION_VAL
         + w_features_map.threat_count * THREAT_VAL
         + w_features_map.trapped_count * TRAPPED_PEN
+        + w_features_map.guarded_piece_count * GUARDED_PIECE_VAL
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         - b_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
@@ -269,6 +277,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.invasion_count * INVASION_VAL
         - b_features_map.threat_count * THREAT_VAL
         - b_features_map.trapped_count * TRAPPED_PEN
+        - b_features_map.guarded_piece_count - GUARDED_PIECE_VAL
         + TEMPO_VAL * score_sign;
 
     let endgame_extra_score =
@@ -305,16 +314,21 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
     let index_masks = state.bitmask.index_masks;
     let file_masks = state.bitmask.file_masks;
-    let wk_protect_masks = state.bitmask.wk_protect_masks;
-    let bk_protect_masks = state.bitmask.bk_protect_masks;
-    let wp_forward_masks = state.bitmask.wp_forward_masks;
-    let bp_forward_masks = state.bitmask.bp_forward_masks;
-    let wp_behind_masks = state.bitmask.wp_behind_masks;
-    let bp_behind_masks = state.bitmask.bp_behind_masks;
     let bitboard = state.bitboard;
+    let bitmask = state.bitmask;
 
     let mut w_feature_map = FeatureMap::empty();
     let mut b_feature_map = FeatureMap::empty();
+
+    let mut wp_attack_mask = 0;
+    let mut wn_attack_mask = 0;
+    let mut wb_attack_mask = 0;
+    let mut wr_attack_mask = 0;
+
+    let mut bp_attack_mask = 0;
+    let mut bn_attack_mask = 0;
+    let mut bb_attack_mask = 0;
+    let mut br_attack_mask = 0;
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
     let start_index = occupy_mask.trailing_zeros() as usize;
@@ -331,18 +345,20 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
         match moving_piece {
             def::WP => {
+                wp_attack_mask |= bitmask.wp_attack_masks[index];
+
                 let file_mask = file_masks[index];
                 let rank = def::get_rank(def::PLAYER_W, index) as i32;
 
-                if wp_forward_masks[index] & bitboard.b_pawn == 0 {
+                if bitmask.wp_forward_masks[index] & bitboard.b_pawn == 0 {
                     w_feature_map.passed_pawn_count += rank;
 
-                    if wp_behind_masks[index] & bitboard.w_pawn != 0 {
+                    if bitmask.wp_behind_masks[index] & bitboard.w_pawn != 0 {
                         w_feature_map.passed_pawn_count += rank / 2;
                     }
                 }
 
-                if wp_behind_masks[index] & bitboard.w_pawn == 0 {
+                if bitmask.wp_behind_masks[index] & bitboard.w_pawn == 0 {
                     if file_mask & bitboard.b_pawn == 0 {
                         w_feature_map.open_isolate_pawn_count += 1;
                     } else {
@@ -355,18 +371,20 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
             },
             def::BP => {
+                bp_attack_mask |= bitmask.bp_attack_masks[index];
+
                 let file_mask = file_masks[index];
                 let rank = def::get_rank(def::PLAYER_B, index) as i32;
 
-                if bp_forward_masks[index] & bitboard.w_pawn == 0 {
+                if bitmask.bp_forward_masks[index] & bitboard.w_pawn == 0 {
                     b_feature_map.passed_pawn_count += rank;
 
-                    if bp_behind_masks[index] & bitboard.b_pawn != 0 {
+                    if bitmask.bp_behind_masks[index] & bitboard.b_pawn != 0 {
                         b_feature_map.passed_pawn_count += rank / 2;
                     }
                 }
 
-                if bp_behind_masks[index] & bitboard.b_pawn == 0 {
+                if bitmask.bp_behind_masks[index] & bitboard.b_pawn == 0 {
                     if file_mask & bitboard.w_pawn == 0 {
                         b_feature_map.open_isolate_pawn_count += 1;
                     } else {
@@ -380,20 +398,120 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             },
 
             def::WN => {
+                wn_attack_mask |= bitmask.n_attack_masks[index];
+
                 w_feature_map.knight_mobility += mov_table::count_knight_mobility(state, index, def::PLAYER_W);
             },
             def::BN => {
+                bn_attack_mask |= bitmask.n_attack_masks[index];
+
                 b_feature_map.knight_mobility += mov_table::count_knight_mobility(state, index, def::PLAYER_B);
             },
 
             def::WB => {
+                let mut mov_mask = 0;
+
+                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+                mov_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+                }
+
+                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+                mov_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+                mov_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+                }
+
+                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+                mov_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                }
+
+                wb_attack_mask |= mov_mask;
+
                 w_feature_map.bishop_mobility += mov_table::count_bishop_mobility(state, index, def::PLAYER_W);
             },
             def::BB => {
+                let mut mov_mask = 0;
+
+                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+                mov_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+                }
+
+                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+                mov_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+                mov_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+                }
+
+                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+                mov_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                }
+
+                bb_attack_mask |= mov_mask;
+
                 b_feature_map.bishop_mobility += mov_table::count_bishop_mobility(state, index, def::PLAYER_B);
             },
 
             def::WR => {
+                let mut mov_mask = 0;
+
+                let up_attack_mask = bitmask.up_attack_masks[index];
+                mov_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+                }
+
+                let right_attack_mask = bitmask.right_attack_masks[index];
+                mov_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_attack_mask = bitmask.down_attack_masks[index];
+                mov_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+                }
+
+                let left_attack_mask = bitmask.left_attack_masks[index];
+                mov_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
+
+                wr_attack_mask |= mov_mask;
+
                 w_feature_map.rook_mobility += mov_table::count_rook_mobility(state, index, def::PLAYER_W);
 
                 let file_mask = file_masks[index];
@@ -406,6 +524,38 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
             },
             def::BR => {
+                let mut mov_mask = 0;
+
+                let up_attack_mask = bitmask.up_attack_masks[index];
+                mov_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+                }
+
+                let right_attack_mask = bitmask.right_attack_masks[index];
+                mov_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_attack_mask = bitmask.down_attack_masks[index];
+                mov_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+                }
+
+                let left_attack_mask = bitmask.left_attack_masks[index];
+                mov_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
+
+                br_attack_mask |= mov_mask;
+
                 b_feature_map.rook_mobility += mov_table::count_rook_mobility(state, index, def::PLAYER_B);
 
                 let file_mask = file_masks[index];
@@ -433,7 +583,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
             def::WK => {
                 let file_mask = file_masks[index];
-                let protect_mask = wk_protect_masks[index];
+                let protect_mask = bitmask.wk_protect_masks[index];
 
                 if index_mask & WK_MIDGAME_SAFE_MASK != 0 {
                     w_feature_map.king_midgame_safe_sqr_count = 1;
@@ -479,7 +629,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             },
             def::BK => {
                 let file_mask = file_masks[index];
-                let protect_mask = bk_protect_masks[index];
+                let protect_mask = bitmask.bk_protect_masks[index];
 
                 if index_mask & BK_MIDGAME_SAFE_MASK != 0 {
                     b_feature_map.king_midgame_safe_sqr_count = 1;
@@ -562,6 +712,12 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.trapped_count = w_trapped_piece_mask.count_ones() as i32;
     b_feature_map.trapped_count = b_trapped_piece_mask.count_ones() as i32;
 
+    w_feature_map.guarded_piece_count = ((bitboard.w_bishop | bitboard.w_knight) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+    w_feature_map.guarded_piece_count -= ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+
+    b_feature_map.guarded_piece_count = ((bitboard.b_bishop | bitboard.b_knight) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+    b_feature_map.guarded_piece_count -= ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+
     (w_feature_map, b_feature_map)
 }
 
@@ -607,6 +763,8 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
+            guarded_piece_count: 3,
+
             king_expose_count: 1,
             king_semi_expose_count: 0,
             king_protector_count: 2,
@@ -639,6 +797,8 @@ mod tests {
             invasion_count: 0,
             threat_count: 0,
             trapped_count: 0,
+
+            guarded_piece_count: 3,
 
             king_expose_count: 0,
             king_semi_expose_count: 1,
@@ -682,6 +842,8 @@ mod tests {
             threat_count: 0,
             trapped_count: 1,
 
+            guarded_piece_count: 1,
+
             king_expose_count: 1,
             king_semi_expose_count: 1,
             king_protector_count: 2,
@@ -714,6 +876,8 @@ mod tests {
             invasion_count: 0,
             threat_count: 0,
             trapped_count: 0,
+
+            guarded_piece_count: 1,
 
             king_expose_count: 1,
             king_semi_expose_count: 1,
@@ -757,6 +921,8 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
+            guarded_piece_count: 3,
+
             king_expose_count: 1,
             king_semi_expose_count: 1,
             king_protector_count: 3,
@@ -790,6 +956,8 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
+            guarded_piece_count: 3,
+
             king_expose_count: 0,
             king_semi_expose_count: 1,
             king_protector_count: 4,
@@ -821,5 +989,29 @@ mod tests {
 
         assert_eq!(1, w_features.threat_count);
         assert_eq!(2, b_features.threat_count);
+    }
+
+    #[test]
+    fn test_extract_features_6() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("1kr2r2/pp2qpp1/1bn5/1p1p2n1/1P1P4/PBNP2N1/1P3P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(2, w_features.guarded_piece_count);
+        assert_eq!(2, b_features.guarded_piece_count);
+    }
+
+    #[test]
+    fn test_extract_features_7() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("1kr1br2/1p1n1ppp/1p1P1b2/p2N3n/3P4/RB2P1N1/P1P2P1P/3Q1RK1 b - - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(2, w_features.guarded_piece_count);
+        assert_eq!(1, b_features.guarded_piece_count);
     }
 }

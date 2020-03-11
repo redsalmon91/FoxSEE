@@ -176,6 +176,16 @@ pub fn get_bit(bitboard: u64, index: usize) -> u64 {
     }
 }
 
+#[inline]
+pub fn get_lowest_index(mask: u64) -> usize {
+    mask.trailing_zeros() as usize
+}
+
+#[inline]
+pub fn get_highest_index(mask: u64) -> usize {
+    63 - mask.leading_zeros() as usize
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
