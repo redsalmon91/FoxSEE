@@ -24,8 +24,6 @@ static B_VAL: i32 = 350;
 static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
-static SEE_EMPTY_VAL: i32 = 20001;
-
 static KING_PROTECTED_BASE_VAL: i32 = 10;
 static KING_EXPOSED_BASE_PEN: i32 = -30;
 static KING_SEMI_EXPOSED_BASE_PEN: i32 = -10;
@@ -178,27 +176,6 @@ pub fn val_of(piece: u8) -> i32 {
         def::BP => P_VAL,
 
         _ => 0,
-    }
-}
-
-pub fn sorting_val_of(piece: u8) -> i32 {
-    match piece {
-        0 => SEE_EMPTY_VAL,
-        def::WK => MATE_VAL,
-        def::WQ => Q_VAL,
-        def::WR => R_VAL,
-        def::WB => B_VAL,
-        def::WN => N_VAL,
-        def::WP => P_VAL,
-
-        def::BK => MATE_VAL,
-        def::BQ => Q_VAL,
-        def::BR => R_VAL,
-        def::BB => B_VAL,
-        def::BN => N_VAL,
-        def::BP => P_VAL,
-
-        _ => SEE_EMPTY_VAL,
     }
 }
 

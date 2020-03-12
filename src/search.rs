@@ -248,10 +248,10 @@ impl SearchEngine {
                     break
                 }
 
-                let (from, to, _tp, promo) = util::decode_u32_mov(mov);
+                let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
                 if state.squares[to] != 0 {
-                    self.root_node_mov_list.push((depth, see(state, from, to, promo), mov));
+                    self.root_node_mov_list.push((depth, see(state, from, to, tp, promo), mov));
                 } else {
                     self.root_node_mov_list.push((depth, -eval::val_of(state.squares[from]), mov));
                 }
@@ -386,52 +386,46 @@ impl SearchEngine {
         if pv_mov == 0 {
             match self.get_hash(state, depth) {
                 Match(flag, score, mov) => {
-                    let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
+                    hash_mov = mov;
 
-                    if mov_table::is_mov_valid(state, from, to) {
-                        hash_mov = mov;
-
-                        if !on_pv {
-                            match flag {
-                                HASH_TYPE_ALPHA => {
-                                    if score <= alpha {
-                                        return alpha
-                                    } else {
-                                        alpha = score;
-                                    }
-                                },
-                                HASH_TYPE_BETA => {
-                                    if score >= beta {
-                                        return beta
-                                    } else {
-                                        alpha = score;
-                                    }
-                                },
-                                _ => (),
-                            }
+                    if !on_pv {
+                        match flag {
+                            HASH_TYPE_ALPHA => {
+                                if score <= alpha {
+                                    return alpha
+                                } else {
+                                    alpha = score;
+                                }
+                            },
+                            HASH_TYPE_BETA => {
+                                if score >= beta {
+                                    return beta
+                                } else {
+                                    alpha = score;
+                                }
+                            },
+                            _ => (),
                         }
                     }
                 },
                 MovOnly(mov) => {
-                    let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
-
-                    if mov_table::is_mov_valid(state, from, to) {
-                        hash_mov = mov;
-                    }
+                    hash_mov = mov;
                 },
                 _ => (),
             }
         }
 
         if hash_mov != 0 {
-            let (_from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
+            let (from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
 
-            match self.search_mov(state, false, in_check, on_scout, pv_table, hash_mov, &mut mov_count, state.squares[to] != 0, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
+            if mov_table::is_mov_valid(state, from, to) {
+                match self.search_mov(state, false, in_check, on_scout, pv_table, hash_mov, &mut mov_count, state.squares[to] != 0, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                    Return(score) => return score,
+                    RaiseAlpha(score) => {
+                        alpha = score;
+                    },
+                    Noop => (),
+                }
             }
         }
 
@@ -496,10 +490,10 @@ impl SearchEngine {
                 continue
             }
 
-            let (from, to, _tp, promo) = util::decode_u32_mov(mov);
+            let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             if state.squares[to] != 0 {
-                let see_score = see(state, from, to, promo);
+                let see_score = see(state, from, to, tp, promo);
 
                 if see_score >= eval::LOSING_EXCHANGE_VAL {
                     good_cap_and_promo_mov_list.push((see_score, true, mov));
@@ -750,7 +744,7 @@ impl SearchEngine {
                 break
             }
 
-            let (from, to, _tp, promo) = util::decode_u32_mov(cap);
+            let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
             let gain = eval::val_of(squares[to]) + eval::val_of(promo);
 
@@ -758,7 +752,7 @@ impl SearchEngine {
                 continue
             }
 
-            scored_cap_list.push((gain - eval::val_of(squares[from]), cap));
+            scored_cap_list.push((see(state, from, to, tp, promo), cap));
         }
 
         if scored_cap_list.is_empty() {
@@ -886,50 +880,32 @@ impl SearchEngine {
     }
 }
 
-fn see(state: &State, from: usize, to: usize, promo: u8) -> i32 {
-    let mut w_attacker_list = [0; def::MAX_ATTACKERS_COUNT];
-    let mut b_attacker_list = [0; def::MAX_ATTACKERS_COUNT];
+fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
+    let initial_gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
+    
+    state.do_mov(from, to, tp, promo);
 
-    mov_table::get_attackers(state, from, to, &mut w_attacker_list, &mut b_attacker_list);
+    let score = initial_gain - see_exchange(state, to, state.squares[to]);
 
-    w_attacker_list.sort_by(|a, b| eval::sorting_val_of(*a).cmp(&eval::sorting_val_of(*b)));
-    b_attacker_list.sort_by(|a, b| eval::sorting_val_of(*a).cmp(&eval::sorting_val_of(*b)));
+    state.undo_mov(from, to, tp);
 
-    let (own_attacker_list, opponent_attacker_list) = if state.player == def::PLAYER_W {
-        (w_attacker_list, b_attacker_list)
-    } else {
-        (b_attacker_list, w_attacker_list)
-    };
-
-    let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
-    let lost = if promo == 0 {
-        sim_exchange(state.squares[from], 0, 0, &opponent_attacker_list, &own_attacker_list)
-    } else {
-        sim_exchange(promo, 0, 0, &opponent_attacker_list, &own_attacker_list)
-    };
-
-    gain - lost
+    score
 }
 
-fn sim_exchange(last_attacker: u8, current_attacker_index: usize, next_attacker_index: usize, current_attacker_list: &[u8; def::MAX_ATTACKERS_COUNT], next_attacker_list: &[u8; def::MAX_ATTACKERS_COUNT]) -> i32 {
-    if current_attacker_index >= def::MAX_ATTACKERS_COUNT {
-        return 0
-    }
-
-    let attacker = current_attacker_list[current_attacker_index];
+fn see_exchange(state: &mut State, to: usize, last_attacker: u8) -> i32 {
+    let (attacker, tp, promo, attack_from) = mov_table::get_smallest_attacker_index(state, to);
 
     if attacker == 0 {
         return 0
     }
 
-    if def::is_k(last_attacker) {
-        return eval::MATE_VAL
-    }
+    state.do_mov(attack_from, to, tp, promo);
 
-    let gain = eval::val_of(last_attacker);
-    let lost = sim_exchange(attacker, next_attacker_index, current_attacker_index + 1, next_attacker_list, current_attacker_list);
+    let score = (eval::val_of(last_attacker) + eval::val_of(promo) - see_exchange(state, to, attacker)).max(0);
 
-    return 0.max(gain - lost)
+    state.undo_mov(attack_from, to, tp);
+
+    score
 }
 
 #[cfg(test)]
@@ -946,32 +922,32 @@ mod tests {
     fn test_see_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let state = State::new("pnkq3r/pb2nppp/2p1b3/1r1N2R1/2PPP3/1Q3B2/PPP2PPP/RNB1K1NR b - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("pnkq3r/pb2nppp/2p1b3/1r1N2R1/2PPP3/1Q3B2/PPP2PPP/RNB1K1NR b - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(245, see(&state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), 0));
-        assert_eq!(95, see(&state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), 0));
+        assert_eq!(245, see(&mut state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
+        assert_eq!(95, see(&mut state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
     }
 
     #[test]
     fn test_see_2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let state = State::new("pnkq3r/pbr2ppp/P1pnb3/N5R1/3PP3/1R1Q1B2/PPP2PPP/1NB1K1NR w - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("pnkq3r/pbr2ppp/P1pnb3/N5R1/3PP3/1R1Q1B2/PPP2PPP/1NB1K1NR w - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(-175, see(&state, util::map_sqr_notation_to_index("b3"), util::map_sqr_notation_to_index("b7"), 0));
-        assert_eq!(250, see(&state, util::map_sqr_notation_to_index("a6"), util::map_sqr_notation_to_index("b7"), 0));
-        assert_eq!(5, see(&state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), 0));
+        assert_eq!(-175, see(&mut state, util::map_sqr_notation_to_index("b3"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
+        assert_eq!(250, see(&mut state, util::map_sqr_notation_to_index("a6"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
+        assert_eq!(5, see(&mut state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
     }
 
     #[test]
     fn test_see_3() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let state = State::new("4n2r/5P2/8/7B/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("4n2r/5P2/8/7B/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(870, see(&state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::WQ));
-        assert_eq!(690, see(&state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::WN));
-        assert_eq!(870, see(&state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::WR));
+        assert_eq!(870, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WQ));
+        assert_eq!(690, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WN));
+        assert_eq!(870, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WR));
     }
 
     #[test]

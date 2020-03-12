@@ -18,7 +18,6 @@ pub const PIECE_CODE_RANGE: usize = 131;
 
 pub const MAX_CAP_COUNT: usize = 64;
 pub const MAX_MOV_COUNT: usize = 128;
-pub const MAX_ATTACKERS_COUNT: usize = 32;
 
 pub const MOV_REG: u8 = 1;
 pub const MOV_PROMO: u8 = 2;
