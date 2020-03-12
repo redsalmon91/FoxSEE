@@ -26,6 +26,18 @@ A strong UCI chess engine written in Rust!
 - Futility Pruning
 - Perft
 
+## Position 0 Benchmark
+```
+2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27
+```
+
+On `i5-8250U`, below are the time needed to find the best move:
+
+- 0.x - 1500ms
+- 1.x - 500ms
+- 2.x - 50ms
+- 3.x - 20ms
+
 ## How to build
 Install [Rust](https://www.rust-lang.org/)
 
