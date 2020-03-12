@@ -36,10 +36,10 @@ static DUP_PAWN_PEN: i32 = -10;
 static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 
-static ROOK_SEMI_OPEN_LINE_VAL: i32 = 10;
+static ROOK_SEMI_OPEN_LINE_VAL: i32 = 15;
 static ROOK_OPEN_LINE_VAL: i32 = 20;
 
-static QUEEN_OPEN_LINE_VAL: i32 = 5;
+static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
 static GUARDED_PIECE_VAL: i32 = 10;
 
@@ -675,8 +675,8 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.invasion_count = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_count = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
 
-    w_feature_map.threat_count = (bitboard.w_rook & WR_THREAT_MASK).count_ones() as i32;
-    b_feature_map.threat_count = (bitboard.b_rook & BR_THREAT_MASK).count_ones() as i32;
+    w_feature_map.threat_count = ((bitboard.w_rook | bitboard.w_queen) & WR_THREAT_MASK).count_ones() as i32;
+    b_feature_map.threat_count = ((bitboard.b_rook | bitboard.b_queen) & BR_THREAT_MASK).count_ones() as i32;
 
     let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & ALL_TRAP_MASK)
         | ((bitboard.w_knight & N_TRAP_MASK) | (bitboard.w_bishop & B_TRAP_MASK))
