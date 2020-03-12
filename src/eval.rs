@@ -5,7 +5,6 @@
 use crate::{
     def,
     state::State,
-    mov_table,
     util::{get_lowest_index, get_highest_index}
 };
 
@@ -48,13 +47,13 @@ static THREAT_VAL: i32 = 10;
 static INVASION_VAL: i32 = 5;
 static TRAPPED_PEN: i32 = -10;
 
-static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 1;
-static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 1;
-static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 1;
+static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
+static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
+static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 2;
 
-static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 3;
-static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 3;
-static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 3;
+static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 5;
+static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 5;
+static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 5;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
@@ -376,13 +375,9 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
             def::WN => {
                 wn_attack_mask |= bitmask.n_attack_masks[index];
-
-                w_feature_map.knight_mobility += mov_table::count_knight_mobility(state, index, def::PLAYER_W);
             },
             def::BN => {
                 bn_attack_mask |= bitmask.n_attack_masks[index];
-
-                b_feature_map.knight_mobility += mov_table::count_knight_mobility(state, index, def::PLAYER_B);
             },
 
             def::WB => {
@@ -417,8 +412,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 wb_attack_mask |= mov_mask;
-
-                w_feature_map.bishop_mobility += mov_table::count_bishop_mobility(state, index, def::PLAYER_W);
             },
             def::BB => {
                 let mut mov_mask = 0;
@@ -452,8 +445,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 bb_attack_mask |= mov_mask;
-
-                b_feature_map.bishop_mobility += mov_table::count_bishop_mobility(state, index, def::PLAYER_B);
             },
 
             def::WR => {
@@ -488,8 +479,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 wr_attack_mask |= mov_mask;
-
-                w_feature_map.rook_mobility += mov_table::count_rook_mobility(state, index, def::PLAYER_W);
 
                 let file_mask = file_masks[index];
                 if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
@@ -533,8 +522,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 br_attack_mask |= mov_mask;
 
-                b_feature_map.rook_mobility += mov_table::count_rook_mobility(state, index, def::PLAYER_B);
-
                 let file_mask = file_masks[index];
                 if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
                     if file_mask & bitboard.w_all == 0 {
@@ -561,6 +548,8 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WK => {
                 let file_mask = file_masks[index];
                 let protect_mask = bitmask.wk_protect_masks[index];
+
+                w_feature_map.king_protector_count = (protect_mask & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop)).count_ones() as i32;
 
                 if index_mask & WK_MIDGAME_SAFE_MASK != 0 {
                     w_feature_map.king_midgame_safe_sqr_count = 1;
@@ -601,12 +590,12 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                         w_feature_map.king_semi_expose_count += 1;
                     }
                 }
-
-                w_feature_map.king_protector_count += (protect_mask & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop)).count_ones() as i32;
             },
             def::BK => {
                 let file_mask = file_masks[index];
                 let protect_mask = bitmask.bk_protect_masks[index];
+
+                b_feature_map.king_protector_count = (protect_mask & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop)).count_ones() as i32;
 
                 if index_mask & BK_MIDGAME_SAFE_MASK != 0 {
                     b_feature_map.king_midgame_safe_sqr_count = 1;
@@ -647,8 +636,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                         b_feature_map.king_semi_expose_count += 1;
                     }
                 }
-
-                b_feature_map.king_protector_count += (protect_mask & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop)).count_ones() as i32;
             },
             _ => {},
         }
@@ -678,6 +665,14 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.threat_count = ((bitboard.w_rook | bitboard.w_queen) & WR_THREAT_MASK).count_ones() as i32;
     b_feature_map.threat_count = ((bitboard.b_rook | bitboard.b_queen) & BR_THREAT_MASK).count_ones() as i32;
 
+    w_feature_map.knight_mobility = (wn_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
+    w_feature_map.bishop_mobility = (wb_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
+    w_feature_map.rook_mobility = (wr_attack_mask & !bitboard.w_all & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+
+    b_feature_map.knight_mobility = (bn_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
+    b_feature_map.bishop_mobility = (bb_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
+    b_feature_map.rook_mobility = (br_attack_mask & !bitboard.b_all & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+
     let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & ALL_TRAP_MASK)
         | ((bitboard.w_knight & N_TRAP_MASK) | (bitboard.w_bishop & B_TRAP_MASK))
         | (bitboard.w_rook & R_TRAP_MASK);
@@ -689,10 +684,10 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.trapped_count = w_trapped_piece_mask.count_ones() as i32;
     b_feature_map.trapped_count = b_trapped_piece_mask.count_ones() as i32;
 
-    w_feature_map.guarded_piece_count = ((bitboard.w_bishop | bitboard.w_knight) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+    w_feature_map.guarded_piece_count += ((bitboard.w_knight | bitboard.w_bishop) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
     w_feature_map.guarded_piece_count -= ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
 
-    b_feature_map.guarded_piece_count = ((bitboard.b_bishop | bitboard.b_knight) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+    b_feature_map.guarded_piece_count += ((bitboard.b_knight | bitboard.b_bishop) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
     b_feature_map.guarded_piece_count -= ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
 
     (w_feature_map, b_feature_map)
@@ -727,8 +722,8 @@ mod tests {
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
 
-            knight_mobility: 8,
-            bishop_mobility: 3,
+            knight_mobility: 6,
+            bishop_mobility: 2,
             rook_mobility: 3,
 
             semi_open_rook_count: 0,
@@ -762,9 +757,9 @@ mod tests {
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
 
-            knight_mobility: 7,
-            bishop_mobility: 5,
-            rook_mobility: 7,
+            knight_mobility: 6,
+            bishop_mobility: 3,
+            rook_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -806,9 +801,9 @@ mod tests {
             open_isolate_pawn_count: 2,
             passed_pawn_count: 7,
 
-            knight_mobility: 4,
-            bishop_mobility: 3,
-            rook_mobility: 3,
+            knight_mobility: 3,
+            bishop_mobility: 2,
+            rook_mobility: 2,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -841,9 +836,9 @@ mod tests {
             open_isolate_pawn_count: 2,
             passed_pawn_count: 0,
 
-            knight_mobility: 4,
+            knight_mobility: 2,
             bishop_mobility: 0,
-            rook_mobility: 13,
+            rook_mobility: 6,
 
             semi_open_rook_count: 1,
             open_rook_count: 0,
@@ -885,8 +880,8 @@ mod tests {
             open_isolate_pawn_count: 1,
             passed_pawn_count: 0,
 
-            knight_mobility: 11,
-            bishop_mobility: 3,
+            knight_mobility: 7,
+            bishop_mobility: 1,
             rook_mobility: 3,
 
             semi_open_rook_count: 0,
@@ -920,9 +915,9 @@ mod tests {
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
 
-            knight_mobility: 12,
-            bishop_mobility: 5,
-            rook_mobility: 7,
+            knight_mobility: 10,
+            bishop_mobility: 3,
+            rook_mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -990,5 +985,17 @@ mod tests {
 
         assert_eq!(2, w_features.guarded_piece_count);
         assert_eq!(1, b_features.guarded_piece_count);
+    }
+
+    #[test]
+    fn test_extract_features_8() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("1q4kn/3r1p1p/1pbN1Pp1/r1ppP1P1/P4R2/2B1P3/2Q4P/3R2K1 b - - 2 29", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(5, w_features.knight_mobility);
+        assert_eq!(0, b_features.knight_mobility);
     }
 }
