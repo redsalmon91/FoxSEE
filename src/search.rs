@@ -346,10 +346,7 @@ impl SearchEngine {
 
         if !on_pv && !in_check && depth >= MIN_NM_DEPTH {
             state.do_null_mov();
-
-            let gives_check = mov_table::is_in_check(state, state.player);
-
-            let scout_score = -self.ab_search(state, false, gives_check, true, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - NM_DEPTH_REDUCTION - 1, ply + 1, node_count, seldepth);
+            let scout_score = -self.ab_search(state, false, false, true, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - NM_DEPTH_REDUCTION - 1, ply + 1, node_count, seldepth);
             state.undo_null_mov();
 
             if scout_score >= beta {
