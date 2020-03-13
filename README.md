@@ -31,7 +31,7 @@ A strong UCI chess engine written in Rust!
 2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27
 ```
 
-On `i5-8250U`, below are the time needed to find the best move:
+On `i5-8250U`, below are the time needed to find the best move (by version):
 
 - 0.x - 1500ms
 - 1.x - 500ms

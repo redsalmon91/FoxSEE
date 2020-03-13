@@ -62,7 +62,6 @@ pub struct State<'state> {
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
-    pub history_mov_stack: Vec<(usize, u8)>,
     pub history_pos_stack: Vec<(u64, u8)>,
     pub non_cap_mov_count_stack: Vec<u16>,
     pub king_index_stack: Vec<(usize, usize)>,
@@ -174,7 +173,6 @@ impl <'state> State<'state> {
             taken_piece_stack: Vec::new(),
             enp_sqr_stack: Vec::new(),
             cas_rights_stack: Vec::new(),
-            history_mov_stack: Vec::new(),
             history_pos_stack: Vec::new(),
             non_cap_mov_count_stack: Vec::new(),
             king_index_stack: Vec::new(),
@@ -230,7 +228,6 @@ impl <'state> State<'state> {
     pub fn do_mov(&mut self, from: usize, to: usize, mov_type: u8, promo: u8) {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
-        self.history_mov_stack.push((to, self.squares[to]));
         self.history_pos_stack.push((self.hash_key, self.player));
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
@@ -256,7 +253,6 @@ impl <'state> State<'state> {
         self.wk_index = wk_index;
         self.bk_index = bk_index;
         self.hash_key = self.history_pos_stack.pop().unwrap().0;
-        self.history_mov_stack.pop();
 
         self.player = def::get_opposite_player(self.player);
 
