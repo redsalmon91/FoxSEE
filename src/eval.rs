@@ -737,7 +737,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.defended_unit += ((bitboard.b_knight | bitboard.b_bishop) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_pawn & !bp_attack_mask) & (wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-    w_feature_map.defended_unit -= ((bitboard.b_pawn & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)) & wr_attack_mask).count_ones() as i32;
+    b_feature_map.defended_unit -= ((bitboard.b_pawn & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)) & wr_attack_mask).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_pawn & !bp_attack_mask) & wp_attack_mask).count_ones() as i32;
 
     (w_feature_map, b_feature_map)
@@ -1092,7 +1092,19 @@ mod tests {
     }
 
     #[test]
-    fn test_draw_endgame_1() {
+    fn test_extract_features_12() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("2r5/5ppp/p5b1/1p6/1P6/P2P4/2P5/5R2 w - - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(-1, w_features.defended_unit);
+        assert_eq!(1, b_features.defended_unit);
+    }
+
+    #[test]
+    fn test_draw_endgame() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1100,12 +1112,5 @@ mod tests {
         assert_eq!(0, eval_state(&state, eval_materials(&state)));
     }
 
-    #[test]
-    fn test_draw_endgame_2() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
 
-        let state = State::new("8/2k5/1p6/2p1b3/2B5/5P2/4K3/8 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state, eval_materials(&state)));
-    }
 }
