@@ -713,9 +713,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     w_feature_map.guarded_piece_count += ((bitboard.w_knight | bitboard.w_bishop) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
     w_feature_map.guarded_piece_count -= ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+    w_feature_map.guarded_piece_count -= ((bitboard.w_pawn & !wp_attack_mask) & (bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+    w_feature_map.guarded_piece_count -= ((bitboard.w_pawn & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)) & br_attack_mask).count_ones() as i32;
+    w_feature_map.guarded_piece_count -= ((bitboard.w_pawn & !wp_attack_mask) & bp_attack_mask).count_ones() as i32;
 
     b_feature_map.guarded_piece_count += ((bitboard.b_knight | bitboard.b_bishop) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
     b_feature_map.guarded_piece_count -= ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+    b_feature_map.guarded_piece_count -= ((bitboard.b_pawn & !bp_attack_mask) & (wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+    w_feature_map.guarded_piece_count -= ((bitboard.b_pawn & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)) & wr_attack_mask).count_ones() as i32;
+    b_feature_map.guarded_piece_count -= ((bitboard.b_pawn & !bp_attack_mask) & wp_attack_mask).count_ones() as i32;
 
     (w_feature_map, b_feature_map)
 }
@@ -799,7 +805,7 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
-            guarded_piece_count: 3,
+            guarded_piece_count: 1,
 
             king_expose_count: 0,
             king_semi_expose_count: 0,
@@ -880,7 +886,7 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
-            guarded_piece_count: 1,
+            guarded_piece_count: -1,
 
             king_expose_count: 1,
             king_semi_expose_count: 0,
@@ -925,7 +931,7 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
-            guarded_piece_count: 3,
+            guarded_piece_count: 1,
 
             king_expose_count: 1,
             king_semi_expose_count: 1,
@@ -961,7 +967,7 @@ mod tests {
             threat_count: 0,
             trapped_count: 0,
 
-            guarded_piece_count: 3,
+            guarded_piece_count: 1,
 
             king_expose_count: 0,
             king_semi_expose_count: 0,
@@ -1004,8 +1010,8 @@ mod tests {
         let state = State::new("1kr2r2/pp2qpp1/1bn5/1p1p2n1/1P1P4/PBNP2N1/1P3P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(2, w_features.guarded_piece_count);
-        assert_eq!(2, b_features.guarded_piece_count);
+        assert_eq!(1, w_features.guarded_piece_count);
+        assert_eq!(0, b_features.guarded_piece_count);
     }
 
     #[test]
@@ -1017,7 +1023,7 @@ mod tests {
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(2, w_features.guarded_piece_count);
-        assert_eq!(1, b_features.guarded_piece_count);
+        assert_eq!(0, b_features.guarded_piece_count);
     }
 
     #[test]
