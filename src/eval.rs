@@ -87,9 +87,6 @@ static K_ENDGAME_AVOID_MASK: u64 = 0b11100111_11000011_10000001_00000000_0000000
 static L_SIDE_MASK: u64 = 0b00001111_00001111_00001111_00001111_00001111_00001111_00001111_00001111;
 static R_SIDE_MASK: u64 = 0b11110000_11110000_11110000_11110000_11110000_11110000_11110000_11110000;
 
-static BISHOP_W_SQR_MASK: u64 = 0b01010101_10101010_01010101_10101010_01010101_10101010_01010101_10101010;
-static BISHOP_B_SQR_MASK: u64 = !BISHOP_W_SQR_MASK;
-
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     pawn_count: i32,
@@ -213,25 +210,11 @@ pub fn eval_materials(state: &State) -> i32 {
     - bitboard.b_pawn.count_ones() as i32 * P_VAL) * score_sign
 }
 
-pub fn eval_state(state: &State, mut material_score: i32) -> i32 {
+pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let bitboard = state.bitboard;
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
         if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
             return 0
-        }
-    }
-
-    if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-        if bitboard.w_bishop != 0 && bitboard.b_bishop != 0 {
-            if bitboard.w_bishop.count_ones() == 1 && bitboard.b_bishop.count_ones() == 1 {
-                if bitboard.w_bishop & BISHOP_W_SQR_MASK == 0 && bitboard.b_bishop & BISHOP_B_SQR_MASK == 0 {
-                    material_score >>= 1;
-                }
-
-                if bitboard.w_bishop & BISHOP_B_SQR_MASK == 0 && bitboard.b_bishop & BISHOP_W_SQR_MASK == 0 {
-                    material_score >>= 1;
-                }
-            }
         }
     }
 
