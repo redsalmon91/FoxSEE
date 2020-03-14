@@ -569,19 +569,8 @@ impl SearchEngine {
 
         let gives_check = mov_table::is_in_check(state, state.player);
 
-        if *mov_count > 1 && depth == 1 && !on_pv && !in_check && !gives_check && !is_capture && promo == 0 && alpha > -eval::TERM_VAL && beta < eval::TERM_VAL {
-            let material_score = eval::eval_materials(state);
-
-            if material_score + eval::FUTILITY_MARGIN < alpha {
-                state.undo_mov(from, to, tp);
-                return Noop
-            }
-        }
-
-        if def::near_horizon(depth) {
-            if gives_check || def::is_q(promo) {
-                depth += 1;
-            }
+        if gives_check && def::near_horizon(depth) {
+            depth += 1;
         }
 
         let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_q(promo) {
@@ -847,7 +836,7 @@ impl SearchEngine {
 
 fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
     let initial_gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
-    
+
     state.do_mov(from, to, tp, promo);
 
     let score = initial_gain - see_exchange(state, to, state.squares[to]);

@@ -23,7 +23,6 @@ A strong UCI chess engine written in Rust!
 - Linear Evaluation
 - Null-Move Pruning
 - Delta Pruning
-- Futility Pruning
 - Perft
 
 ## Position 0 Benchmark
