@@ -34,6 +34,7 @@ static PASS_PAWN_VAL: i32 = 20;
 static DUP_PAWN_PEN: i32 = -10;
 static ISOLATE_PAWN_PEN: i32 = -10;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
+static QUEEN_SIDE_PAWN_VAL: i32 = 20;
 
 static ROOK_SEMI_OPEN_LINE_VAL: i32 = 15;
 static ROOK_OPEN_LINE_VAL: i32 = 20;
@@ -85,6 +86,9 @@ static BK_MIDGAME_SAFE_MASK: u64 = 0b11000111_11000011_00000000_00000000_0000000
 static K_ENDGAME_PREF_MASK: u64 = 0b00000000_00000000_00111100_00111100_00111100_00111100_00000000_00000000;
 static K_ENDGAME_AVOID_MASK: u64 = 0b11100111_11000011_10000001_00000000_00000000_10000001_11000011_11100111;
 
+static L_SIDE_MASK: u64 = 0b00001111_00001111_00001111_00001111_00001111_00001111_00001111_00001111;
+static R_SIDE_MASK: u64 = 0b11110000_11110000_11110000_11110000_11110000_11110000_11110000_11110000;
+
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     pawn_count: i32,
@@ -97,6 +101,7 @@ pub struct FeatureMap {
     isolate_pawn_count: i32,
     open_isolate_pawn_count: i32,
     passed_pawn_count: i32,
+    queen_side_pawn_count: i32,
 
     knight_mobility: i32,
     bishop_mobility: i32,
@@ -134,6 +139,7 @@ impl FeatureMap {
             isolate_pawn_count: 0,
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
+            queen_side_pawn_count: 0,
 
             knight_mobility: 0,
             bishop_mobility: 0,
@@ -266,13 +272,15 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
         + w_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
         + w_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
+        + w_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
         - b_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
         - b_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
-        - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL;
+        - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
+        - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
     + w_features_map.rook_count * R_PHASE_WEIGHT
@@ -288,7 +296,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     material_score + extra_score * score_sign + TEMPO_VAL
 }
 
-pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
+#[inline]
+fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
     let index_masks = state.bitmask.index_masks;
     let file_masks = state.bitmask.file_masks;
@@ -637,6 +646,22 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.rook_count = bitboard.b_rook.count_ones() as i32;
     b_feature_map.queen_count = bitboard.b_queen.count_ones() as i32;
 
+    let w_queen_side_mask = if bitmask.index_masks[state.bk_index] & L_SIDE_MASK != 0 {
+        R_SIDE_MASK
+    } else {
+        L_SIDE_MASK
+    };
+
+    w_feature_map.queen_side_pawn_count = (bitboard.w_pawn & w_queen_side_mask).count_ones() as i32;
+
+    let b_queen_side_mask = if bitmask.index_masks[state.wk_index] & L_SIDE_MASK != 0 {
+        R_SIDE_MASK
+    } else {
+        L_SIDE_MASK
+    };
+
+    b_feature_map.queen_side_pawn_count = (bitboard.b_pawn & b_queen_side_mask).count_ones() as i32;
+
     let w_light_pieces_mask = bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop;
     let b_light_pieces_mask = bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop;
 
@@ -723,6 +748,7 @@ mod tests {
             isolate_pawn_count: 2,
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
+            queen_side_pawn_count: 3,
 
             knight_mobility: 6,
             bishop_mobility: 2,
@@ -758,6 +784,7 @@ mod tests {
             isolate_pawn_count: 0,
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
+            queen_side_pawn_count: 3,
 
             knight_mobility: 6,
             bishop_mobility: 3,
@@ -802,6 +829,7 @@ mod tests {
             isolate_pawn_count: 2,
             open_isolate_pawn_count: 2,
             passed_pawn_count: 7,
+            queen_side_pawn_count: 3,
 
             knight_mobility: 3,
             bishop_mobility: 2,
@@ -837,6 +865,7 @@ mod tests {
             isolate_pawn_count: 0,
             open_isolate_pawn_count: 2,
             passed_pawn_count: 0,
+            queen_side_pawn_count: 4,
 
             knight_mobility: 2,
             bishop_mobility: 0,
@@ -881,6 +910,7 @@ mod tests {
             isolate_pawn_count: 1,
             open_isolate_pawn_count: 1,
             passed_pawn_count: 0,
+            queen_side_pawn_count: 2,
 
             knight_mobility: 7,
             bishop_mobility: 1,
@@ -916,6 +946,7 @@ mod tests {
             isolate_pawn_count: 1,
             open_isolate_pawn_count: 0,
             passed_pawn_count: 0,
+            queen_side_pawn_count: 4,
 
             knight_mobility: 10,
             bishop_mobility: 3,
@@ -1023,5 +1054,17 @@ mod tests {
 
         assert_eq!(1, w_features.king_protector_count);
         assert_eq!(1, b_features.king_protector_count);
+    }
+
+    #[test]
+    fn test_extract_features_11() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("8/pp3k2/5p1p/6p1/8/2P5/PP3KPP/8 w - - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(3, w_features.queen_side_pawn_count);
+        assert_eq!(2, b_features.queen_side_pawn_count);
     }
 }
