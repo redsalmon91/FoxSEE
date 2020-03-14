@@ -573,8 +573,8 @@ impl SearchEngine {
             depth += 1;
         }
 
-        let score = if depth > 1 && *mov_count > 2 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_q(promo) {
-            let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 2, ply + 1, node_count, seldepth);
+        let score = if depth > 1 && *mov_count > 1 && !in_check && !gives_check && !on_pv && !is_capture && !def::is_q(promo) {
+            let score = -self.ab_search(state, on_pv, gives_check, true, &mut next_pv_table, -alpha-1, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 -self.ab_search(state, on_pv, gives_check, on_scout, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
             } else {
