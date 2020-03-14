@@ -25,7 +25,7 @@ static P_VAL: i32 = 100;
 
 static KING_PROTECTED_BASE_VAL: i32 = 10;
 static KING_EXPOSED_BASE_PEN: i32 = -30;
-static KING_SEMI_EXPOSED_BASE_PEN: i32 = -15;
+static KING_SEMI_EXPOSED_BASE_PEN: i32 = -20;
 static KING_MIDGAME_SQR_VAL: i32 = 50;
 static KING_ENDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
@@ -591,23 +591,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 if file_mask & bitboard.b_pawn == 0 {
-                    w_feature_map.king_expose_count += 1;
-                }
-
-                if index % def::DIM_SIZE != 7 {
-                    let right_file_mask = file_masks[index + 1];
-
-                    if right_file_mask & bitboard.b_pawn == 0 {
-                        w_feature_map.king_semi_expose_count += 1;
-                    }
-                }
-
-                if index % def::DIM_SIZE != 0 {
-                    let left_file_mask = file_masks[index - 1];
-
-                    if left_file_mask & bitboard.b_pawn == 0 {
-                        w_feature_map.king_semi_expose_count += 1;
-                    }
+                    w_feature_map.king_semi_expose_count += 1;
                 }
             },
             def::BK => {
@@ -628,23 +612,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 if file_mask & bitboard.w_pawn == 0 {
-                    b_feature_map.king_expose_count += 1;
-                }
-
-                if index % def::DIM_SIZE != 7 {
-                    let right_file_mask = file_masks[index + 1];
-
-                    if right_file_mask & bitboard.w_pawn == 0 {
-                        b_feature_map.king_semi_expose_count += 1;
-                    }
-                }
-
-                if index % def::DIM_SIZE != 0 {
-                    let left_file_mask = file_masks[index - 1];
-
-                    if left_file_mask & bitboard.w_pawn == 0 {
-                        b_feature_map.king_semi_expose_count += 1;
-                    }
+                    b_feature_map.king_semi_expose_count += 1;
                 }
             },
             _ => {},
@@ -870,7 +838,7 @@ mod tests {
             defended_unit: 1,
 
             king_expose_count: 1,
-            king_semi_expose_count: 1,
+            king_semi_expose_count: 0,
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -905,8 +873,8 @@ mod tests {
 
             defended_unit: -1,
 
-            king_expose_count: 1,
-            king_semi_expose_count: 0,
+            king_expose_count: 0,
+            king_semi_expose_count: 1,
             king_protector_count: 2,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -951,7 +919,7 @@ mod tests {
             defended_unit: 1,
 
             king_expose_count: 1,
-            king_semi_expose_count: 1,
+            king_semi_expose_count: 0,
             king_protector_count: 3,
             king_midgame_safe_sqr_count: 1,
             king_endgame_pref_sqr_count: 0,
@@ -1111,6 +1079,4 @@ mod tests {
         let state = State::new("8/2k5/8/8/8/4N3/5K2/8 w - - 0 1", &zob_keys, &bitmask);
         assert_eq!(0, eval_state(&state, eval_materials(&state)));
     }
-
-
 }
