@@ -40,7 +40,7 @@ static ROOK_OPEN_LINE_VAL: i32 = 20;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
-static GUARDED_PIECE_VAL: i32 = 10;
+static GUARDED_PIECE_VAL: i32 = 5;
 
 static CENTER_CONTROL_VAL: i32 = 15;
 static THREAT_VAL: i32 = 15;
