@@ -15,7 +15,6 @@ use crate::{
 use std::u64;
 
 const PV_TRACK_LENGTH: usize = 64;
-const KILLER_TABLE_LENGTH: usize = 128;
 const MAX_HISTORY_SCORE: u64 = u64::MAX >> 1;
 
 const WINDOW_SIZE: i32 = 50;
@@ -39,7 +38,7 @@ use std::time::Instant;
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
-    killer_table: [((i32, u32), (i32, u32)); KILLER_TABLE_LENGTH],
+    killer_table: [((i32, u32), (i32, u32)); PV_TRACK_LENGTH],
     history_table: [u64; HISTORY_TABLE_SIZE],
     counter_table: [u64; HISTORY_TABLE_SIZE],
     master_pv_table: [u32; PV_TRACK_LENGTH],
@@ -56,7 +55,7 @@ impl SearchEngine {
         SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
-            killer_table: [((0, 0), (0, 0)); KILLER_TABLE_LENGTH],
+            killer_table: [((0, 0), (0, 0)); PV_TRACK_LENGTH],
             history_table: [0; HISTORY_TABLE_SIZE],
             counter_table: [0; HISTORY_TABLE_SIZE],
             master_pv_table: [0; PV_TRACK_LENGTH],
@@ -134,7 +133,7 @@ impl SearchEngine {
         let mut accumulated_time_taken = 0;
 
         loop {
-            self.killer_table = [((0, 0), (0, 0)); KILLER_TABLE_LENGTH];
+            self.killer_table = [((0, 0), (0, 0)); PV_TRACK_LENGTH];
             self.history_table = [0; HISTORY_TABLE_SIZE];
             self.counter_table = [0; HISTORY_TABLE_SIZE];
 
@@ -761,17 +760,27 @@ impl SearchEngine {
 
     #[inline]
     fn update_killer_table(&mut self, score: i32, ply: u8, mov: u32) {
-        let existing_entry = self.killer_table[ply as usize];
+        let ply_index = ply as usize;
+
+        if ply_index >= PV_TRACK_LENGTH {
+            return
+        }
+
+        let existing_entry = self.killer_table[ply_index];
         let (killer_score, _killer_mov) = existing_entry.0;
         if score > killer_score || killer_score == 0 {
-            self.killer_table[ply as usize].1 = existing_entry.0;
-            self.killer_table[ply as usize].0 = (score, mov);
+            self.killer_table[ply_index].1 = existing_entry.0;
+            self.killer_table[ply_index].0 = (score, mov);
         }
     }
 
     #[inline]
     fn get_killer_mov(&self, ply: u8, non_cap_mov_list: &[u32; def::MAX_MOV_COUNT]) -> u32 {
         let ply_index = ply as usize;
+
+        if ply_index >= PV_TRACK_LENGTH {
+            return 0
+        }
 
         let same_ply_killer_entry = self.killer_table[ply_index];
         let (_killer_score, saved_killer_mov) = same_ply_killer_entry.0;
