@@ -8,7 +8,7 @@ type Player = u8;
 type Flag = u8;
 type Depth = u8;
 type CasRights = u8;
-type EnpSqr = u32;
+type EnpSqr = u8;
 
 type TableEntry = (Key, BitMask, Player, Depth, CasRights, EnpSqr, Flag, i32, u32);
 
@@ -38,7 +38,7 @@ impl DepthPreferredHashTable {
     pub fn get(&self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
-        if k == key && bm == bit_mask && p == player && c == cas_rights && e == enp_sqr as u32 {
+        if k == key && bm == bit_mask && p == player && c == cas_rights && e == enp_sqr as u8 {
             if d >= depth {
                 LookupResult::Match(f, s, m)
             } else {
@@ -53,7 +53,7 @@ impl DepthPreferredHashTable {
         let (k, _bm, _p, d, _c, _e, _f, _s, _m) = self.table[(key & self.mod_base) as usize];
 
         if k != key || depth >= d {
-            self.table[(key & self.mod_base) as usize] = (key, bit_mask, player, depth, cas_rights, enp_sqr as u32, flag, score, mov);
+            self.table[(key & self.mod_base) as usize] = (key, bit_mask, player, depth, cas_rights, enp_sqr as u8, flag, score, mov);
             return true
         }
 
@@ -81,7 +81,7 @@ impl AlwaysReplaceHashTable {
     pub fn get(&self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
         let (k, bm, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
 
-        if k == key && bm == bit_mask && p == player && c == cas_rights && e == enp_sqr as u32 {
+        if k == key && bm == bit_mask && p == player && c == cas_rights && e == enp_sqr as u8 {
             if d >= depth {
                 LookupResult::Match(f, s, m)
             } else {
@@ -93,7 +93,7 @@ impl AlwaysReplaceHashTable {
     }
 
     pub fn set(&mut self, key: u64, bit_mask: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) {
-        self.table[(key & self.mod_base) as usize] = (key, bit_mask, player, depth, cas_rights, enp_sqr as u32, flag, score, mov);
+        self.table[(key & self.mod_base) as usize] = (key, bit_mask, player, depth, cas_rights, enp_sqr as u8, flag, score, mov);
     }
 
     pub fn clear(&mut self) {
