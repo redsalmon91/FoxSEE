@@ -50,7 +50,7 @@ static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 2;
 
-static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 5;
+static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 3;
 static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 5;
 static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 5;
 
@@ -241,7 +241,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         + w_features_map.center_count * CENTER_CONTROL_VAL
         + w_features_map.invasion_count * INVASION_VAL
-        + w_features_map.threat_count * THREAT_VAL
         + w_features_map.trapped_count * TRAPPED_PEN
         + w_features_map.defended_unit * DEFENDED_UNIT_VAL
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
@@ -258,7 +257,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         - b_features_map.center_count * CENTER_CONTROL_VAL
         - b_features_map.invasion_count * INVASION_VAL
-        - b_features_map.threat_count * THREAT_VAL
         - b_features_map.trapped_count * TRAPPED_PEN
         - b_features_map.defended_unit - DEFENDED_UNIT_VAL;
 
@@ -271,6 +269,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
         + w_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
         + w_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
+        + w_features_map.threat_count * THREAT_VAL
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
@@ -278,7 +277,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
         - b_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
         - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
-        - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL;
+        - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
+        - b_features_map.threat_count * THREAT_VAL;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
     + w_features_map.rook_count * R_PHASE_WEIGHT
