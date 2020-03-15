@@ -10,17 +10,17 @@ A strong UCI chess engine written in Rust!
 - Negamax Search with Alpha-Beta Pruning
 - Quiescence Search
 - Iterative Deepening
+- Aspiration Window
 - Bitboards
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
 - MVV/LVA
-- Late Move Reduction
 - Check Extension
 - Relative History Heuristic
 - Killer Heuristic
-- Aspiration Window
 - Linear Evaluation
+- Late Move Reduction
 - Null-Move Pruning
 - Delta Pruning
 - Perft
@@ -35,7 +35,7 @@ On `i5-8250U`, below are the time needed to find the best move (by version):
 - 0.x - 1500ms
 - 1.x - 500ms
 - 2.x - 50ms
-- 3.x - 20ms
+- 3.x - 15ms
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/)
