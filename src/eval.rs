@@ -36,10 +36,11 @@ static QUEEN_SIDE_PAWN_VAL: i32 = 20;
 
 static ROOK_SEMI_OPEN_LINE_VAL: i32 = 15;
 static ROOK_OPEN_LINE_VAL: i32 = 20;
+static ROOK_ENDGAME_EXTRA_VAL: i32 = 50;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
-static DEFENDED_UNIT_VAL: i32 = 5;
+static DEFENDED_UNIT_VAL: i32 = 10;
 
 static CENTER_CONTROL_VAL: i32 = 20;
 static THREAT_VAL: i32 = 30;
@@ -270,6 +271,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
         + w_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
         + w_features_map.threat_count * THREAT_VAL
+        + w_features_map.rook_count * ROOK_ENDGAME_EXTRA_VAL
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
@@ -278,7 +280,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
         - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
         - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
-        - b_features_map.threat_count * THREAT_VAL;
+        - b_features_map.threat_count * THREAT_VAL
+        - b_features_map.rook_count * ROOK_ENDGAME_EXTRA_VAL;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
     + w_features_map.rook_count * R_PHASE_WEIGHT
