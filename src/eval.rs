@@ -40,20 +40,23 @@ static ROOK_ENDGAME_EXTRA_VAL: i32 = 50;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
-static DEFENDED_UNIT_VAL: i32 = 10;
+static DEFENDED_UNIT_VAL: i32 = 5;
 
 static CENTER_CONTROL_VAL: i32 = 20;
-static THREAT_VAL: i32 = 30;
 static INVASION_VAL: i32 = 5;
 static TRAPPED_PEN: i32 = -10;
+
+static THREAT_ROOK_VAL: i32 = 30;
+static THREAT_QUEEN_VAL: i32 = 20;
+static THREAT_PAWN_VAL: i32 = 15;
 
 static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
 static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 2;
 
-static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 3;
-static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 5;
-static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 5;
+static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 2;
+static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 3;
+static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 3;
 
 static TOTAL_PHASE: i32 = 128;
 static Q_PHASE_WEIGHT: i32 = 32;
@@ -112,8 +115,11 @@ pub struct FeatureMap {
 
     center_count: i32,
     invasion_count: i32,
-    threat_count: i32,
     trapped_count: i32,
+
+    threat_rook_count: i32,
+    threat_queen_count: i32,
+    threat_pawn_count: i32,
 
     defended_unit: i32,
 
@@ -150,8 +156,11 @@ impl FeatureMap {
 
             center_count: 0,
             invasion_count: 0,
-            threat_count: 0,
             trapped_count: 0,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 0,
 
             defended_unit: 0,
 
@@ -270,7 +279,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
         + w_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
         + w_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
-        + w_features_map.threat_count * THREAT_VAL
+        + w_features_map.threat_rook_count * THREAT_ROOK_VAL
+        + w_features_map.threat_queen_count * THREAT_QUEEN_VAL
+        + w_features_map.threat_pawn_count * THREAT_PAWN_VAL
         + w_features_map.rook_count * ROOK_ENDGAME_EXTRA_VAL
         - b_features_map.passed_pawn_count * PASS_PAWN_VAL
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
@@ -280,7 +291,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
         - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
         - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
-        - b_features_map.threat_count * THREAT_VAL
+        - b_features_map.threat_rook_count * THREAT_ROOK_VAL
+        - b_features_map.threat_queen_count * THREAT_QUEEN_VAL
+        - b_features_map.threat_pawn_count * THREAT_PAWN_VAL
         - b_features_map.rook_count * ROOK_ENDGAME_EXTRA_VAL;
 
     let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
@@ -655,11 +668,13 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.invasion_count = (w_light_pieces_mask & W_INVASION_MASK).count_ones() as i32;
     b_feature_map.invasion_count = (b_light_pieces_mask & B_INVASION_MASK).count_ones() as i32;
 
-    w_feature_map.threat_count = ((bitboard.w_rook | bitboard.w_queen) & WR_THREAT_MASK).count_ones() as i32;
-    w_feature_map.threat_count += (bitboard.w_pawn & WP_THREAT_MASK).count_ones() as i32;
+    w_feature_map.threat_rook_count = (bitboard.w_rook & WR_THREAT_MASK).count_ones() as i32;
+    w_feature_map.threat_queen_count = (bitboard.w_queen & WR_THREAT_MASK).count_ones() as i32;
+    w_feature_map.threat_pawn_count = (bitboard.w_pawn & WP_THREAT_MASK).count_ones() as i32;
 
-    b_feature_map.threat_count = ((bitboard.b_rook | bitboard.b_queen) & BR_THREAT_MASK).count_ones() as i32;
-    b_feature_map.threat_count += (bitboard.b_pawn & BP_THREAT_MASK).count_ones() as i32;
+    b_feature_map.threat_rook_count = (bitboard.b_rook & BR_THREAT_MASK).count_ones() as i32;
+    b_feature_map.threat_queen_count = (bitboard.b_queen & BR_THREAT_MASK).count_ones() as i32;
+    b_feature_map.threat_pawn_count += (bitboard.b_pawn & BP_THREAT_MASK).count_ones() as i32;
 
     w_feature_map.knight_mobility = (wn_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
     w_feature_map.bishop_mobility = (wb_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
@@ -735,8 +750,11 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
-            threat_count: 0,
             trapped_count: 0,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 0,
 
             defended_unit: 3,
 
@@ -771,8 +789,11 @@ mod tests {
 
             center_count: 2,
             invasion_count: 0,
-            threat_count: 0,
             trapped_count: 0,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 0,
 
             defended_unit: 1,
 
@@ -816,8 +837,11 @@ mod tests {
 
             center_count: 1,
             invasion_count: 1,
-            threat_count: 1,
             trapped_count: 1,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 1,
 
             defended_unit: 1,
 
@@ -852,8 +876,11 @@ mod tests {
 
             center_count: 2,
             invasion_count: 0,
-            threat_count: 0,
             trapped_count: 0,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 0,
 
             defended_unit: -1,
 
@@ -897,8 +924,11 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
-            threat_count: 0,
             trapped_count: 0,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 0,
 
             defended_unit: 1,
 
@@ -933,8 +963,11 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
-            threat_count: 0,
             trapped_count: 0,
+
+            threat_rook_count: 0,
+            threat_queen_count: 0,
+            threat_pawn_count: 0,
 
             defended_unit: 1,
 
@@ -967,8 +1000,13 @@ mod tests {
         let state = State::new("8/p2R2p1/1p3p1p/2p5/8/1P6/Pr1r1PPP/8 w - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(1, w_features.threat_count);
-        assert_eq!(2, b_features.threat_count);
+        assert_eq!(1, w_features.threat_rook_count);
+        assert_eq!(0, w_features.threat_queen_count);
+        assert_eq!(0, w_features.threat_pawn_count);
+
+        assert_eq!(2, b_features.threat_rook_count);
+        assert_eq!(0, b_features.threat_queen_count);
+        assert_eq!(0, b_features.threat_pawn_count);
     }
 
     #[test]
@@ -1015,8 +1053,13 @@ mod tests {
         let state = State::new("rnb1kbnr/ppP2Rpp/8/8/8/4pP2/PrP1P1qP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(2, w_features.threat_count);
-        assert_eq!(3, b_features.threat_count);
+        assert_eq!(1, w_features.threat_rook_count);
+        assert_eq!(0, w_features.threat_queen_count);
+        assert_eq!(1, w_features.threat_pawn_count);
+
+        assert_eq!(1, b_features.threat_rook_count);
+        assert_eq!(1, b_features.threat_queen_count);
+        assert_eq!(1, b_features.threat_pawn_count);
     }
 
     #[test]
