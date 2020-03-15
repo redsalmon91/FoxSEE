@@ -41,8 +41,8 @@ static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
 static DEFENDED_UNIT_VAL: i32 = 5;
 
-static CENTER_CONTROL_VAL: i32 = 15;
-static THREAT_VAL: i32 = 20;
+static CENTER_CONTROL_VAL: i32 = 20;
+static THREAT_VAL: i32 = 30;
 static INVASION_VAL: i32 = 5;
 static TRAPPED_PEN: i32 = -10;
 
