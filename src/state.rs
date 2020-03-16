@@ -62,7 +62,7 @@ pub struct State<'state> {
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
-    pub history_pos_stack: Vec<(u64, u8)>,
+    pub history_pos_stack: Vec<u64>,
     pub non_cap_mov_count_stack: Vec<u16>,
     pub king_index_stack: Vec<(usize, usize)>,
 
@@ -194,15 +194,15 @@ impl <'state> State<'state> {
             return true
         }
 
-        let (pos_hash, _player) = self.history_pos_stack[history_len - LAST_MOV_POS_INDEX];
+        let pos_hash = self.history_pos_stack[history_len - LAST_MOV_POS_INDEX];
         if ply > 1 && pos_hash == self.hash_key {
             return true
         }
 
         let mut dup_count = 0;
         for check_index in 1..=check_range {
-            let (pos_hash, player) = self.history_pos_stack[history_len-check_index];
-            if pos_hash == self.hash_key && player == self.player {
+            let pos_hash = self.history_pos_stack[history_len-check_index];
+            if pos_hash == self.hash_key {
                 dup_count += 1;
             }
 
@@ -228,7 +228,7 @@ impl <'state> State<'state> {
     pub fn do_mov(&mut self, from: usize, to: usize, mov_type: u8, promo: u8) {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
-        self.history_pos_stack.push((self.hash_key, self.player));
+        self.history_pos_stack.push(self.hash_key);
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
         self.enp_square = 0;
@@ -252,7 +252,7 @@ impl <'state> State<'state> {
         let (wk_index, bk_index) = self.king_index_stack.pop().unwrap();
         self.wk_index = wk_index;
         self.bk_index = bk_index;
-        self.hash_key = self.history_pos_stack.pop().unwrap().0;
+        self.hash_key = self.history_pos_stack.pop().unwrap();
 
         self.player = def::get_opposite_player(self.player);
 

@@ -7,7 +7,9 @@ A strong UCI chess engine written in Rust!
 
 ## Features
 
-- Negamax Search with Alpha-Beta Pruning
+- Principal Variance Search
+- Negamax Search
+- Alpha-Beta Pruning
 - Quiescence Search
 - Iterative Deepening
 - Aspiration Window
@@ -17,11 +19,13 @@ A strong UCI chess engine written in Rust!
 - Static Exchange Evalution (SEE)
 - MVV/LVA
 - Check Extension
+- Mate-Threat Extension
 - Relative History Heuristic
 - Killer Heuristic
 - Linear Evaluation
-- Late Move Reduction
 - Null-Move Pruning
+- Late-Move Reductions
+- Futility Pruning
 - Delta Pruning
 - Perft
 

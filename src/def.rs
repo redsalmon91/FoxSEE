@@ -75,6 +75,11 @@ pub fn get_rank(player: u8, index: usize) -> usize {
 }
 
 #[inline]
+pub const fn near_horizon(depth: u8) -> bool {
+    depth <= 3
+}
+
+#[inline]
 pub const fn is_k(piece_code: u8) -> bool {
     piece_code & K != 0
 }
@@ -102,11 +107,6 @@ pub const fn is_n(piece_code: u8) -> bool {
 #[inline]
 pub const fn is_p(piece_code: u8) -> bool {
     piece_code & P != 0
-}
-
-#[inline]
-pub const fn near_horizon(depth: u8) -> bool {
-    depth <= 3
 }
 
 #[cfg(test)]

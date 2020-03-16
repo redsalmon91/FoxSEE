@@ -10,10 +10,12 @@ use crate::{
 
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
-pub static LOSING_EXCHANGE_VAL: i32 = -100;
 
 pub static DELTA_MARGIN: i32 = 190;
 pub static DELTA_MAX_MARGIN: i32 = 1190;
+
+static FUTILITY_MARGIN_BASE: i32 = 230;
+static MAX_POS_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 525;
@@ -30,8 +32,8 @@ static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
 static PASS_PAWN_VAL: i32 = 20;
 static DUP_PAWN_PEN: i32 = -10;
-static ISOLATE_PAWN_PEN: i32 = -10;
-static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
+static ISOLATE_PAWN_PEN: i32 = -20;
+static OPEN_ISOLATE_PAWN_PEN: i32 = -30;
 static QUEEN_SIDE_PAWN_VAL: i32 = 20;
 
 static ROOK_SEMI_OPEN_LINE_VAL: i32 = 15;
@@ -40,26 +42,25 @@ static ROOK_ENDGAME_EXTRA_VAL: i32 = 30;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 10;
 
-static DEFENDED_UNIT_VAL: i32 = 5;
+static DEFENDED_UNIT_VAL: i32 = 10;
 
 static CENTER_CONTROL_VAL: i32 = 20;
 static INVASION_VAL: i32 = 5;
-static TRAPPED_PEN: i32 = -10;
+static TRAPPED_PEN: i32 = -30;
 
 static THREAT_ROOK_VAL: i32 = 30;
 static THREAT_QUEEN_VAL: i32 = 20;
-static THREAT_PAWN_VAL: i32 = 15;
+static THREAT_PAWN_VAL: i32 = 20;
 
-static ROOK_MIDGAME_MOB_BASE_VAL: i32 = 2;
-static BISHOP_MIDGAME_MOB_BASE_VAL: i32 = 2;
-static KNIGHT_MIDGAME_MOB_BASE_VAL: i32 = 2;
+static MIDGAME_MOB_BASE_VAL: i32 = 2;
+static ENDGMAE_MOB_BASE_VAL: i32 = 4;
 
-static ROOK_ENDGAME_MOB_BASE_VAL: i32 = 2;
-static BISHOP_ENDGMAE_MOB_BASE_VAL: i32 = 3;
-static KNIGHT_ENDGAME_MOB_BASE_VAL: i32 = 3;
+static LIMITED_MOBILITY_KNIGHT: u32 = 1;
+static LIMITED_MOBILITY_BISHOP: u32 = 2;
+static LIMITED_MOBILITY_ROOK: u32 = 2;
 
-static TOTAL_PHASE: i32 = 128;
-static Q_PHASE_WEIGHT: i32 = 32;
+static TOTAL_PHASE: i32 = 96;
+static Q_PHASE_WEIGHT: i32 = 16;
 static R_PHASE_WEIGHT: i32 = 8;
 static B_PHASE_WEIGHT: i32 = 4;
 static N_PHASE_WEIGHT: i32 = 4;
@@ -67,11 +68,6 @@ static N_PHASE_WEIGHT: i32 = 4;
 static TEMPO_VAL: i32 = 10;
 
 static CENTER_CONTROL_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
-
-static ALL_TRAP_MASK: u64 = 0b00000000_10000001_10000001_10000001_10000001_10000001_10000001_00000000;
-static N_TRAP_MASK: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
-static B_TRAP_MASK: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
-static R_TRAP_MASK: u64 = 0b00000000_00000000_00000000_11111111_11111111_00000000_00000000_00000000;
 
 static W_INVASION_MASK: u64 = 0b01111110_01111110_01111110_00111100_00000000_00000000_00000000_00000000;
 static B_INVASION_MASK: u64 = 0b00000000_00000000_00000000_00000000_00111100_01111110_01111110_01111110;
@@ -105,9 +101,7 @@ pub struct FeatureMap {
     passed_pawn_count: i32,
     queen_side_pawn_count: i32,
 
-    knight_mobility: i32,
-    bishop_mobility: i32,
-    rook_mobility: i32,
+    mobility: i32,
 
     semi_open_rook_count: i32,
     open_rook_count: i32,
@@ -146,9 +140,7 @@ impl FeatureMap {
             passed_pawn_count: 0,
             queen_side_pawn_count: 0,
 
-            knight_mobility: 0,
-            bishop_mobility: 0,
-            rook_mobility: 0,
+            mobility: 0,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -199,6 +191,10 @@ pub fn is_term_val(val: i32) -> bool {
     val < -TERM_VAL || val > TERM_VAL
 }
 
+pub fn get_futility_margin(depth: u8) -> i32 {
+    FUTILITY_MARGIN_BASE * (1 + depth / 2) as i32 + MAX_POS_VAL
+}
+
 pub fn eval_materials(state: &State) -> i32 {
     let bitboard = state.bitboard;
 
@@ -242,9 +238,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         + w_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        + w_features_map.rook_mobility * ROOK_MIDGAME_MOB_BASE_VAL
-        + w_features_map.bishop_mobility * BISHOP_MIDGAME_MOB_BASE_VAL
-        + w_features_map.knight_mobility * KNIGHT_MIDGAME_MOB_BASE_VAL
+        + w_features_map.mobility * MIDGAME_MOB_BASE_VAL
         + w_features_map.king_protector_count * KING_PROTECTED_BASE_VAL
         + w_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         + w_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
@@ -258,9 +252,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         - b_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         - b_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        - b_features_map.rook_mobility * ROOK_MIDGAME_MOB_BASE_VAL
-        - b_features_map.bishop_mobility * BISHOP_MIDGAME_MOB_BASE_VAL
-        - b_features_map.knight_mobility * KNIGHT_MIDGAME_MOB_BASE_VAL
+        - b_features_map.mobility * MIDGAME_MOB_BASE_VAL
         - b_features_map.king_protector_count * KING_PROTECTED_BASE_VAL
         - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
         - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
@@ -275,9 +267,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         + w_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         + w_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
-        + w_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
-        + w_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
-        + w_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
+        + w_features_map.mobility * ENDGMAE_MOB_BASE_VAL
         + w_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
         + w_features_map.threat_rook_count * THREAT_ROOK_VAL
         + w_features_map.threat_queen_count * THREAT_QUEEN_VAL
@@ -287,9 +277,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
-        - b_features_map.rook_mobility * ROOK_ENDGAME_MOB_BASE_VAL
-        - b_features_map.bishop_mobility * BISHOP_ENDGMAE_MOB_BASE_VAL
-        - b_features_map.knight_mobility * KNIGHT_ENDGAME_MOB_BASE_VAL
+        - b_features_map.mobility * ENDGMAE_MOB_BASE_VAL
         - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
         - b_features_map.threat_rook_count * THREAT_ROOK_VAL
         - b_features_map.threat_queen_count * THREAT_QUEEN_VAL
@@ -338,11 +326,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     for index in start_index..end_index {
         let moving_piece = squares[index];
 
-        if moving_piece == 0 {
+        if !def::is_p(moving_piece) {
             continue
         }
-
-        let index_mask = index_masks[index];
 
         match moving_piece {
             def::WP => {
@@ -397,12 +383,35 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.dup_pawn_count += 1;
                 }
             },
+            _ => {}
+        }
+    }
 
+    for index in start_index..end_index {
+        let moving_piece = squares[index];
+
+        if moving_piece == 0 || def::is_p(moving_piece) {
+            continue
+        }
+
+        let index_mask = index_masks[index];
+
+        match moving_piece {
             def::WN => {
-                wn_attack_mask |= bitmask.n_attack_masks[index];
+                let mov_mask = bitmask.n_attack_masks[index];
+                wn_attack_mask |= mov_mask;
+
+                if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_KNIGHT {
+                    w_feature_map.trapped_count += 1;
+                }
             },
             def::BN => {
-                bn_attack_mask |= bitmask.n_attack_masks[index];
+                let mov_mask = bitmask.n_attack_masks[index];
+                bn_attack_mask |= mov_mask;
+
+                if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_KNIGHT {
+                    b_feature_map.trapped_count += 1;
+                }
             },
 
             def::WB => {
@@ -437,6 +446,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 wb_attack_mask |= mov_mask;
+
+                if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_BISHOP {
+                    w_feature_map.trapped_count += 1;
+                }
             },
             def::BB => {
                 let mut mov_mask = 0;
@@ -470,6 +483,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 bb_attack_mask |= mov_mask;
+
+                if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_BISHOP {
+                    b_feature_map.trapped_count += 1;
+                }
             },
 
             def::WR => {
@@ -501,6 +518,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if left_attack_mask & occupy_mask != 0 {
                     let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
                     mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
+
+                if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_ROOK {
+                    w_feature_map.trapped_count += 1;
                 }
 
                 wr_attack_mask |= mov_mask;
@@ -543,6 +564,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if left_attack_mask & occupy_mask != 0 {
                     let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
                     mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
+
+                if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_ROOK {
+                    b_feature_map.trapped_count += 1;
                 }
 
                 br_attack_mask |= mov_mask;
@@ -676,24 +701,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.threat_queen_count = (bitboard.b_queen & BR_THREAT_MASK).count_ones() as i32;
     b_feature_map.threat_pawn_count += (bitboard.b_pawn & BP_THREAT_MASK).count_ones() as i32;
 
-    w_feature_map.knight_mobility = (wn_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
-    w_feature_map.bishop_mobility = (wb_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
-    w_feature_map.rook_mobility = (wr_attack_mask & !bitboard.w_all & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+    w_feature_map.mobility = (wn_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
+    w_feature_map.mobility += (wb_attack_mask & !bitboard.w_all & !bp_attack_mask).count_ones() as i32;
 
-    b_feature_map.knight_mobility = (bn_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
-    b_feature_map.bishop_mobility = (bb_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
-    b_feature_map.rook_mobility = (br_attack_mask & !bitboard.b_all & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-
-    let w_trapped_piece_mask = ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & ALL_TRAP_MASK)
-        | ((bitboard.w_knight & N_TRAP_MASK) | (bitboard.w_bishop & B_TRAP_MASK))
-        | (bitboard.w_rook & R_TRAP_MASK);
-
-    let b_trapped_piece_mask = ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & ALL_TRAP_MASK)
-        | ((bitboard.b_knight & N_TRAP_MASK) | (bitboard.b_bishop & B_TRAP_MASK))
-        | (bitboard.b_rook & R_TRAP_MASK);
-
-    w_feature_map.trapped_count = w_trapped_piece_mask.count_ones() as i32;
-    b_feature_map.trapped_count = b_trapped_piece_mask.count_ones() as i32;
+    b_feature_map.mobility = (bn_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
+    b_feature_map.mobility += (bb_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
 
     w_feature_map.defended_unit += ((bitboard.w_knight | bitboard.w_bishop) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
     w_feature_map.defended_unit -= ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
@@ -740,9 +752,7 @@ mod tests {
             passed_pawn_count: 0,
             queen_side_pawn_count: 3,
 
-            knight_mobility: 6,
-            bishop_mobility: 2,
-            rook_mobility: 3,
+            mobility: 8,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -750,7 +760,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
-            trapped_count: 0,
+            trapped_count: 2,
 
             threat_rook_count: 0,
             threat_queen_count: 0,
@@ -779,9 +789,7 @@ mod tests {
             passed_pawn_count: 0,
             queen_side_pawn_count: 3,
 
-            knight_mobility: 6,
-            bishop_mobility: 3,
-            rook_mobility: 5,
+            mobility: 9,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -827,9 +835,7 @@ mod tests {
             passed_pawn_count: 7,
             queen_side_pawn_count: 3,
 
-            knight_mobility: 3,
-            bishop_mobility: 2,
-            rook_mobility: 2,
+            mobility: 5,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -837,7 +843,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 1,
-            trapped_count: 1,
+            trapped_count: 2,
 
             threat_rook_count: 0,
             threat_queen_count: 0,
@@ -866,9 +872,7 @@ mod tests {
             passed_pawn_count: 0,
             queen_side_pawn_count: 4,
 
-            knight_mobility: 2,
-            bishop_mobility: 0,
-            rook_mobility: 6,
+            mobility: 2,
 
             semi_open_rook_count: 1,
             open_rook_count: 0,
@@ -914,9 +918,7 @@ mod tests {
             passed_pawn_count: 0,
             queen_side_pawn_count: 2,
 
-            knight_mobility: 7,
-            bishop_mobility: 1,
-            rook_mobility: 3,
+            mobility: 8,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -924,7 +926,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
-            trapped_count: 0,
+            trapped_count: 3,
 
             threat_rook_count: 0,
             threat_queen_count: 0,
@@ -953,9 +955,7 @@ mod tests {
             passed_pawn_count: 0,
             queen_side_pawn_count: 4,
 
-            knight_mobility: 10,
-            bishop_mobility: 3,
-            rook_mobility: 5,
+            mobility: 13,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -988,8 +988,8 @@ mod tests {
         let state = State::new("n2qk2b/pppppppp/8/r7/2R1Q3/8/PPPPPPPP/N3K2B w - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(3, w_features.trapped_count);
-        assert_eq!(3, b_features.trapped_count);
+        assert_eq!(2, w_features.trapped_count);
+        assert_eq!(2, b_features.trapped_count);
     }
 
     #[test]
@@ -1041,8 +1041,8 @@ mod tests {
         let state = State::new("1q4kn/3r1p1p/1pbN1Pp1/r1ppP1P1/P4R2/2B1P3/2Q4P/3R2K1 b - - 2 29", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(5, w_features.knight_mobility);
-        assert_eq!(0, b_features.knight_mobility);
+        assert_eq!(9, w_features.mobility);
+        assert_eq!(3, b_features.mobility);
     }
 
     #[test]
