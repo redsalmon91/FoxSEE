@@ -760,7 +760,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 0,
-            trapped_count: 2,
+            trapped_count: 3,
 
             threat_rook_count: 0,
             threat_queen_count: 0,
@@ -843,7 +843,7 @@ mod tests {
 
             center_count: 1,
             invasion_count: 1,
-            trapped_count: 2,
+            trapped_count: 3,
 
             threat_rook_count: 0,
             threat_queen_count: 0,
@@ -1096,6 +1096,18 @@ mod tests {
 
         assert_eq!(-1, w_features.defended_unit);
         assert_eq!(1, b_features.defended_unit);
+    }
+
+    #[test]
+    fn test_extract_features_13() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("3qk3/Bbpppppp/1p6/8/3P4/pP1P1N2/P1b1PPPP/2Q1K2n w - - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(1, w_features.trapped_count);
+        assert_eq!(2, b_features.trapped_count);
     }
 
     #[test]

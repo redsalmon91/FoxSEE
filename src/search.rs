@@ -277,12 +277,12 @@ impl SearchEngine {
             let gives_check = mov_table::is_in_check(state, state.player);
 
             let score = if mov == self.master_pv_table[0] {
-                -self.ab_search(state, true, gives_check, false, false, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
+                -self.ab_search(state, true, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
             } else {
-                let score = -self.ab_search(state, false, gives_check, false, false, &mut next_pv_table, -alpha - 1, -alpha, depth - 1, ply + 1, node_count, seldepth);
+                let score = -self.ab_search(state, false, gives_check, true, &mut next_pv_table, -alpha - 1, -alpha, depth - 1, ply + 1, node_count, seldepth);
 
                 if score > alpha && score < beta {
-                    -self.ab_search(state, false, gives_check, false, false, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
+                    -self.ab_search(state, false, gives_check, true, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
                 } else {
                     score
                 }
@@ -314,7 +314,7 @@ impl SearchEngine {
         alpha
     }
 
-    fn ab_search(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_cut: bool, on_extend: bool, pv_table: &mut [u32], mut alpha: i32, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
+    fn ab_search(&mut self, state: &mut State, on_pv: bool, in_check: bool, allow_forward_pruning: bool, pv_table: &mut [u32], mut alpha: i32, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> i32 {
         if self.abort {
             return 0
         }
@@ -340,7 +340,7 @@ impl SearchEngine {
 
         let mut under_threat = false;
 
-        if !on_cut && !on_extend && !in_check && !on_pv && depth >= NM_DEPTH {
+        if allow_forward_pruning && !in_check && !on_pv && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -348,7 +348,7 @@ impl SearchEngine {
             };
 
             state.do_null_mov();
-            let scout_score = -self.ab_search(state, false, false, true, false, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - depth_reduction - 1, ply + 1, node_count, seldepth);
+            let scout_score = -self.ab_search(state, false, false, false, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - depth_reduction - 1, ply + 1, node_count, seldepth);
             state.undo_null_mov();
 
             if scout_score >= beta {
@@ -358,7 +358,7 @@ impl SearchEngine {
             }
         }
 
-        if !on_pv && !in_check && !on_cut && !on_extend && !under_threat && def::near_horizon(depth) {
+        if !on_pv && !in_check && allow_forward_pruning && !under_threat && def::near_horizon(depth) {
             if eval::eval_materials(state) - eval::get_futility_margin(depth) >= beta {
                 return beta
             }
@@ -504,23 +504,21 @@ impl SearchEngine {
 
         let gives_check = mov_table::is_in_check(state, state.player);
 
-        let mut on_extend = false;
+        let allow_forward_pruning = !(under_threat || gives_check);
 
         if under_threat {
             depth += 1;
-            on_extend = true;
         } else if (gives_check || is_threating_pawn) && def::near_horizon(depth) {
             depth += 1;
-            on_extend = true;
         }
 
         let score = if depth > 1 && *mov_count > 1 && !in_check && !gives_check && !under_threat && !on_pv && !is_capture && !is_threating_pawn {
-            let score = -self.ab_search(state, on_pv, gives_check, false, on_extend, &mut next_pv_table, -alpha-1, -alpha, depth - 2, ply + 1, node_count, seldepth);
+            let score = -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -alpha-1, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
-                let score = -self.ab_search(state, on_pv, gives_check, false, on_extend, &mut next_pv_table, -alpha-1, -alpha, depth - 1, ply + 1, node_count, seldepth);
+                let score = -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -alpha-1, -alpha, depth - 1, ply + 1, node_count, seldepth);
 
                 if score > alpha && score < beta {
-                    -self.ab_search(state, on_pv, gives_check, false, on_extend, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
+                    -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
                 } else {
                     score
                 }
@@ -528,10 +526,10 @@ impl SearchEngine {
                 score
             }
         } else {
-            let score = -self.ab_search(state, on_pv, gives_check, false, on_extend, &mut next_pv_table, -alpha-1, -alpha, depth - 1, ply + 1, node_count, seldepth);
+            let score = -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -alpha-1, -alpha, depth - 1, ply + 1, node_count, seldepth);
 
             if score > alpha && score < beta {
-                -self.ab_search(state, on_pv, gives_check, false, on_extend, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
+                -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1, node_count, seldepth)
             } else {
                 score
             }
