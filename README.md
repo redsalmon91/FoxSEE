@@ -39,7 +39,7 @@ On `i5-8250U`, below are the time needed to find the best move (by version):
 - 0.x - 1500ms
 - 1.x - 500ms
 - 2.x - 50ms
-- 3.x - 15ms
+- 3.x - 25ms
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/)
@@ -56,3 +56,8 @@ Aside from the standard set of UCI commands, `perft x` is also supported.
 - Search specific moves under a given position is currently not supported
 - `ponder` is currently not supported
 - Big-Endian systems are not supported
+
+## References
+[Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
+[Mediocre Chess Guides](http://mediocrechess.sourceforge.net/guides.html)  
+[Chess Programming Wiki](https://www.chessprogramming.org)
