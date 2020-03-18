@@ -14,7 +14,7 @@ pub static TERM_VAL: i32 = 10000;
 pub static DELTA_MARGIN: i32 = 190;
 pub static DELTA_MAX_MARGIN: i32 = 1190;
 
-static FUTILITY_MARGIN_BASE: i32 = 230;
+static FUTILITY_MARGIN_BASE: i32 = 425;
 static MAX_POS_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
@@ -32,8 +32,8 @@ static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
 static PASS_PAWN_VAL: i32 = 20;
 static DUP_PAWN_PEN: i32 = -10;
-static ISOLATE_PAWN_PEN: i32 = -20;
-static OPEN_ISOLATE_PAWN_PEN: i32 = -30;
+static ISOLATE_PAWN_PEN: i32 = -10;
+static OPEN_ISOLATE_PAWN_PEN: i32 = -15;
 static QUEEN_SIDE_PAWN_VAL: i32 = 20;
 
 static ROOK_SEMI_OPEN_LINE_VAL: i32 = 15;
@@ -58,6 +58,7 @@ static ENDGMAE_MOB_BASE_VAL: i32 = 4;
 static LIMITED_MOBILITY_KNIGHT: u32 = 1;
 static LIMITED_MOBILITY_BISHOP: u32 = 2;
 static LIMITED_MOBILITY_ROOK: u32 = 2;
+static LIMITED_MOBILITY_QUEEN: u32 = 2;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
@@ -313,285 +314,448 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let mut wn_attack_mask = 0;
     let mut wb_attack_mask = 0;
     let mut wr_attack_mask = 0;
+    let mut wq_attack_mask = 0;
 
     let mut bp_attack_mask = 0;
     let mut bn_attack_mask = 0;
     let mut bb_attack_mask = 0;
     let mut br_attack_mask = 0;
+    let mut bq_attack_mask = 0;
+
+    let mut w_passed_pawn_surrounding_mask = 0;
+    let mut b_passed_pawn_surrounding_mask = 0;
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
     let start_index = occupy_mask.trailing_zeros() as usize;
     let end_index = def::BOARD_SIZE - occupy_mask.leading_zeros() as usize;
 
-    for index in start_index..end_index {
-        let moving_piece = squares[index];
+    if bitboard.w_pawn | bitboard.b_pawn != 0 {
+        for index in start_index..end_index {
+            let moving_piece = squares[index];
 
-        if !def::is_p(moving_piece) {
-            continue
+            if !def::is_p(moving_piece) {
+                continue
+            }
+
+            match moving_piece {
+                def::WP => {
+                    wp_attack_mask |= bitmask.wp_attack_masks[index];
+
+                    let file_mask = file_masks[index];
+                    let rank = def::get_rank(def::PLAYER_W, index) as i32;
+
+                    if bitmask.wp_forward_masks[index] & bitboard.b_pawn == 0 {
+                        w_feature_map.passed_pawn_count += rank;
+                        w_passed_pawn_surrounding_mask |= bitmask.k_attack_masks[index];
+
+                        if bitmask.wp_behind_masks[index] & bitboard.w_pawn != 0 {
+                            w_feature_map.passed_pawn_count += rank / 2;
+                        }
+                    }
+
+                    if bitmask.wp_behind_masks[index] & bitboard.w_pawn == 0 {
+                        if file_mask & bitboard.b_pawn == 0 {
+                            w_feature_map.open_isolate_pawn_count += 1;
+                        } else {
+                            w_feature_map.isolate_pawn_count += 1;
+                        }
+                    }
+
+                    if (file_mask & bitboard.w_pawn).count_ones() > 1 {
+                        w_feature_map.dup_pawn_count += 1;
+                    }
+                },
+                def::BP => {
+                    bp_attack_mask |= bitmask.bp_attack_masks[index];
+
+                    let file_mask = file_masks[index];
+                    let rank = def::get_rank(def::PLAYER_B, index) as i32;
+
+                    if bitmask.bp_forward_masks[index] & bitboard.w_pawn == 0 {
+                        b_feature_map.passed_pawn_count += rank;
+                        b_passed_pawn_surrounding_mask |= bitmask.k_attack_masks[index];
+
+                        if bitmask.bp_behind_masks[index] & bitboard.b_pawn != 0 {
+                            b_feature_map.passed_pawn_count += rank / 2;
+                        }
+                    }
+
+                    if bitmask.bp_behind_masks[index] & bitboard.b_pawn == 0 {
+                        if file_mask & bitboard.w_pawn == 0 {
+                            b_feature_map.open_isolate_pawn_count += 1;
+                        } else {
+                            b_feature_map.isolate_pawn_count += 1;
+                        }
+                    }
+
+                    if (file_mask & bitboard.b_pawn).count_ones() > 1 {
+                        b_feature_map.dup_pawn_count += 1;
+                    }
+                },
+                _ => {}
+            }
         }
+    }
 
-        match moving_piece {
-            def::WP => {
-                wp_attack_mask |= bitmask.wp_attack_masks[index];
+    if bitboard.w_knight | bitboard.w_bishop | bitboard.b_knight | bitboard.b_bishop != 0 {
+        for index in start_index..end_index {
+            let moving_piece = squares[index];
 
-                let file_mask = file_masks[index];
-                let rank = def::get_rank(def::PLAYER_W, index) as i32;
+            if !def::is_n(moving_piece) && !def::is_b(moving_piece) {
+                continue
+            }
 
-                if bitmask.wp_forward_masks[index] & bitboard.b_pawn == 0 {
-                    w_feature_map.passed_pawn_count += rank;
+            match moving_piece {
+                def::WN => {
+                    let mov_mask = bitmask.n_attack_masks[index];
+                    wn_attack_mask |= mov_mask;
 
-                    if bitmask.wp_behind_masks[index] & bitboard.w_pawn != 0 {
-                        w_feature_map.passed_pawn_count += rank / 2;
+                    if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_KNIGHT {
+                        w_feature_map.trapped_count += 1;
                     }
-                }
+                },
+                def::BN => {
+                    let mov_mask = bitmask.n_attack_masks[index];
+                    bn_attack_mask |= mov_mask;
 
-                if bitmask.wp_behind_masks[index] & bitboard.w_pawn == 0 {
-                    if file_mask & bitboard.b_pawn == 0 {
-                        w_feature_map.open_isolate_pawn_count += 1;
-                    } else {
-                        w_feature_map.isolate_pawn_count += 1;
+                    if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_KNIGHT {
+                        b_feature_map.trapped_count += 1;
                     }
-                }
+                },
 
-                if (file_mask & bitboard.w_pawn).count_ones() > 1 {
-                    w_feature_map.dup_pawn_count += 1;
-                }
-            },
-            def::BP => {
-                bp_attack_mask |= bitmask.bp_attack_masks[index];
+                def::WB => {
+                    let mut mov_mask = 0;
 
-                let file_mask = file_masks[index];
-                let rank = def::get_rank(def::PLAYER_B, index) as i32;
-
-                if bitmask.bp_forward_masks[index] & bitboard.w_pawn == 0 {
-                    b_feature_map.passed_pawn_count += rank;
-
-                    if bitmask.bp_behind_masks[index] & bitboard.b_pawn != 0 {
-                        b_feature_map.passed_pawn_count += rank / 2;
+                    let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+                    mov_mask ^= up_left_attack_mask;
+                    if up_left_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
                     }
-                }
 
-                if bitmask.bp_behind_masks[index] & bitboard.b_pawn == 0 {
-                    if file_mask & bitboard.w_pawn == 0 {
-                        b_feature_map.open_isolate_pawn_count += 1;
-                    } else {
-                        b_feature_map.isolate_pawn_count += 1;
+                    let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+                    mov_mask ^= up_right_attack_mask;
+                    if up_right_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
                     }
-                }
 
-                if (file_mask & bitboard.b_pawn).count_ones() > 1 {
-                    b_feature_map.dup_pawn_count += 1;
-                }
-            },
-            _ => {}
+                    let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+                    mov_mask ^= down_left_attack_mask;
+                    if down_left_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+                    }
+
+                    let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+                    mov_mask ^= down_right_attack_mask;
+                    if down_right_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                    }
+
+                    wb_attack_mask |= mov_mask;
+
+                    if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_BISHOP {
+                        w_feature_map.trapped_count += 1;
+                    }
+                },
+                def::BB => {
+                    let mut mov_mask = 0;
+
+                    let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+                    mov_mask ^= up_left_attack_mask;
+                    if up_left_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+                    }
+
+                    let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+                    mov_mask ^= up_right_attack_mask;
+                    if up_right_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+                    }
+
+                    let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+                    mov_mask ^= down_left_attack_mask;
+                    if down_left_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+                    }
+
+                    let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+                    mov_mask ^= down_right_attack_mask;
+                    if down_right_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                    }
+
+                    bb_attack_mask |= mov_mask;
+
+                    if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_BISHOP {
+                        b_feature_map.trapped_count += 1;
+                    }
+                },
+                _ => {}
+            }
+        }
+    }
+
+    if bitboard.w_rook | bitboard.b_rook != 0 {
+        for index in start_index..end_index {
+            let moving_piece = squares[index];
+
+            if !def::is_r(moving_piece) {
+                continue
+            }
+
+            match moving_piece {
+                def::WR => {
+                    let mut mov_mask = 0;
+
+                    let up_attack_mask = bitmask.up_attack_masks[index];
+                    mov_mask ^= up_attack_mask;
+                    if up_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+                    }
+
+                    let right_attack_mask = bitmask.right_attack_masks[index];
+                    mov_mask ^= right_attack_mask;
+                    if right_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+                    }
+
+                    let down_attack_mask = bitmask.down_attack_masks[index];
+                    mov_mask ^= down_attack_mask;
+                    if down_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+                    }
+
+                    let left_attack_mask = bitmask.left_attack_masks[index];
+                    mov_mask ^= left_attack_mask;
+                    if left_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                    }
+
+                    if (mov_mask & !(bitboard.w_all | bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() <= LIMITED_MOBILITY_ROOK {
+                        w_feature_map.trapped_count += 1;
+                    }
+
+                    wr_attack_mask |= mov_mask;
+
+                    let file_mask = file_masks[index];
+                    if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
+                        if file_mask & bitboard.b_all == 0 {
+                            w_feature_map.open_rook_count += 1;
+                        } else {
+                            w_feature_map.semi_open_rook_count += 1;
+                        }
+                    }
+                },
+                def::BR => {
+                    let mut mov_mask = 0;
+
+                    let up_attack_mask = bitmask.up_attack_masks[index];
+                    mov_mask ^= up_attack_mask;
+                    if up_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+                    }
+
+                    let right_attack_mask = bitmask.right_attack_masks[index];
+                    mov_mask ^= right_attack_mask;
+                    if right_attack_mask & occupy_mask != 0 {
+                        let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+                    }
+
+                    let down_attack_mask = bitmask.down_attack_masks[index];
+                    mov_mask ^= down_attack_mask;
+                    if down_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+                    }
+
+                    let left_attack_mask = bitmask.left_attack_masks[index];
+                    mov_mask ^= left_attack_mask;
+                    if left_attack_mask & occupy_mask != 0 {
+                        let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                        mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                    }
+
+                    if (mov_mask & !(bitboard.b_all | wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() <= LIMITED_MOBILITY_ROOK {
+                        b_feature_map.trapped_count += 1;
+                    }
+
+                    br_attack_mask |= mov_mask;
+
+                    let file_mask = file_masks[index];
+                    if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
+                        if file_mask & bitboard.w_all == 0 {
+                            b_feature_map.open_rook_count += 1;
+                        } else {
+                            b_feature_map.semi_open_rook_count += 1;
+                        }
+                    }
+                },
+                _ => {}
+            }
         }
     }
 
     for index in start_index..end_index {
         let moving_piece = squares[index];
 
-        if moving_piece == 0 || def::is_p(moving_piece) {
+        if !def::is_q(moving_piece) && !def::is_k(moving_piece) {
             continue
         }
 
         let index_mask = index_masks[index];
 
         match moving_piece {
-            def::WN => {
-                let mov_mask = bitmask.n_attack_masks[index];
-                wn_attack_mask |= mov_mask;
-
-                if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_KNIGHT {
-                    w_feature_map.trapped_count += 1;
-                }
-            },
-            def::BN => {
-                let mov_mask = bitmask.n_attack_masks[index];
-                bn_attack_mask |= mov_mask;
-
-                if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_KNIGHT {
-                    b_feature_map.trapped_count += 1;
-                }
-            },
-
-            def::WB => {
-                let mut mov_mask = 0;
-
-                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-                mov_mask ^= up_left_attack_mask;
-                if up_left_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
-                }
-
-                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-                mov_mask ^= up_right_attack_mask;
-                if up_right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-                mov_mask ^= down_left_attack_mask;
-                if down_left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
-                }
-
-                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-                mov_mask ^= down_right_attack_mask;
-                if down_right_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
-                }
-
-                wb_attack_mask |= mov_mask;
-
-                if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_BISHOP {
-                    w_feature_map.trapped_count += 1;
-                }
-            },
-            def::BB => {
-                let mut mov_mask = 0;
-
-                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-                mov_mask ^= up_left_attack_mask;
-                if up_left_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
-                }
-
-                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-                mov_mask ^= up_right_attack_mask;
-                if up_right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-                mov_mask ^= down_left_attack_mask;
-                if down_left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
-                }
-
-                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-                mov_mask ^= down_right_attack_mask;
-                if down_right_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
-                }
-
-                bb_attack_mask |= mov_mask;
-
-                if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_BISHOP {
-                    b_feature_map.trapped_count += 1;
-                }
-            },
-
-            def::WR => {
-                let mut mov_mask = 0;
-
-                let up_attack_mask = bitmask.up_attack_masks[index];
-                mov_mask ^= up_attack_mask;
-                if up_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
-                }
-
-                let right_attack_mask = bitmask.right_attack_masks[index];
-                mov_mask ^= right_attack_mask;
-                if right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_attack_mask = bitmask.down_attack_masks[index];
-                mov_mask ^= down_attack_mask;
-                if down_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
-                }
-
-                let left_attack_mask = bitmask.left_attack_masks[index];
-                mov_mask ^= left_attack_mask;
-                if left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
-                }
-
-                if (mov_mask & !(bitboard.w_all | bp_attack_mask)).count_ones() <= LIMITED_MOBILITY_ROOK {
-                    w_feature_map.trapped_count += 1;
-                }
-
-                wr_attack_mask |= mov_mask;
-
-                let file_mask = file_masks[index];
-                if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
-                    if file_mask & bitboard.b_all == 0 {
-                        w_feature_map.open_rook_count += 1;
-                    } else {
-                        w_feature_map.semi_open_rook_count += 1;
-                    }
-                }
-            },
-            def::BR => {
-                let mut mov_mask = 0;
-
-                let up_attack_mask = bitmask.up_attack_masks[index];
-                mov_mask ^= up_attack_mask;
-                if up_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
-                }
-
-                let right_attack_mask = bitmask.right_attack_masks[index];
-                mov_mask ^= right_attack_mask;
-                if right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_attack_mask = bitmask.down_attack_masks[index];
-                mov_mask ^= down_attack_mask;
-                if down_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
-                }
-
-                let left_attack_mask = bitmask.left_attack_masks[index];
-                mov_mask ^= left_attack_mask;
-                if left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
-                }
-
-                if (mov_mask & !(bitboard.b_all | wp_attack_mask)).count_ones() <= LIMITED_MOBILITY_ROOK {
-                    b_feature_map.trapped_count += 1;
-                }
-
-                br_attack_mask |= mov_mask;
-
-                let file_mask = file_masks[index];
-                if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
-                    if file_mask & bitboard.w_all == 0 {
-                        b_feature_map.open_rook_count += 1;
-                    } else {
-                        b_feature_map.semi_open_rook_count += 1;
-                    }
-                }
-            },
-
             def::WQ => {
                 let file_mask = file_masks[index];
                 if file_mask & ((bitboard.w_all | bitboard.b_all) ^ index_mask) == 0 {
                     w_feature_map.open_queen_count += 1;
+                }
+
+                let mut mov_mask = 0;
+
+                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+                mov_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+                }
+
+                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+                mov_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+                mov_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+                }
+
+                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+                mov_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                }
+
+                let up_attack_mask = bitmask.up_attack_masks[index];
+                mov_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+                }
+
+                let right_attack_mask = bitmask.right_attack_masks[index];
+                mov_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_attack_mask = bitmask.down_attack_masks[index];
+                mov_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+                }
+
+                let left_attack_mask = bitmask.left_attack_masks[index];
+                mov_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
+
+                wq_attack_mask |= mov_mask;
+
+                if (mov_mask & !(bitboard.w_all | bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() <= LIMITED_MOBILITY_QUEEN {
+                    w_feature_map.trapped_count += 1;
                 }
             },
             def::BQ => {
                 let file_mask = file_masks[index];
                 if file_mask & ((bitboard.w_all | bitboard.b_all) ^ index_mask) == 0 {
                     b_feature_map.open_queen_count += 1;
+                }
+
+                let mut mov_mask = 0;
+
+                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
+                mov_mask ^= up_left_attack_mask;
+                if up_left_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+                }
+
+                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
+                mov_mask ^= up_right_attack_mask;
+                if up_right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
+                mov_mask ^= down_left_attack_mask;
+                if down_left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+                }
+
+                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
+                mov_mask ^= down_right_attack_mask;
+                if down_right_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+                }
+
+                let up_attack_mask = bitmask.up_attack_masks[index];
+                mov_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+                }
+
+                let right_attack_mask = bitmask.right_attack_masks[index];
+                mov_mask ^= right_attack_mask;
+                if right_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+                }
+
+                let down_attack_mask = bitmask.down_attack_masks[index];
+                mov_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+                }
+
+                let left_attack_mask = bitmask.left_attack_masks[index];
+                mov_mask ^= left_attack_mask;
+                if left_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
+                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+                }
+
+                bq_attack_mask |= mov_mask;
+
+                if (mov_mask & !(bitboard.b_all | wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() <= LIMITED_MOBILITY_QUEEN {
+                    b_feature_map.trapped_count += 1;
                 }
             },
 
@@ -602,7 +766,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.king_midgame_safe_sqr_count = 1;
                 }
 
-                if index_mask & K_ENDGAME_PREF_MASK != 0 {
+                if index_mask & K_ENDGAME_PREF_MASK != 0 || index_mask & w_passed_pawn_surrounding_mask != 0 {
                     w_feature_map.king_endgame_pref_sqr_count = 1;
                 } else if index_mask & K_ENDGAME_AVOID_MASK != 0 {
                     w_feature_map.king_endgame_avoid_sqr_count = 1;
@@ -615,6 +779,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if file_mask & bitboard.b_pawn == 0 {
                     w_feature_map.king_semi_expose_count += 1;
                 }
+
+                let protector_mask = bitmask.wk_protect_masks[state.wk_index] & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop);
+                w_feature_map.king_protector_count = protector_mask.count_ones() as i32;
+
+                let under_pawn_attack_mask = protector_mask & bp_attack_mask;
+                let under_other_attack_mask = protector_mask & ((bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask) & !(wn_attack_mask | wb_attack_mask | wr_attack_mask));
+
+                w_feature_map.king_protector_count -= under_pawn_attack_mask.count_ones() as i32;
+                w_feature_map.king_protector_count -= under_other_attack_mask.count_ones() as i32;
             },
             def::BK => {
                 let file_mask = file_masks[index];
@@ -623,7 +796,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.king_midgame_safe_sqr_count = 1;
                 }
 
-                if index_mask & K_ENDGAME_PREF_MASK != 0 {
+                if index_mask & K_ENDGAME_PREF_MASK != 0 || index_mask & b_passed_pawn_surrounding_mask != 0 {
                     b_feature_map.king_endgame_pref_sqr_count = 1;
                 } else if index_mask & K_ENDGAME_AVOID_MASK != 0 {
                     b_feature_map.king_endgame_avoid_sqr_count = 1;
@@ -636,6 +809,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if file_mask & bitboard.w_pawn == 0 {
                     b_feature_map.king_semi_expose_count += 1;
                 }
+
+                let protector_mask = bitmask.bk_protect_masks[state.bk_index] & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop);
+                b_feature_map.king_protector_count = protector_mask.count_ones() as i32;
+
+                let under_pawn_attack_mask = protector_mask & wp_attack_mask;
+                let under_other_attack_mask = protector_mask & ((wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask) & !(bn_attack_mask | bb_attack_mask | br_attack_mask));
+
+                b_feature_map.king_protector_count -= under_pawn_attack_mask.count_ones() as i32;
+                b_feature_map.king_protector_count -= under_other_attack_mask.count_ones() as i32;
             },
             _ => {},
         }
@@ -672,21 +854,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let w_light_pieces_mask = bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop;
     let b_light_pieces_mask = bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop;
 
-    let wk_protector_mask = bitmask.wk_protect_masks[state.wk_index] & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop);
-    w_feature_map.king_protector_count = wk_protector_mask.count_ones() as i32;
-
-    let wk_pawn_attack_defend_mask = wk_protector_mask & (bp_attack_mask & !wp_attack_mask);
-    let wk_other_attack_defend_mask = wk_protector_mask & ((bn_attack_mask | bb_attack_mask | br_attack_mask) & !(wn_attack_mask | wb_attack_mask | wr_attack_mask));
-
-    w_feature_map.king_protector_count -= (wk_pawn_attack_defend_mask.count_ones() + wk_other_attack_defend_mask.count_ones()) as i32;
-
-    let bk_protector_mask = bitmask.bk_protect_masks[state.bk_index] & & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop);
-    b_feature_map.king_protector_count = bk_protector_mask.count_ones() as i32;
-
-    let bk_pawn_attack_defend_mask = bk_protector_mask & (wp_attack_mask & !bp_attack_mask);
-    let bk_other_attack_defend_mask = bk_protector_mask & ((wn_attack_mask | wb_attack_mask | wr_attack_mask) & !(bn_attack_mask | bb_attack_mask | br_attack_mask));
-    b_feature_map.king_protector_count -= (bk_pawn_attack_defend_mask.count_ones() + bk_other_attack_defend_mask.count_ones()) as i32;
-
     w_feature_map.center_count = (w_light_pieces_mask & CENTER_CONTROL_MASK).count_ones() as i32;
     b_feature_map.center_count = (b_light_pieces_mask & CENTER_CONTROL_MASK).count_ones() as i32;
 
@@ -712,12 +879,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.defended_unit -= ((bitboard.w_pawn & !wp_attack_mask) & (bn_attack_mask | bb_attack_mask)).count_ones() as i32;
     w_feature_map.defended_unit -= ((bitboard.w_pawn & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)) & br_attack_mask).count_ones() as i32;
     w_feature_map.defended_unit -= ((bitboard.w_pawn & !wp_attack_mask) & bp_attack_mask).count_ones() as i32;
+    w_feature_map.defended_unit -= ((bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook) & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & bq_attack_mask).count_ones() as i32;
 
     b_feature_map.defended_unit += ((bitboard.b_knight | bitboard.b_bishop) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_pawn & !bp_attack_mask) & (wn_attack_mask | wb_attack_mask)).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_pawn & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)) & wr_attack_mask).count_ones() as i32;
     b_feature_map.defended_unit -= ((bitboard.b_pawn & !bp_attack_mask) & wp_attack_mask).count_ones() as i32;
+    b_feature_map.defended_unit -= ((bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook) & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & wq_attack_mask).count_ones() as i32;
 
     (w_feature_map, b_feature_map)
 }
@@ -989,7 +1158,7 @@ mod tests {
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(2, w_features.trapped_count);
-        assert_eq!(2, b_features.trapped_count);
+        assert_eq!(3, b_features.trapped_count);
     }
 
     #[test]
@@ -1030,7 +1199,7 @@ mod tests {
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(2, w_features.defended_unit);
-        assert_eq!(0, b_features.defended_unit);
+        assert_eq!(-1, b_features.defended_unit);
     }
 
     #[test]
@@ -1107,7 +1276,7 @@ mod tests {
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(1, w_features.trapped_count);
-        assert_eq!(2, b_features.trapped_count);
+        assert_eq!(3, b_features.trapped_count);
     }
 
     #[test]

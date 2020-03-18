@@ -20,7 +20,9 @@ const HISTORY_TABLE_SIZE: usize = 4096;
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
-const THREAT_PAWN_RANK: usize = 5;
+const IID_R: u8 = 2;
+
+const THREAT_PAWN_RANK: usize = 6;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
@@ -334,60 +336,15 @@ impl SearchEngine {
             return 0
         }
 
-        if depth == 0 {
-            return self.q_search(state, alpha, beta, ply, node_count, seldepth)
-        }
-
-        let mut under_threat = false;
-
-        if allow_forward_pruning && !in_check && !on_pv && depth >= NM_DEPTH {
-            let depth_reduction = if depth > NM_DEPTH {
-                NM_R + 1
-            } else {
-                NM_R
-            };
-
-            state.do_null_mov();
-            let scout_score = -self.ab_search(state, false, false, false, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - depth_reduction - 1, ply + 1, node_count, seldepth);
-            state.undo_null_mov();
-
-            if scout_score >= beta {
-                return beta
-            } else if scout_score < -eval::TERM_VAL {
-                under_threat = true;
-            }
-        }
-
-        if !on_pv && !in_check && allow_forward_pruning && !under_threat && def::near_horizon(depth) {
-            if eval::eval_materials(state) - eval::get_futility_margin(depth) >= beta {
-                return beta
-            }
-        }
-
-        let mut mov_count = 0;
-
-        let mut best_score = -eval::MATE_VAL;
-
         let mut pv_mov = 0;
         if on_pv && self.master_pv_table.len() > ply as usize {
             pv_mov = self.master_pv_table[ply as usize];
         }
 
-        if pv_mov != 0 {
-            match self.search_mov(state, true, in_check, under_threat, pv_table, pv_mov, &mut mov_count, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
-                Return(score) => return score,
-                RaiseAlpha(score) => {
-                    alpha = score;
-                },
-                Noop => (),
-            }
-        }
-
-        let mut hash_mov = 0;
         if pv_mov == 0 {
             match self.get_hash(state, depth) {
                 Match(flag, score, mov) => {
-                    hash_mov = mov;
+                    pv_mov = mov;
 
                     if !on_pv {
                         match flag {
@@ -410,17 +367,63 @@ impl SearchEngine {
                     }
                 },
                 MovOnly(mov) => {
-                    hash_mov = mov;
+                    pv_mov = mov;
                 },
                 _ => (),
             }
         }
 
-        if hash_mov != 0 {
-            let (from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
+        if depth == 0 {
+            return self.q_search(state, alpha, beta, ply, node_count, seldepth)
+        }
+
+        let mut under_threat = false;
+
+        if !on_pv && allow_forward_pruning {
+            if !in_check && depth >= NM_DEPTH {
+                let depth_reduction = if depth > NM_DEPTH {
+                    NM_R + 1
+                } else {
+                    NM_R
+                };
+    
+                state.do_null_mov();
+                let scout_score = -self.ab_search(state, false, false, false, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - depth_reduction - 1, ply + 1, node_count, seldepth);
+                state.undo_null_mov();
+    
+                if scout_score >= beta {
+                    return beta
+                } else if scout_score < -eval::TERM_VAL {
+                    under_threat = true;
+                }
+            }
+    
+            if !in_check && !under_threat && def::near_horizon(depth) {
+                if eval::eval_materials(state) - eval::get_futility_margin(depth) >= beta {
+                    return beta
+                }
+            }
+        }
+
+        if on_pv && pv_mov == 0 && !def::near_horizon(depth) {
+            self.ab_search(state, true, in_check, false, &mut EMPTY_PV_TABLE, alpha, beta, depth - IID_R, ply, node_count, seldepth);
+
+            match self.get_hash(state, depth) {
+                MovOnly(mov) => {
+                    pv_mov = mov;
+                },
+                _ => (),
+            }
+        }
+
+        let mut mov_count = 0;
+        let mut best_score = -eval::MATE_VAL;
+
+        if pv_mov != 0 {
+            let (from, to, _tp, _promo) = util::decode_u32_mov(pv_mov);
 
             if mov_table::is_mov_valid(state, from, to) {
-                match self.search_mov(state, false, in_check, under_threat, pv_table, hash_mov, &mut mov_count, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
+                match self.search_mov(state, on_pv, in_check, under_threat, pv_table, pv_mov, &mut mov_count, &mut best_score, alpha, beta, depth, ply, node_count, seldepth) {
                     Return(score) => return score,
                     RaiseAlpha(score) => {
                         alpha = score;
@@ -445,7 +448,7 @@ impl SearchEngine {
                 break
             }
 
-            if mov == pv_mov || mov == hash_mov {
+            if mov == pv_mov {
                 continue
             }
 
@@ -498,21 +501,21 @@ impl SearchEngine {
         let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
         let is_capture = state.squares[to] != 0;
-        let is_threating_pawn = def::is_p(state.squares[from]) && def::get_rank(state.player, to) >= THREAT_PAWN_RANK;
+        let is_threating_pawn_mov = def::is_p(state.squares[from]) && def::get_rank(state.player, to) >= THREAT_PAWN_RANK;
 
         state.do_mov(from, to, tp, promo);
 
         let gives_check = mov_table::is_in_check(state, state.player);
 
-        let allow_forward_pruning = !(under_threat || gives_check);
+        let allow_forward_pruning = !(under_threat || gives_check || is_threating_pawn_mov);
 
-        if under_threat {
+        if under_threat || is_threating_pawn_mov {
             depth += 1;
-        } else if (gives_check || is_threating_pawn) && def::near_horizon(depth) {
+        } else if gives_check && def::near_horizon(depth) {
             depth += 1;
         }
 
-        let score = if depth > 1 && *mov_count > 1 && !in_check && !gives_check && !under_threat && !on_pv && !is_capture && !is_threating_pawn {
+        let score = if depth > 1 && *mov_count > 1 && !in_check && !gives_check && !under_threat && !on_pv && !is_capture && !is_threating_pawn_mov {
             let score = -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -alpha-1, -alpha, depth - 2, ply + 1, node_count, seldepth);
             if score > alpha {
                 let score = -self.ab_search(state, on_pv, gives_check, allow_forward_pruning, &mut next_pv_table, -alpha-1, -alpha, depth - 1, ply + 1, node_count, seldepth);
