@@ -21,11 +21,12 @@ A strong UCI chess engine written in Rust!
 - Check Extensions
 - Mate-Threat Extensions
 - Pawn-Threat Extensions
+- Late-Move Reductions
 - History Heuristic
 - Killer Heuristic
 - Linear Evaluation
 - Null-Move Pruning
-- Late-Move Reductions
+- Multi-Cut Pruning
 - Futility Pruning
 - Delta Pruning
 - Perft

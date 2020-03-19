@@ -6,7 +6,7 @@ use crate::{
     def,
 };
 
-static INIT_SEED: u64 = 117;
+static INIT_SEED: u64 = 123456789;
 
 pub struct XorshiftPrng {
     state: u64,

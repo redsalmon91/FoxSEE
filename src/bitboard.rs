@@ -52,9 +52,6 @@ pub struct BitMask {
     pub index_masks: [u64; def::BOARD_SIZE],
     pub file_masks: [u64; def::BOARD_SIZE],
 
-    pub wk_protect_masks: [u64; def::BOARD_SIZE],
-    pub bk_protect_masks: [u64; def::BOARD_SIZE],
-
     pub wp_forward_masks: [u64; def::BOARD_SIZE],
     pub bp_forward_masks: [u64; def::BOARD_SIZE],
     pub wp_behind_masks: [u64; def::BOARD_SIZE],
@@ -90,9 +87,6 @@ impl BitMask {
         let mut bitmask = BitMask {
             index_masks: [0; def::BOARD_SIZE],
             file_masks: [0; def::BOARD_SIZE],
-
-            wk_protect_masks: [0; def::BOARD_SIZE],
-            bk_protect_masks: [0; def::BOARD_SIZE],
 
             wp_forward_masks: [0; def::BOARD_SIZE],
             bp_forward_masks: [0; def::BOARD_SIZE],
@@ -144,7 +138,6 @@ impl BitMask {
         bitmask.init_p_attack_masks();
         bitmask.init_p_mov_masks();
 
-        bitmask.init_k_protect_masks();
         bitmask.init_p_misc_masks();
 
         bitmask
@@ -381,32 +374,6 @@ impl BitMask {
 
             if index > 47 {
                 self.bp_init_mov_masks[index] = self.index_masks[index - 16];
-            }
-        }
-    }
-
-    fn init_k_protect_masks(&mut self) {
-        for index in 0..16 {
-            self.wk_protect_masks[index] ^= self.index_masks[index + 8] ^ self.index_masks[index + 16];
-
-            if index % 8 < 7 {
-                self.wk_protect_masks[index] ^= self.index_masks[index + 9] ^ self.index_masks[index + 17];
-            }
-
-            if index % 8 > 0 {
-                self.wk_protect_masks[index] ^= self.index_masks[index + 7] ^ self.index_masks[index + 15];
-            }
-        }
-
-        for index in 48..def::BOARD_SIZE {
-            self.bk_protect_masks[index] ^= self.index_masks[index - 8] ^ self.index_masks[index - 16];
-
-            if index % 8 < 7 {
-                self.bk_protect_masks[index] ^= self.index_masks[index - 7] ^ self.index_masks[index - 15];
-            }
-
-            if index % 8 > 0 {
-                self.bk_protect_masks[index] ^= self.index_masks[index - 9] ^ self.index_masks[index - 17];
             }
         }
     }

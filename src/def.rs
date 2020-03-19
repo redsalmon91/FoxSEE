@@ -30,6 +30,8 @@ pub const CAS_SQUARE_WQ: usize = 2;
 pub const CAS_SQUARE_BK: usize = 62;
 pub const CAS_SQUARE_BQ: usize = 58;
 
+pub const ENDGAME_PAWN_COUNT: u32 = 3;
+
 pub const PLAYER_W: u8 = 0b10;
 pub const PLAYER_B: u8 = 0b01;
 pub const PLAYER_SWITCH: u8 = 0b11;
@@ -76,7 +78,7 @@ pub fn get_rank(player: u8, index: usize) -> usize {
 
 #[inline]
 pub const fn near_horizon(depth: u8) -> bool {
-    depth <= 3
+    depth < 5
 }
 
 #[inline]
