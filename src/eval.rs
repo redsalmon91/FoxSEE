@@ -16,7 +16,7 @@ pub static EQUAL_EXCHANGE_VAL: i32 = -5;
 pub static DELTA_MARGIN: i32 = 190;
 pub static DELTA_MAX_MARGIN: i32 = 1190;
 
-static FUTILITY_MARGIN_BASE: i32 = 245;
+static FUTILITY_MARGIN_BASE: i32 = 425;
 static MAX_POS_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
