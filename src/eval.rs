@@ -11,10 +11,12 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
+pub static EQUAL_EXCHANGE_VAL: i32 = -5;
+
 pub static DELTA_MARGIN: i32 = 190;
 pub static DELTA_MAX_MARGIN: i32 = 1190;
 
-static FUTILITY_MARGIN_BASE: i32 = 230;
+static FUTILITY_MARGIN_BASE: i32 = 245;
 static MAX_POS_VAL: i32 = 90;
 
 static Q_VAL: i32 = 1000;
@@ -824,7 +826,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     w_feature_map.king_threat_count += (protector_mask & bn_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
     w_feature_map.king_threat_count += (protector_mask & bb_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
     w_feature_map.king_threat_count += (protector_mask & br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
-    w_feature_map.king_threat_count += (protector_mask & bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+    w_feature_map.king_threat_count += (protector_mask & bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
 
     let protector_mask = bitmask.k_attack_masks[state.bk_index];
     b_feature_map.king_protector_count = (protector_mask  & bitboard.b_pawn).count_ones() as i32;
@@ -833,7 +835,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.king_threat_count += (protector_mask & wn_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
     b_feature_map.king_threat_count += (protector_mask & wb_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
     b_feature_map.king_threat_count += (protector_mask & wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
-    b_feature_map.king_threat_count += (protector_mask & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+    b_feature_map.king_threat_count += (protector_mask & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
 
     w_feature_map.pawn_count = bitboard.w_pawn.count_ones() as i32;
     w_feature_map.knight_count = bitboard.w_knight.count_ones() as i32;
@@ -888,19 +890,19 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.mobility += (bb_attack_mask & !bitboard.b_all & !wp_attack_mask).count_ones() as i32;
     b_feature_map.mobility += (br_attack_mask & !bitboard.b_all & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
 
-    w_feature_map.defended_unit = ((bitboard.w_all ^ bitboard.w_queen ^ index_masks[state.wk_index]) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
+    w_feature_map.defended_unit = ((bitboard.w_all ^ bitboard.w_pawn ^ bitboard.w_queen ^ index_masks[state.wk_index]) & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index])).count_ones() as i32;
     w_feature_map.defended_unit -= (bitboard.w_all & bp_attack_mask).count_ones() as i32;
-    w_feature_map.defended_unit -= (bitboard.w_all & bn_attack_mask & !wp_attack_mask).count_ones() as i32;
-    w_feature_map.defended_unit -= (bitboard.w_all & bb_attack_mask & !wp_attack_mask).count_ones() as i32;
-    w_feature_map.defended_unit -= (bitboard.w_all & br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-    w_feature_map.defended_unit -= (bitboard.w_all & bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+    w_feature_map.defended_unit -= (bitboard.w_all & bn_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+    w_feature_map.defended_unit -= (bitboard.w_all & bb_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+    w_feature_map.defended_unit -= (bitboard.w_all & br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+    w_feature_map.defended_unit -= (bitboard.w_all & bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
 
-    b_feature_map.defended_unit = ((bitboard.b_all ^ bitboard.b_queen ^ index_masks[state.bk_index]) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
+    b_feature_map.defended_unit = ((bitboard.b_all ^ bitboard.b_pawn ^ bitboard.b_queen ^ index_masks[state.bk_index]) & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index])).count_ones() as i32;
     b_feature_map.defended_unit -= (bitboard.b_all & wp_attack_mask).count_ones() as i32;
-    b_feature_map.defended_unit -= (bitboard.b_all & wn_attack_mask & !bp_attack_mask).count_ones() as i32;
-    b_feature_map.defended_unit -= (bitboard.b_all & wb_attack_mask & !bp_attack_mask).count_ones() as i32;
-    b_feature_map.defended_unit -= (bitboard.b_all & wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
-    b_feature_map.defended_unit -= (bitboard.b_all & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+    b_feature_map.defended_unit -= (bitboard.b_all & wn_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+    b_feature_map.defended_unit -= (bitboard.b_all & wb_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+    b_feature_map.defended_unit -= (bitboard.b_all & wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+    b_feature_map.defended_unit -= (bitboard.b_all & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
 
     (w_feature_map, b_feature_map)
 }
@@ -922,8 +924,8 @@ mod tests {
         let state = State::new("r1bq1rk1/pp2ppbp/2np2p1/2n5/P3PP2/N1P2N2/1PB3PP/R1B1QRK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(9, w_features.defended_unit);
-        assert_eq!(10, b_features.defended_unit);
+        assert_eq!(5, w_features.defended_unit);
+        assert_eq!(5, b_features.defended_unit);
     }
 
     #[test]
@@ -963,8 +965,8 @@ mod tests {
         let state = State::new("1kr2r2/pp2qpp1/1bn5/1p1p2n1/1P1P4/PBNP2N1/1P3P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(7, w_features.defended_unit);
-        assert_eq!(5, b_features.defended_unit);
+        assert_eq!(3, w_features.defended_unit);
+        assert_eq!(2, b_features.defended_unit);
     }
 
     #[test]
@@ -975,8 +977,8 @@ mod tests {
         let state = State::new("1kr1br2/1p1n1ppp/1p1P1b2/p2N3n/3P4/RB2P1N1/P1P2P1P/3Q1RK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(9, w_features.defended_unit);
-        assert_eq!(5, b_features.defended_unit);
+        assert_eq!(4, w_features.defended_unit);
+        assert_eq!(3, b_features.defended_unit);
     }
 
     #[test]
@@ -1040,11 +1042,11 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("2r5/5ppp/p5b1/1p6/1P6/P2P4/2P5/5R2 w - - 0 1", &zob_keys, &bitmask);
+        let state = State::new("2r3k1/5ppp/p5b1/1p6/1P6/P2P4/2P4K/5R2 w - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(2, w_features.defended_unit);
-        assert_eq!(4, b_features.defended_unit);
+        assert_eq!(-1, w_features.defended_unit);
+        assert_eq!(1, b_features.defended_unit);
     }
 
     #[test]
