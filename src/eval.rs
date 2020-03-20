@@ -354,7 +354,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     let file_mask = file_masks[index];
                     let rank = def::get_rank(def::PLAYER_W, index) as i32;
 
-                    if bitmask.wp_forward_masks[index] & bitboard.b_pawn == 0 {
+                    if bitmask.wp_forward_masks[index] & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
                         w_feature_map.passed_pawn_count += rank;
                         w_passed_pawn_surrounding_mask |= bitmask.k_attack_masks[index];
 
@@ -381,7 +381,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     let file_mask = file_masks[index];
                     let rank = def::get_rank(def::PLAYER_B, index) as i32;
 
-                    if bitmask.bp_forward_masks[index] & bitboard.w_pawn == 0 {
+                    if bitmask.bp_forward_masks[index] & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
                         b_feature_map.passed_pawn_count += rank;
                         b_passed_pawn_surrounding_mask |= bitmask.k_attack_masks[index];
 
