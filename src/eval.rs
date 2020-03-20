@@ -34,9 +34,12 @@ static KING_MIDGAME_SQR_VAL: i32 = 50;
 static KING_ENDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
-static PASS_PAWN_VAL: i32 = 20;
-static DUP_PAWN_PEN: i32 = -10;
-static ISOLATE_PAWN_PEN: i32 = -10;
+static MIDGAME_PASS_PAWN_VAL: i32 = 10;
+static ENDGAME_PASS_PAWN_VAL: i32 = 20;
+static MIDGAME_DUP_PAWN_PEN: i32 = -10;
+static ENDGAME_DUP_PAWN_PEN: i32 = -30;
+static MIDGAME_ISOLATE_PAWN_PEN: i32 = -10;
+static ENDGAME_ISOLATE_PAWN_PEN: i32 = -20;
 static OPEN_ISOLATE_PAWN_PEN: i32 = -20;
 static QUEEN_SIDE_PAWN_VAL: i32 = 20;
 
@@ -246,7 +249,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let (w_features_map, b_features_map) = extract_features(state);
 
     let midgame_extra_score =
-        w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
+        w_features_map.passed_pawn_count * MIDGAME_PASS_PAWN_VAL
+        + w_features_map.isolate_pawn_count * MIDGAME_ISOLATE_PAWN_PEN
+        + w_features_map.dup_pawn_count * MIDGAME_DUP_PAWN_PEN
         + w_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
@@ -262,7 +267,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.trapped_count * TRAPPED_PEN
         + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
         + w_features_map.defended_pawn_count * DEFENDED_PAWN_VAL
-        - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
+        - b_features_map.passed_pawn_count * MIDGAME_PASS_PAWN_VAL
+        - b_features_map.isolate_pawn_count * MIDGAME_ISOLATE_PAWN_PEN
+        - b_features_map.dup_pawn_count * MIDGAME_DUP_PAWN_PEN
         - b_features_map.open_isolate_pawn_count * OPEN_ISOLATE_PAWN_PEN
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         - b_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
@@ -280,8 +287,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.defended_pawn_count * DEFENDED_PAWN_VAL;
 
     let endgame_extra_score =
-        w_features_map.passed_pawn_count * PASS_PAWN_VAL
-        + w_features_map.dup_pawn_count * DUP_PAWN_PEN
+        w_features_map.passed_pawn_count * ENDGAME_PASS_PAWN_VAL
+        + w_features_map.isolate_pawn_count * ENDGAME_ISOLATE_PAWN_PEN
+        + w_features_map.dup_pawn_count * ENDGAME_DUP_PAWN_PEN
         + w_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         + w_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
         + w_features_map.mobility * ENDGMAE_MOB_BASE_VAL
@@ -291,8 +299,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.threat_pawn_count * THREAT_PAWN_VAL
         + w_features_map.trapped_count * TRAPPED_PEN
         + w_features_map.rook_count * ROOK_ENDGAME_EXTRA_VAL
-        - b_features_map.passed_pawn_count * PASS_PAWN_VAL
-        - b_features_map.dup_pawn_count * DUP_PAWN_PEN
+        - b_features_map.passed_pawn_count * ENDGAME_PASS_PAWN_VAL
+        - b_features_map.isolate_pawn_count * ENDGAME_ISOLATE_PAWN_PEN
+        - b_features_map.dup_pawn_count * ENDGAME_DUP_PAWN_PEN
         - b_features_map.king_endgame_pref_sqr_count * KING_ENDGAME_SQR_VAL
         - b_features_map.king_endgame_avoid_sqr_count * KING_ENDGAME_AVOID_SQR_PEN
         - b_features_map.mobility * ENDGMAE_MOB_BASE_VAL
