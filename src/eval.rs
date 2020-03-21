@@ -30,7 +30,8 @@ static KING_THREAT_BASE_PEN: i32 = -10;
 
 static KING_EXPOSED_BASE_PEN: i32 = -60;
 static KING_SEMI_EXPOSED_BASE_PEN: i32 = -30;
-static KING_MIDGAME_SQR_VAL: i32 = 50;
+static KING_MIDGAME_PREF_SQR_VAL: i32 = 10;
+static KING_MIDGAME_COMF_SQR_VAL: i32 = 30;
 static KING_ENDGAME_SQR_VAL: i32 = 30;
 static KING_ENDGAME_AVOID_SQR_PEN: i32 = -20;
 
@@ -90,8 +91,10 @@ static BP_THREAT_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_0001
 static WR_THREAT_MASK: u64 = 0b11111111_01111110_00000000_00000000_00000000_00000000_00000000_00000000;
 static BR_THREAT_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_01111110_11111111;
 
-static WK_MIDGAME_SAFE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000011;
-static BK_MIDGAME_SAFE_MASK: u64 = 0b11000011_11000011_00000000_00000000_00000000_00000000_00000000_00000000;
+static WK_MIDGAME_COMF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11000011_11000111;
+static WK_MIDGAME_PREF_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010;
+static BK_MIDGAME_COMF_MASK: u64 = 0b11000011_11000111_00000000_00000000_00000000_00000000_00000000_00000000;
+static BK_MIDGAME_PREF_MASK: u64 = 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
 
 static K_ENDGAME_PREF_MASK: u64 = 0b00000000_00000000_00111100_00111100_00111100_00111100_00000000_00000000;
 static K_ENDGAME_AVOID_MASK: u64 = 0b11100111_11000011_10000001_00000000_00000000_10000001_11000011_11100111;
@@ -134,7 +137,8 @@ pub struct FeatureMap {
     king_semi_expose_count: i32,
     king_protector_count: i32,
     king_threat_count: i32,
-    king_midgame_safe_sqr_count: i32,
+    king_midgame_pref_sqr_count: i32,
+    king_midgame_comf_sqr_count: i32,
     king_endgame_pref_sqr_count: i32,
     king_endgame_avoid_sqr_count: i32,
 }
@@ -175,7 +179,8 @@ impl FeatureMap {
             king_semi_expose_count: 0,
             king_protector_count: 0,
             king_threat_count: 0,
-            king_midgame_safe_sqr_count: 0,
+            king_midgame_pref_sqr_count: 0,
+            king_midgame_comf_sqr_count: 0,
             king_endgame_pref_sqr_count: 0,
             king_endgame_avoid_sqr_count: 0,
         }
@@ -259,7 +264,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.mobility * MIDGAME_MOB_BASE_VAL
         + w_features_map.king_protector_count * KING_PROTECTOR_BASE_VAL
         + w_features_map.king_threat_count * KING_THREAT_BASE_PEN
-        + w_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
+        + w_features_map.king_midgame_pref_sqr_count * KING_MIDGAME_PREF_SQR_VAL
+        + w_features_map.king_midgame_comf_sqr_count * KING_MIDGAME_COMF_SQR_VAL
         + w_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
         + w_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         + w_features_map.center_count * CENTER_CONTROL_VAL
@@ -277,7 +283,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.mobility * MIDGAME_MOB_BASE_VAL
         - b_features_map.king_protector_count * KING_PROTECTOR_BASE_VAL
         - b_features_map.king_threat_count * KING_THREAT_BASE_PEN
-        - b_features_map.king_midgame_safe_sqr_count * KING_MIDGAME_SQR_VAL
+        - b_features_map.king_midgame_pref_sqr_count * KING_MIDGAME_PREF_SQR_VAL
+        - b_features_map.king_midgame_comf_sqr_count * KING_MIDGAME_COMF_SQR_VAL
         - b_features_map.king_expose_count * KING_EXPOSED_BASE_PEN
         - b_features_map.king_semi_expose_count * KING_SEMI_EXPOSED_BASE_PEN
         - b_features_map.center_count * CENTER_CONTROL_VAL
@@ -729,8 +736,12 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WK => {
                 let file_mask = file_masks[index];
 
-                if index_mask & WK_MIDGAME_SAFE_MASK != 0 {
-                    w_feature_map.king_midgame_safe_sqr_count = 1;
+                if index_mask & WK_MIDGAME_COMF_MASK != 0 {
+                    w_feature_map.king_midgame_comf_sqr_count = 1;
+
+                    if index_mask & WK_MIDGAME_PREF_MASK != 0 {
+                        w_feature_map.king_midgame_pref_sqr_count = 1;
+                    }
                 }
 
                 if index_mask & K_ENDGAME_PREF_MASK != 0 || index_mask & w_passed_pawn_surrounding_mask != 0 {
@@ -752,8 +763,12 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BK => {
                 let file_mask = file_masks[index];
 
-                if index_mask & BK_MIDGAME_SAFE_MASK != 0 {
-                    b_feature_map.king_midgame_safe_sqr_count = 1;
+                if index_mask & BK_MIDGAME_COMF_MASK != 0 {
+                    b_feature_map.king_midgame_comf_sqr_count = 1;
+
+                    if index_mask & BK_MIDGAME_PREF_MASK != 0 {
+                        b_feature_map.king_midgame_pref_sqr_count = 1;
+                    }
                 }
 
                 if index_mask & K_ENDGAME_PREF_MASK != 0 || index_mask & b_passed_pawn_surrounding_mask != 0 {
