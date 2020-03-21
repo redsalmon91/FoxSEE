@@ -12,6 +12,7 @@ type EnpSqr = u8;
 
 type TableEntry = (Key, BitMask, Player, Depth, CasRights, EnpSqr, Flag, i32, u32);
 
+pub const HASH_TYPE_EXACT: u8 = 0;
 pub const HASH_TYPE_ALPHA: u8 = 1;
 pub const HASH_TYPE_BETA: u8 = 2;
 
