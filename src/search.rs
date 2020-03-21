@@ -545,9 +545,7 @@ impl SearchEngine {
 
         let gives_check = mov_table::is_in_check(state, state.player);
 
-        if under_threat {
-            depth += 1;
-        } else if (gives_check || is_threating_pawn_mov) && def::near_horizon(depth) {
+        if under_threat || gives_check || is_threating_pawn_mov {
             depth += 1;
         }
 
@@ -1113,14 +1111,14 @@ mod tests {
     fn test_search_13() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("6k1/p3q2p/1nr3pB/8/3Q1P2/6P1/PP5P/3R2K1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
         let best_mov = search_engine.search(&mut state, 25500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c6"));
-        assert_eq!(to, util::map_sqr_notation_to_index("e5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d6"));
     }
 
     #[test]
@@ -1155,14 +1153,14 @@ mod tests {
     fn test_search_16() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("8/1k6/3R4/2K5/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("rn1q1rk1/1b2bppp/1pn1p3/p2pP3/3P4/P2BBN1P/1P1N1PP1/R2Q1RK1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("d6"));
-        assert_eq!(to, util::map_sqr_notation_to_index("d7"));
+        assert_eq!(from, util::map_sqr_notation_to_index("b7"));
+        assert_eq!(to, util::map_sqr_notation_to_index("a6"));
     }
 
     #[test]

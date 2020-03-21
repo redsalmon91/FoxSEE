@@ -55,6 +55,7 @@ static DEFENDED_PIECE_VAL: i32 = 10;
 
 static PAWN_OVER_DEFEND_COUNT: i32 = 1;
 static PIECE_OVER_DEFEND_COUNT: i32 = 2;
+static KING_OVER_DEFEND_COUNT: i32 = 0;
 
 static CENTER_CONTROL_VAL: i32 = 20;
 static INVASION_VAL: i32 = 10;
@@ -887,25 +888,125 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         }
     }
 
-    // king protectors
+    // king protectors & threats
 
-    let protector_mask = bitmask.k_attack_masks[state.wk_index];
+    let mut protector_mask = bitmask.k_attack_masks[state.wk_index];
     w_feature_map.king_protector_count = (protector_mask  & bitboard.w_pawn).count_ones() as i32;
 
-    w_feature_map.king_threat_count = (protector_mask & bp_attack_mask).count_ones() as i32;
-    w_feature_map.king_threat_count += (protector_mask & bn_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-    w_feature_map.king_threat_count += (protector_mask & bb_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-    w_feature_map.king_threat_count += (protector_mask & br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
-    w_feature_map.king_threat_count += (protector_mask & bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
+    let mut protector_index = 0;
 
-    let protector_mask = bitmask.k_attack_masks[state.bk_index];
+    while protector_mask != 0 {
+        if protector_mask & 1u64 != 0 {
+            let index_mask = index_masks[protector_index];
+
+            let mut attack_count = 0;
+            let mut defend_count = 0;
+
+            if wp_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if wn_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if wb_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if wr_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if wq_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if bp_attack_mask & index_mask != 0 {
+                attack_count += 1;
+            }
+
+            if bn_attack_mask & index_mask != 0 && wp_attack_mask & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            if bb_attack_mask & index_mask != 0 && wp_attack_mask & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            if br_attack_mask & index_mask != 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            if bq_attack_mask & index_mask != 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            w_feature_map.king_threat_count += (attack_count - defend_count).max(KING_OVER_DEFEND_COUNT);
+        }
+
+        protector_mask >>= 1;
+        protector_index += 1;
+    }
+
+    let mut protector_mask = bitmask.k_attack_masks[state.bk_index];
     b_feature_map.king_protector_count = (protector_mask  & bitboard.b_pawn).count_ones() as i32;
 
-    b_feature_map.king_threat_count = (protector_mask & wp_attack_mask).count_ones() as i32;
-    b_feature_map.king_threat_count += (protector_mask & wn_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
-    b_feature_map.king_threat_count += (protector_mask & wb_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
-    b_feature_map.king_threat_count += (protector_mask & wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
-    b_feature_map.king_threat_count += (protector_mask & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
+    let mut protector_index = 0;
+
+    while protector_mask != 0 {
+        if protector_mask & 1u64 != 0 {
+            let index_mask = index_masks[protector_index];
+
+            let mut attack_count = 0;
+            let mut defend_count = 0;
+
+            if bp_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if bn_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if bb_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if br_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if bq_attack_mask & index_mask != 0 {
+                defend_count += 1;
+            }
+
+            if wp_attack_mask & index_mask != 0 {
+                attack_count += 1;
+            }
+
+            if wn_attack_mask & index_mask != 0 && bp_attack_mask & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            if wb_attack_mask & index_mask != 0 && bp_attack_mask & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            if wr_attack_mask & index_mask != 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            if wq_attack_mask & index_mask != 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask == 0 {
+                attack_count += 1;
+            }
+
+            b_feature_map.king_threat_count += (attack_count - defend_count).max(KING_OVER_DEFEND_COUNT);
+        }
+
+        protector_mask >>= 1;
+        protector_index += 1;
+    }
 
     // piece counts
 
@@ -1228,7 +1329,7 @@ mod tests {
         assert_eq!(3, w_features.king_threat_count);
 
         assert_eq!(2, b_features.king_protector_count);
-        assert_eq!(2, b_features.king_threat_count);
+        assert_eq!(1, b_features.king_threat_count);
     }
 
     #[test]
