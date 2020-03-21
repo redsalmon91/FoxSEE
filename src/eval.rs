@@ -25,8 +25,8 @@ static B_VAL: i32 = 350;
 static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
-static KING_PROTECTOR_BASE_VAL: i32 = 10;
-static KING_THREAT_BASE_PEN: i32 = -10;
+static KING_PROTECTOR_BASE_VAL: i32 = 20;
+static KING_THREAT_BASE_PEN: i32 = -20;
 
 static KING_EXPOSED_BASE_PEN: i32 = -60;
 static KING_SEMI_EXPOSED_BASE_PEN: i32 = -30;

@@ -78,7 +78,7 @@ pub fn get_rank(player: u8, index: usize) -> usize {
 
 #[inline]
 pub const fn near_horizon(depth: u8) -> bool {
-    depth < 5
+    depth <= 6
 }
 
 #[inline]
