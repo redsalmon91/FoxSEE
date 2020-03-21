@@ -302,6 +302,10 @@ impl SearchEngine {
 
             state.undo_mov(from, to, tp);
 
+            if self.abort {
+                return alpha
+            }
+
             if score >= beta {
                 pv_table[0] = 0;
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
@@ -436,6 +440,10 @@ impl SearchEngine {
         if on_pv && pv_mov == 0 && !def::near_horizon(depth) {
             self.ab_search(state, true, in_check, false, &mut EMPTY_PV_TABLE, alpha, beta, depth - IID_R, ply, node_count, seldepth);
 
+            if self.abort {
+                return alpha
+            }
+
             match self.get_hash(state, depth) {
                 Match(_flag, _score, mov) => {
                     pv_mov = mov;
@@ -462,6 +470,10 @@ impl SearchEngine {
                     },
                     Noop => (),
                 }
+            }
+
+            if self.abort {
+                return alpha
             }
         }
 
@@ -529,7 +541,7 @@ impl SearchEngine {
     #[inline]
     fn search_mov(&mut self, state: &mut State, on_pv: bool, in_check: bool, under_threat: bool, pv_table: &mut [u32], mov: u32, mov_count: &mut usize, best_score: &mut i32, pv_found: &mut bool, alpha: i32, beta: i32, mut depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> SearchMovResult {
         if self.abort {
-            return Return(0)
+            return Return(alpha)
         }
 
         *mov_count += 1;
@@ -581,6 +593,10 @@ impl SearchEngine {
         };
 
         state.undo_mov(from, to, tp);
+
+        if self.abort {
+            return Return(alpha)
+        }
 
         if score >= beta {
             if !is_capture {
