@@ -20,14 +20,9 @@ const HISTORY_TABLE_SIZE: usize = 4096;
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
-const MULTICUT_DEPTH: u8 = 6;
-const MULTICUT_R: u8 = 2;
-const MULTICUT_MOV_COUNT: u8 = 6;
-const MULTICUT_CUT_COUNT: u8 = 3;
-
 const IID_R: u8 = 2;
 
-const THREAT_PAWN_RANK: usize = 6;
+const THREAT_PAWN_RANK: usize = 5;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
@@ -124,7 +119,6 @@ impl SearchEngine {
         self.time_tracker = Instant::now();
         self.max_time_millis = max_time_millis;
         self.abort = false;
-        self.depth_preferred_hash_table.clear();
 
         let mut alpha = self.recent_search_score - WINDOW_SIZE;
         let mut beta = self.recent_search_score + WINDOW_SIZE;
@@ -144,7 +138,7 @@ impl SearchEngine {
             let mut seldepth = 0;
 
             let mut pv_table = [0; PV_TRACK_LENGTH];
-            let score = self.ab_search(state, in_check, true, alpha, beta, depth, 0, &mut node_count, &mut seldepth);
+            let score = self.ab_search(state, in_check, false, alpha, beta, depth, 0, &mut node_count, &mut seldepth);
 
             if self.abort {
                 break
@@ -313,7 +307,7 @@ impl SearchEngine {
                 }
             }
 
-            if !under_threat && !is_in_endgame && depth <= def::FUTILITY_DEPTH && alpha > -eval::TERM_VAL && beta < eval::TERM_VAL {
+            if !under_threat && !is_in_endgame && depth < def::FUTILITY_DEPTH && alpha > -eval::TERM_VAL && beta < eval::TERM_VAL {
                 if eval::eval_materials(state) - eval::get_futility_margin(depth) >= beta {
                     return beta
                 }
@@ -400,10 +394,6 @@ impl SearchEngine {
         ordered_mov_list.sort_by(|(score_a, _), (score_b, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
-
-        if allow_forward_pruning && !on_pv && !in_check && depth >= MULTICUT_DEPTH && self.multicut_search(state, &ordered_mov_list, beta, depth, ply, node_count, seldepth) {
-            return beta
-        }
 
         for (_score, mov) in ordered_mov_list {
             match self.search_mov(state, in_check, under_threat, mov, &mut mov_count, &mut best_score, &mut pv_found, alpha, beta, depth, ply, node_count, seldepth) {
@@ -618,42 +608,6 @@ impl SearchEngine {
         }
 
         alpha
-    }
-
-    fn multicut_search(&mut self, state: &mut State, mov_list: &Vec<(i32, u32)>, beta: i32, depth: u8, ply: u8, node_count: &mut u64, seldepth: &mut u8) -> bool {
-        let mut mov_count = 0;
-        let mut cut_count = 0;
-
-        let depth_reduction = if depth > MULTICUT_DEPTH {
-            MULTICUT_R + 1
-        } else {
-            MULTICUT_R
-        };
-
-        for (_score, mov) in mov_list {
-            mov_count += 1;
-
-            if mov_count > MULTICUT_MOV_COUNT {
-                break
-            }
-
-            let mov = *mov;
-            let (from, to, tp, promo) = util::decode_u32_mov(mov);
-
-            state.do_mov(from, to, tp, promo);
-            let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1, node_count, seldepth);
-            state.undo_mov(from, to, tp);
-
-            if scout_score >= beta {
-                cut_count += 1;
-
-                if cut_count >= MULTICUT_CUT_COUNT {
-                    return true
-                }
-            }
-        }
-
-        false
     }
 
     fn retrieve_pv(&self, state: &mut State, pv_table: &mut [u32], mov_index: usize) {
@@ -1093,20 +1047,6 @@ mod tests {
     fn test_search_16() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("rn1q1rk1/1b2bppp/1pn1p3/p2pP3/3P4/P2BBN1P/1P1N1PP1/R2Q1RK1 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
-
-        let best_mov = search_engine.search(&mut state, 15500, 64);
-
-        let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("b7"));
-        assert_eq!(to, util::map_sqr_notation_to_index("a6"));
-    }
-
-    #[test]
-    fn test_search_17() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
         let mut state = State::new("q4rk1/1n1Qbppp/2p5/1p2p3/1P2P3/2P4P/6P1/2B1NRK1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
@@ -1115,6 +1055,20 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("a8"));
         assert_eq!(to, util::map_sqr_notation_to_index("c8"));
+    }
+
+    #[test]
+    fn test_search_17() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("2k4r/ppp2ppp/5q2/2b2b2/3r4/4BPP1/PPP1Q2P/RN2R1K1 b - - 3 15", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(65536);
+
+        let best_mov = search_engine.search(&mut state, 15500, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("h8"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e8"));
     }
 
     #[test]

@@ -32,7 +32,7 @@ pub const CAS_SQUARE_BQ: usize = 58;
 
 pub const ENDGAME_PAWN_COUNT: u32 = 3;
 
-pub const FUTILITY_DEPTH: u8 = 6;
+pub const FUTILITY_DEPTH: u8 = 5;
 
 pub const PLAYER_W: u8 = 0b10;
 pub const PLAYER_B: u8 = 0b01;
