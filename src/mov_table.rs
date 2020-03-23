@@ -753,7 +753,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
 
     if opponent_rq_mask != 0 {
         let up_attack_mask = bitmask.up_attack_masks[index];
-        if up_attack_mask & opponent_rq_mask != 0 {
+        if up_attack_mask & opponent_rq_mask != 0 && up_attack_mask & blocker_mask != 0 {
             let lowest_blocker_index = get_lowest_index(up_attack_mask & blocker_mask);
             if (up_attack_mask ^ bitmask.up_attack_masks[lowest_blocker_index]) & opponent_rq_mask != 0 {
                 return true
@@ -761,7 +761,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
         }
 
         let right_attack_mask = bitmask.right_attack_masks[index];
-        if right_attack_mask & opponent_rq_mask != 0 {
+        if right_attack_mask & opponent_rq_mask != 0 && right_attack_mask & blocker_mask != 0 {
             let lowest_blocker_index = get_lowest_index(right_attack_mask & blocker_mask);
             if (right_attack_mask ^ bitmask.right_attack_masks[lowest_blocker_index]) & opponent_rq_mask != 0 {
                 return true
@@ -769,7 +769,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
         }
 
         let down_attack_mask = bitmask.down_attack_masks[index];
-        if down_attack_mask & opponent_rq_mask != 0 {
+        if down_attack_mask & opponent_rq_mask != 0 && down_attack_mask & blocker_mask != 0 {
             let highest_blocker_index = get_highest_index(down_attack_mask & blocker_mask);
             if (down_attack_mask ^ bitmask.down_attack_masks[highest_blocker_index]) & opponent_rq_mask != 0 {
                 return true
@@ -777,7 +777,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
         }
 
         let left_attack_mask = bitmask.left_attack_masks[index];
-        if left_attack_mask & opponent_rq_mask != 0 {
+        if left_attack_mask & opponent_rq_mask != 0 && left_attack_mask & blocker_mask != 0 {
             let highest_blocker_index = get_highest_index(left_attack_mask & blocker_mask);
             if (left_attack_mask ^ bitmask.left_attack_masks[highest_blocker_index]) & opponent_rq_mask != 0 {
                 return true
@@ -793,7 +793,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
 
     if opponent_bq_mask != 0 {
         let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-        if up_left_attack_mask & opponent_bq_mask != 0 {
+        if up_left_attack_mask & opponent_bq_mask != 0 && up_left_attack_mask & blocker_mask != 0 {
             let lowest_blocker_index = get_lowest_index(up_left_attack_mask & blocker_mask);
             if (up_left_attack_mask ^ bitmask.up_left_attack_masks[lowest_blocker_index]) & opponent_bq_mask != 0 {
                 return true
@@ -801,7 +801,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
         }
 
         let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-        if up_right_attack_mask & opponent_bq_mask != 0 {
+        if up_right_attack_mask & opponent_bq_mask != 0 && up_right_attack_mask & blocker_mask != 0 {
             let lowest_blocker_index = get_lowest_index(up_right_attack_mask & blocker_mask);
             if (up_right_attack_mask ^ bitmask.up_right_attack_masks[lowest_blocker_index]) & opponent_bq_mask != 0 {
                 return true
@@ -809,7 +809,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
         }
 
         let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-        if down_left_attack_mask & opponent_bq_mask != 0 {
+        if down_left_attack_mask & opponent_bq_mask != 0 && down_left_attack_mask & blocker_mask != 0 {
             let highest_blocker_index = get_highest_index(down_left_attack_mask & blocker_mask);
             if (down_left_attack_mask ^ bitmask.down_left_attack_masks[highest_blocker_index]) & opponent_bq_mask != 0 {
                 return true
@@ -817,7 +817,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
         }
 
         let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-        if down_right_attack_mask & opponent_bq_mask != 0 {
+        if down_right_attack_mask & opponent_bq_mask != 0 && down_right_attack_mask & blocker_mask != 0 {
             let highest_blocker_index = get_highest_index(down_right_attack_mask & blocker_mask);
             if (down_right_attack_mask ^ bitmask.down_right_attack_masks[highest_blocker_index]) & opponent_bq_mask != 0 {
                 return true
@@ -859,7 +859,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::WN, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -913,7 +913,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::WB, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -967,7 +967,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::WR, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -978,7 +978,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::WQ, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -1012,7 +1012,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::BN, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -1066,7 +1066,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::BB, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -1120,7 +1120,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::BR, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -1131,7 +1131,7 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
             if attack_mask & 1u64 != 0 {
                 return (def::BQ, def::MOV_REG, 0, attack_index)
             }
-    
+
             attack_mask >>= 1;
             attack_index += 1;
         }
@@ -1161,22 +1161,247 @@ pub fn is_mov_valid(state: &State, from: usize, to: usize) -> bool {
     let bitboard = state.bitboard;
     let bitmask = state.bitmask;
     let to_index_mask = bitmask.index_masks[to];
+    let all_mask = bitboard.w_all | bitboard.b_all;
 
     if def::is_n(moving_piece) {
         if bitmask.n_attack_masks[from] & to_index_mask != 0 {
             return true
         }
     } else if def::is_b(moving_piece) {
-        if bitmask.b_attack_masks[from] & to_index_mask != 0 {
-            return true
+        if bitmask.b_attack_masks[from] & to_index_mask == 0 {
+            return false
+        }
+
+        let mut up_left_attack_mask = bitmask.up_left_attack_masks[from];
+        if up_left_attack_mask != 0 && up_left_attack_mask & to_index_mask != 0 {
+            if up_left_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(up_left_attack_mask & all_mask);
+            up_left_attack_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+
+            if up_left_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut up_right_attack_mask = bitmask.up_right_attack_masks[from];
+        if up_right_attack_mask != 0 && up_right_attack_mask & to_index_mask != 0 {
+            if up_right_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(up_right_attack_mask & all_mask);
+            up_right_attack_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+
+            if up_right_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut down_left_attack_mask = bitmask.down_left_attack_masks[from];
+        if down_left_attack_mask != 0 && down_left_attack_mask & to_index_mask != 0 {
+            if down_left_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(down_left_attack_mask & all_mask);
+            down_left_attack_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+
+            if down_left_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut down_right_attack_mask = bitmask.down_right_attack_masks[from];
+        if down_right_attack_mask != 0 && down_right_attack_mask & to_index_mask != 0 {
+            if down_right_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(down_right_attack_mask & all_mask);
+            down_right_attack_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+
+            if down_right_attack_mask & to_index_mask != 0 {
+                return true
+            }
         }
     } else if def::is_r(moving_piece) {
-        if bitmask.r_attack_masks[from] & to_index_mask != 0 {
-            return true
+        if bitmask.r_attack_masks[from] & to_index_mask == 0 {
+            return false
+        }
+
+        let mut up_attack_mask = bitmask.up_attack_masks[from];
+        if up_attack_mask != 0 && up_attack_mask & to_index_mask != 0 {
+            if up_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(up_attack_mask & all_mask);
+            up_attack_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+
+            if up_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut right_attack_mask = bitmask.right_attack_masks[from];
+        if right_attack_mask != 0 && right_attack_mask & to_index_mask != 0 {
+            if right_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(right_attack_mask & all_mask);
+            right_attack_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+
+            if right_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut down_attack_mask = bitmask.down_attack_masks[from];
+        if down_attack_mask != 0 && down_attack_mask & to_index_mask != 0 {
+            if down_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(down_attack_mask & all_mask);
+            down_attack_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+
+            if down_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut left_attack_mask = bitmask.left_attack_masks[from];
+        if left_attack_mask != 0 && left_attack_mask & to_index_mask != 0 {
+            if left_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(left_attack_mask & all_mask);
+            left_attack_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+
+            if left_attack_mask & to_index_mask != 0 {
+                return true
+            }
         }
     } else if def::is_q(moving_piece) {
-        if (bitmask.b_attack_masks[from] | bitmask.r_attack_masks[from]) & to_index_mask != 0 {
-            return true
+        if (bitmask.b_attack_masks[from] | bitmask.r_attack_masks[from]) & to_index_mask == 0 {
+            return false
+        }
+
+        let mut up_left_attack_mask = bitmask.up_left_attack_masks[from];
+        if up_left_attack_mask != 0 && up_left_attack_mask & to_index_mask != 0 {
+            if up_left_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(up_left_attack_mask & all_mask);
+            up_left_attack_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
+
+            if up_left_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut up_right_attack_mask = bitmask.up_right_attack_masks[from];
+        if up_right_attack_mask != 0 && up_right_attack_mask & to_index_mask != 0 {
+            if up_right_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(up_right_attack_mask & all_mask);
+            up_right_attack_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
+
+            if up_right_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut down_left_attack_mask = bitmask.down_left_attack_masks[from];
+        if down_left_attack_mask != 0 && down_left_attack_mask & to_index_mask != 0 {
+            if down_left_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(down_left_attack_mask & all_mask);
+            down_left_attack_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
+
+            if down_left_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut down_right_attack_mask = bitmask.down_right_attack_masks[from];
+        if down_right_attack_mask != 0 && down_right_attack_mask & to_index_mask != 0 {
+            if down_right_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(down_right_attack_mask & all_mask);
+            down_right_attack_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
+
+            if down_right_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut up_attack_mask = bitmask.up_attack_masks[from];
+        if up_attack_mask != 0 && up_attack_mask & to_index_mask != 0 {
+            if up_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(up_attack_mask & all_mask);
+            up_attack_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
+
+            if up_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut right_attack_mask = bitmask.right_attack_masks[from];
+        if right_attack_mask != 0 && right_attack_mask & to_index_mask != 0 {
+            if right_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let lowest_blocker_index = get_lowest_index(right_attack_mask & all_mask);
+            right_attack_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
+
+            if right_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut down_attack_mask = bitmask.down_attack_masks[from];
+        if down_attack_mask != 0 && down_attack_mask & to_index_mask != 0 {
+            if down_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(down_attack_mask & all_mask);
+            down_attack_mask &= !bitmask.down_attack_masks[highest_blocker_index];
+
+            if down_attack_mask & to_index_mask != 0 {
+                return true
+            }
+        }
+
+        let mut left_attack_mask = bitmask.left_attack_masks[from];
+        if left_attack_mask != 0 && left_attack_mask & to_index_mask != 0 {
+            if left_attack_mask & all_mask == 0 {
+                return true
+            }
+
+            let highest_blocker_index = get_highest_index(left_attack_mask & all_mask);
+            left_attack_mask &= !bitmask.left_attack_masks[highest_blocker_index];
+
+            if left_attack_mask & to_index_mask != 0 {
+                return true
+            }
         }
     } else if def::is_k(moving_piece) {
         if bitmask.k_attack_masks[from] & to_index_mask != 0 {
@@ -1452,5 +1677,43 @@ mod tests {
 
         assert!(is_in_check(&state, def::PLAYER_W));
         assert!(is_in_check(&state, def::PLAYER_B));
+    }
+
+    #[test]
+    fn test_validate_moves_1() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("r1b1k1nr/ppppppbp/1q4p1/8/1n2P3/2N3P1/PPPP1PBP/R1BQK1NR w KQkq - 0 1", &zob_keys, &bitmask);
+
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("g2"), util::map_sqr_notation_to_index("f3")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("g2"), util::map_sqr_notation_to_index("f3")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("g1"), util::map_sqr_notation_to_index("f3")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("d2"), util::map_sqr_notation_to_index("d4")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("d1"), util::map_sqr_notation_to_index("h5")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("a1"), util::map_sqr_notation_to_index("b1")));
+
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("d1"), util::map_sqr_notation_to_index("d4")));
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("a1"), util::map_sqr_notation_to_index("a2")));
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("g2"), util::map_sqr_notation_to_index("b7")));
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("c3"), util::map_sqr_notation_to_index("a1")));
+    }
+
+    #[test]
+    fn test_validate_moves_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let state = State::new("r1b1k1nr/ppppppbp/1q4p1/8/1n2P3/2N3P1/PPPP1PBP/R1BQK1NR b KQkq - 0 1", &zob_keys, &bitmask);
+
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("b6"), util::map_sqr_notation_to_index("a5")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("g7"), util::map_sqr_notation_to_index("c3")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("b4"), util::map_sqr_notation_to_index("c2")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("c7"), util::map_sqr_notation_to_index("c6")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("f8")));
+        assert!(is_mov_valid(&state, util::map_sqr_notation_to_index("a8"), util::map_sqr_notation_to_index("b8")));
+
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("a8"), util::map_sqr_notation_to_index("c8")));
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("c8"), util::map_sqr_notation_to_index("a6")));
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("b6"), util::map_sqr_notation_to_index("b1")));
+        assert!(!is_mov_valid(&state, util::map_sqr_notation_to_index("h8"), util::map_sqr_notation_to_index("h3")));
     }
 }
