@@ -1,5 +1,6 @@
-# FoxSEE
-A strong UCI chess engine written in Rust!
+![logo](artwork/foxsee-logo.png)
+
+A master-level UCI chess engine written in Rust!
 
 [![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)

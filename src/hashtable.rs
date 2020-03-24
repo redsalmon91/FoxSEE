@@ -2,14 +2,32 @@
  * Copyright (C) 2020 Zixiao Han
  */
 
-type Key = u64;
-type Player = u8;
-type Flag = u8;
-type Depth = u8;
-type CasRights = u8;
-type EnpSqr = u8;
+#[derive(Clone)]
+struct TableEntry {
+    key: u64,
+    player: u8,
+    depth: u8,
+    cas_rights: u8,
+    enp_sqr: u8,
+    flag: u8,
+    score: i32,
+    mov: u32,
+}
 
-type TableEntry = (Key, Player, Depth, CasRights, EnpSqr, Flag, i32, u32);
+impl TableEntry {
+    fn empty() -> Self {
+        TableEntry {
+            key: 0,
+            player: 0,
+            depth: 0,
+            cas_rights: 0,
+            enp_sqr: 0,
+            flag: 0,
+            score: 0,
+            mov: 0,
+        }
+    }
+}
 
 pub const HASH_TYPE_EXACT: u8 = 0;
 pub const HASH_TYPE_ALPHA: u8 = 1;
@@ -31,18 +49,18 @@ impl DepthPreferredHashTable {
     pub fn new(size: usize) -> Self {
         DepthPreferredHashTable {
             mod_base: (size - 1) as u64,
-            table: vec![(0, 0, 0, 0, 0, 0, 0, 0); size],
+            table: vec![TableEntry::empty(); size],
         }
     }
 
     pub fn get(&self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
-        let (k, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
+        let entry = &self.table[(key & self.mod_base) as usize];
 
-        if k == key && p == player && c == cas_rights && e == enp_sqr as u8 {
-            if d >= depth {
-                LookupResult::Match(f, s, m)
+        if entry.key == key && entry.player == player && entry.cas_rights == cas_rights && entry.enp_sqr == enp_sqr as u8 {
+            if entry.depth >= depth {
+                LookupResult::Match(entry.flag, entry.score, entry.mov)
             } else {
-                LookupResult::MovOnly(m)
+                LookupResult::MovOnly(entry.mov)
             }
         } else {
             LookupResult::NoMatch
@@ -50,10 +68,20 @@ impl DepthPreferredHashTable {
     }
 
     pub fn set(&mut self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) -> bool {
-        let (k, _p, d, _c, _e, _f, _s, _m) = self.table[(key & self.mod_base) as usize];
+        let entry = &self.table[(key & self.mod_base) as usize];
 
-        if k != key || depth >= d {
-            self.table[(key & self.mod_base) as usize] = (key, player, depth, cas_rights, enp_sqr as u8, flag, score, mov);
+        if depth >= entry.depth || key != entry.key {
+            self.table[(key & self.mod_base) as usize] = TableEntry {
+                key,
+                player,
+                depth,
+                cas_rights,
+                enp_sqr: enp_sqr as u8,
+                flag,
+                score, 
+                mov,
+            };
+
             return true
         }
 
@@ -61,7 +89,7 @@ impl DepthPreferredHashTable {
     }
 
     pub fn clear(&mut self) {
-        self.table = vec![(0, 0, 0, 0, 0, 0, 0, 0); self.mod_base as usize + 1];
+        self.table = vec![TableEntry::empty(); self.mod_base as usize + 1];
     }
 }
 
@@ -74,18 +102,18 @@ impl AlwaysReplaceHashTable {
     pub fn new(size: usize) -> Self {
         AlwaysReplaceHashTable {
             mod_base: (size - 1) as u64,
-            table: vec![(0, 0, 0, 0, 0, 0, 0, 0); size],
+            table: vec![TableEntry::empty(); size],
         }
     }
 
     pub fn get(&self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
-        let (k, p, d, c, e, f, s, m) = self.table[(key & self.mod_base) as usize];
+        let entry = &self.table[(key & self.mod_base) as usize];
 
-        if k == key && p == player && c == cas_rights && e == enp_sqr as u8 {
-            if d >= depth {
-                LookupResult::Match(f, s, m)
+        if entry.key == key && entry.player == player && entry.cas_rights == cas_rights && entry.enp_sqr == enp_sqr as u8 {
+            if entry.depth >= depth {
+                LookupResult::Match(entry.flag, entry.score, entry.mov)
             } else {
-                LookupResult::MovOnly(m)
+                LookupResult::MovOnly(entry.mov)
             }
         } else {
             LookupResult::NoMatch
@@ -93,11 +121,20 @@ impl AlwaysReplaceHashTable {
     }
 
     pub fn set(&mut self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) {
-        self.table[(key & self.mod_base) as usize] = (key, player, depth, cas_rights, enp_sqr as u8, flag, score, mov);
+        self.table[(key & self.mod_base) as usize] = TableEntry {
+            key,
+            player,
+            depth,
+            cas_rights,
+            enp_sqr: enp_sqr as u8,
+            flag,
+            score, 
+            mov,
+        };
     }
 
     pub fn clear(&mut self) {
-        self.table = vec![(0, 0, 0, 0, 0, 0, 0, 0); self.mod_base as usize + 1];
+        self.table = vec![TableEntry::empty(); self.mod_base as usize + 1];
     }
 }
 

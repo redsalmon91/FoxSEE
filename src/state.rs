@@ -56,6 +56,8 @@ pub struct State<'state> {
     pub wk_index: usize,
     pub bk_index: usize,
 
+    pub cas_history: u8,
+
     pub bitboard: BitBoard,
     pub bitmask: &'state BitMask,
 
@@ -167,6 +169,8 @@ impl <'state> State<'state> {
 
             wk_index,
             bk_index,
+
+            cas_history: 0,
 
             bitboard,
 
@@ -679,6 +683,7 @@ impl <'state> State<'state> {
 
         if to == def::CAS_SQUARE_WK {
             self.cas_rights &= 0b0011;
+            self.cas_history |= 0b1100;
             self.wk_index = to;
 
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_AFTER_CAS_SQRS);
@@ -690,6 +695,7 @@ impl <'state> State<'state> {
             self.bitboard.w_rook ^= WK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BK {
             self.cas_rights &= 0b1100;
+            self.cas_history |= 0b0011;
             self.bk_index = to;
 
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_AFTER_CAS_SQRS);
@@ -702,6 +708,7 @@ impl <'state> State<'state> {
             self.bitboard.b_rook ^= BK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_WQ {
             self.cas_rights &= 0b0011;
+            self.cas_history |= 0b1100;
             self.wk_index = to;
 
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_AFTER_CAS_SQRS);
@@ -714,6 +721,7 @@ impl <'state> State<'state> {
             self.bitboard.w_rook ^= WQ_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BQ {
             self.cas_rights &= 0b1100;
+            self.cas_history |= 0b0011;
             self.bk_index = to;
 
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_AFTER_CAS_SQRS);
@@ -732,18 +740,22 @@ impl <'state> State<'state> {
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_BEFORE_CAS_SQRS);
             self.bitboard.w_all ^= WK_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WK_CAS_R_MASK;
+            self.cas_history &= 0b0011;
         } else if to == def::CAS_SQUARE_BK {
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_BEFORE_CAS_SQRS);
             self.bitboard.b_all ^= BK_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BK_CAS_R_MASK;
+            self.cas_history &= 0b1100;
         } else if to == def::CAS_SQUARE_WQ {
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_BEFORE_CAS_SQRS);
             self.bitboard.w_all ^= WQ_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WQ_CAS_R_MASK;
+            self.cas_history &= 0b0011;
         } else if to == def::CAS_SQUARE_BQ {
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_BEFORE_CAS_SQRS);
             self.bitboard.b_all ^= BQ_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BQ_CAS_R_MASK;
+            self.cas_history &= 0b1100;
         }
     }
 
@@ -1025,6 +1037,7 @@ mod tests {
         let bitmask = BitMask::new();
         let mut state = State::new("r3k2r/pbppnppp/1bn2q2/4p3/2B5/2N1PN2/PPPP1PPP/R1BQK2R b Qkq - 0 1", &zob_keys, &bitmask);
         assert_eq!(0b0111, state.cas_rights);
+        assert_eq!(0b0000, state.cas_history);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_B, state.player);
         assert_eq!(def::BK, state.squares[util::map_sqr_notation_to_index("e8")]);
@@ -1036,6 +1049,7 @@ mod tests {
 
         state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS, 0);
         assert_eq!(0b0100, state.cas_rights);
+        assert_eq!(0b0011, state.cas_history);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
         assert_eq!(0, state.squares[util::map_sqr_notation_to_index("e8")]);
@@ -1045,6 +1059,7 @@ mod tests {
 
         state.undo_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS);
         assert_eq!(0b0111, state.cas_rights);
+        assert_eq!(0b0000, state.cas_history);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_B, state.player);
         assert_eq!(def::BK, state.squares[util::map_sqr_notation_to_index("e8")]);
@@ -1161,6 +1176,23 @@ mod tests {
 
         assert_eq!(w_all, state.bitboard.w_all);
         assert_eq!(b_all, state.bitboard.b_all);
+    }
+
+    #[test]
+    fn test_do_move_7() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1", &zob_keys, &bitmask);
+        assert_eq!(0b1111, state.cas_rights);
+        assert_eq!(0b0000, state.cas_history);
+
+        state.do_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("e2"), def::MOV_REG, 0);
+        assert_eq!(0b0011, state.cas_rights);
+        assert_eq!(0b0000, state.cas_history);
+
+        state.undo_mov(util::map_sqr_notation_to_index("e2"), util::map_sqr_notation_to_index("e1"), def::MOV_REG);
+        assert_eq!(0b1111, state.cas_rights);
+        assert_eq!(0b0000, state.cas_history);
     }
 
     #[test]
