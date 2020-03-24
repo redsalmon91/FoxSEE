@@ -31,7 +31,7 @@ static KING_EXPOSED_PEN: i32 = -60;
 static KING_THREAT_BASE_PEN: i32 = -10;
 
 static PASS_PAWN_BASE_VAL: i32 = 20;
-static QUEEN_SIDE_PAWN_VAL: i32 = 20;
+static QUEEN_SIDE_PAWN_VAL: i32 = 60;
 
 static DUP_PAWN_PEN: i32 = -20;
 static ISOLATE_PAWN_PEN: i32 = -20;
