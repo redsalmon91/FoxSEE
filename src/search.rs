@@ -418,7 +418,7 @@ impl SearchEngine {
                 || (state.player == def::PLAYER_B && state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK != 0);
 
             if !in_extreme_endgame && !opponent_has_promoting_pawn && !under_threat && depth <= 6 {
-                if eval::eval_materials(state) - eval::FUTILITY_MARGIN_LIST[depth as usize] >= beta {
+                if eval::eval_materials(state) - get_futility_margin(depth) >= beta {
                     return beta
                 }
             }
@@ -956,6 +956,11 @@ fn see_exchange(state: &mut State, to: usize, last_attacker: u8) -> i32 {
     state.undo_mov(attack_from, to, tp);
 
     score
+}
+
+#[inline]
+const fn get_futility_margin(depth: u8) -> i32 {
+    eval::FUTILITY_MARGIN_BASE * (depth / 2 + 1) as i32 + eval::MAX_POS_VAL
 }
 
 #[cfg(test)]
