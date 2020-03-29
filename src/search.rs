@@ -515,9 +515,9 @@ impl SearchEngine {
             } else if promo != 0 {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + eval::val_of(promo), mov));
             } else if mov == primary_killer {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE - 1, mov));
+                ordered_mov_list.push((MAX_NON_CAP_SCORE + 2, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE - 2, mov));
+                ordered_mov_list.push((MAX_NON_CAP_SCORE + 1, mov));
             } else {
                 ordered_mov_list.push((self.index_history_table[from][to] + self.piece_history_table[state.squares[from] as usize][to], mov));
             }
