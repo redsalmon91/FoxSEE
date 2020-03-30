@@ -1251,14 +1251,14 @@ mod tests {
     fn test_search_15() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("2r2rk1/1bqnbpp1/1p1ppn1p/pP6/N1P1P3/P2B1N1P/1B2QPP1/R2R2K1 b - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(65536);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("b7"));
-        assert_eq!(to, util::map_sqr_notation_to_index("e4"));
+        assert_eq!(from, util::map_sqr_notation_to_index("h5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("h2"));
     }
 
     #[test]
