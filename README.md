@@ -6,6 +6,10 @@ A master-level UCI chess engine written in Rust!
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)
 ![License](https://img.shields.io/github/license/redsalmon91/FoxSEE)
 
+[CCRL Blitz Rating (v2.12.0)](http://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=FoxSEE%202.12.0%2064-bit#FoxSEE_2_12_0_64-bit)
+
+[Lichess Profile](https://lichess.org/@/FoxSEEEngine)
+
 ## Features
 
 - Principal Variance Search
@@ -22,16 +26,16 @@ A master-level UCI chess engine written in Rust!
 - Check Extensions
 - Mate-Threat Extensions
 - Pawn-Threat Extensions
-- Singular Extensions
 - Late-Move Reductions
 - History Heuristic
 - Killer Heuristic
 - Linear Evaluation
+- Shower Detection
 - Null-Move Pruning
 - Multi-Cut Pruning
 - Mate Distance Pruning
-- Reverse Futility Pruning
 - Delta Pruning
+- Reversed Futility Pruning
 - Perft
 
 ## How to build
@@ -54,3 +58,4 @@ Aside from the standard set of UCI commands, `perft x` is also supported.
 [Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
 [Mediocre Chess Guides](http://mediocrechess.sourceforge.net/guides.html)  
 [Chess Programming Wiki](https://www.chessprogramming.org)
+[Xorshiro**](http://prng.di.unimi.it/)

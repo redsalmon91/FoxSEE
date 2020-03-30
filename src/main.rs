@@ -23,7 +23,7 @@ use std::io::{self, prelude::*};
 use std::u128;
 
 const DEFAULT_MAX_TIME_MILLIS: u128 = u128::MAX;
-const DEFAULT_MAX_DEPTH: u8 = 64;
+const DEFAULT_MAX_DEPTH: u8 = 128;
 
 fn main() {
     if 1u8 != 0b01 {

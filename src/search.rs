@@ -14,10 +14,11 @@ use crate::{
 
 const PV_TRACK_LENGTH: usize = 128;
 
-const MAX_HISTORY_SCORE: i32 = 10000;
-const MAX_NON_CAP_SCORE: i32 = 20000;
+const MAX_HISTORY_SCORE: i32 = 100000;
+const MAX_NON_CAP_SCORE: i32 = 200000;
+const EXTRA_CAP_SORT_SCORE: i32 = 1000;
 
-const WINDOW_SIZE: i32 = 50;
+const WINDOW_SIZE: i32 = 30;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -26,6 +27,8 @@ const MULTICUT_DEPTH: u8 = 6;
 const MULTICUT_R: u8 = 2;
 const MULTICUT_MOV_COUNT: u8 = 3;
 const MULTICUT_CUT_COUNT: u8 = 2;
+
+const MAX_EXTEND_PLY: u8 = 32;
 
 const IID_R: u8 = 2;
 
@@ -46,7 +49,6 @@ pub struct SearchEngine {
     primary_killer_table: [(i32, u32); PV_TRACK_LENGTH],
     secondary_killer_table: [(i32, u32); PV_TRACK_LENGTH],
     index_history_table: [[i32; def::BOARD_SIZE]; def::BOARD_SIZE],
-    piece_history_table: [[i32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE],
     root_node_mov_list: Vec<(u8, i32, u32, [u32; PV_TRACK_LENGTH])>,
     time_tracker: Instant,
 
@@ -63,7 +65,6 @@ impl SearchEngine {
             primary_killer_table: [(0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0); PV_TRACK_LENGTH],
             index_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
-            piece_history_table: [[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE],
             root_node_mov_list: Vec::new(),
             time_tracker: Instant::now(),
 
@@ -132,7 +133,6 @@ impl SearchEngine {
         self.primary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.index_history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
-        self.piece_history_table = [[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE];
 
         let mut alpha = self.recent_search_score - WINDOW_SIZE;
         let mut beta = self.recent_search_score + WINDOW_SIZE;
@@ -253,7 +253,7 @@ impl SearchEngine {
                 return alpha
             }
 
-            let (_depth, _score, mov, mut history_pv_table) = self.root_node_mov_list[mov_index];
+            let (_depth, _score, mov, history_pv_table) = self.root_node_mov_list[mov_index];
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let mut next_pv_table = [0; PV_TRACK_LENGTH];
@@ -263,12 +263,12 @@ impl SearchEngine {
             let gives_check = mov_table::is_in_check(state, state.player);
 
             let score = if !pv_found  {
-                -self.ab_search(state, true, gives_check, false, &mut history_pv_table, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1)
+                -self.ab_search(state, true, gives_check, false, &history_pv_table, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1)
             } else {
-                let score = -self.ab_search(state, true, gives_check, false, &mut history_pv_table, &mut next_pv_table, -alpha - 1, -alpha, depth - 1, ply + 1);
+                let score = -self.ab_search(state, true, gives_check, false, &history_pv_table, &mut next_pv_table, -alpha - 1, -alpha, depth - 1, ply + 1);
 
                 if score > alpha && score < beta {
-                    -self.ab_search(state, true, gives_check, false, &mut history_pv_table, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1)
+                    -self.ab_search(state, true, gives_check, false, &history_pv_table, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1)
                 } else {
                     score
                 }
@@ -286,6 +286,9 @@ impl SearchEngine {
             self.root_node_mov_list[mov_index] = (depth, score, mov, updated_history_pv_table);
 
             if score >= beta {
+                pv_table[0] = mov;
+                pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
+
                 return score
             }
 
@@ -301,7 +304,7 @@ impl SearchEngine {
         alpha
     }
 
-    fn ab_search(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_cut: bool, history_pv_table: &mut [u32], pv_table: &mut [u32], mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
+    fn ab_search(&mut self, state: &mut State, on_pv: bool, in_check: bool, on_cut: bool, history_pv_table: &[u32], pv_table: &mut [u32], mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
         if self.abort {
             return alpha
         }
@@ -322,6 +325,8 @@ impl SearchEngine {
         if state.is_draw(ply) {
             return 0
         }
+
+        let in_pv_range = beta - alpha > 1;
 
         let mating_val = eval::MATE_VAL - ply as i32;
         if mating_val < beta {
@@ -349,7 +354,6 @@ impl SearchEngine {
         }
 
         let mut has_potential_cut = false;
-        let mut is_singular_mov = false;
 
         if pv_mov == 0 {
             match self.get_hash(state, depth) {
@@ -361,22 +365,27 @@ impl SearchEngine {
 
                         match flag {
                             HASH_TYPE_EXACT => {
-                                if !on_pv {
+                                if !in_pv_range {
                                     return score
                                 }
                             },
                             HASH_TYPE_ALPHA => {
-                                if !on_pv && score <= alpha {
+                                if !in_pv_range && score <= alpha {
                                     return alpha
                                 }
                             },
                             HASH_TYPE_BETA => {
-                                if !on_pv && score >= beta {
-                                    return beta
+                                if !in_pv_range {
+                                    if score >= beta {
+                                        return beta
+                                    }
+
+                                    if score > alpha {
+                                        alpha = score;
+                                    }
                                 }
 
                                 has_potential_cut = true;
-                                is_singular_mov = true;
                             },
                             _ => (),
                         }
@@ -399,10 +408,10 @@ impl SearchEngine {
 
         let mut under_threat = false;
 
-        if beta - alpha == 1 && !on_cut && !in_check {
-            let in_extreme_endgame = state.bitboard.w_pawn == 0 || state.bitboard.b_pawn == 0;
+        if !in_pv_range && !on_cut && !in_check {
+            let in_endgame = in_endgame(state);
 
-            if !in_extreme_endgame && depth >= NM_DEPTH {
+            if !in_endgame && depth >= NM_DEPTH {
                 let depth_reduction = if depth > NM_DEPTH {
                     NM_R + 1
                 } else {
@@ -428,7 +437,7 @@ impl SearchEngine {
                 (state.player == def::PLAYER_W && state.bitboard.b_pawn & bitboard::BP_PROMO_PAWNS_MASK != 0)
                 || (state.player == def::PLAYER_B && state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK != 0);
 
-            if !in_extreme_endgame && !opponent_has_promoting_pawn && !under_threat && depth <= 6 {
+            if !in_endgame && !opponent_has_promoting_pawn && !under_threat && depth <= 6 {
                 if eval::eval_materials(state) - get_futility_margin(depth) >= beta {
                     return beta
                 }
@@ -437,17 +446,13 @@ impl SearchEngine {
 
         if on_pv && pv_mov == 0 && depth >= 5 {
             let mut next_pv_table = [0; PV_TRACK_LENGTH];
-            self.ab_search(state, true, in_check, false, history_pv_table, &mut next_pv_table, alpha, beta, depth - IID_R, ply);
+            self.ab_search(state, false, in_check, false, history_pv_table, &mut next_pv_table, alpha, beta, depth - IID_R, ply);
 
             if self.abort {
                 return alpha
             }
 
             pv_mov = next_pv_table[0];
-
-            if pv_mov != 0 && (ply as usize) < PV_TRACK_LENGTH {
-                history_pv_table[ply as usize..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH - ply as usize]);
-            }
         }
 
         let mut mov_count = 0;
@@ -462,15 +467,17 @@ impl SearchEngine {
 
             let mut next_pv_table = [0; PV_TRACK_LENGTH];
 
-            let is_threating_pawn_mov = is_threating_pawn(state, from, to);
+            let is_threating_pawn_mov = (promo == 0 || def::is_q(promo)) && is_threating_pawn(state, from, to);
 
             state.do_mov(from, to, tp, promo);
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
             let mut depth = depth;
-            if under_threat || gives_check || is_threating_pawn_mov || (is_singular_mov && beta - alpha > 1) {
-                depth += 1;
+            if ply < MAX_EXTEND_PLY {
+                if is_threating_pawn_mov || gives_check || under_threat {
+                    depth += 1;
+                }
             }
 
             let score = -self.ab_search(state, on_pv, gives_check, false, history_pv_table, &mut next_pv_table, -beta, -alpha, depth - 1, ply + 1);
@@ -482,6 +489,11 @@ impl SearchEngine {
             }
 
             if score >= beta {
+                if state.squares[to] == 0 {
+                    self.update_history_table(depth, from, to);
+                    self.update_killer_table(score, ply, pv_mov);
+                }
+
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
 
                 return score
@@ -519,15 +531,15 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             if state.squares[to] != 0 {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE + see(state, from, to, tp, promo), mov));
-            } else if promo != 0 {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE + eval::val_of(promo), mov));
+                ordered_mov_list.push((MAX_NON_CAP_SCORE + EXTRA_CAP_SORT_SCORE + see(state, from, to, tp, promo), mov));
+            } else if def::is_q(promo) {
+                ordered_mov_list.push((MAX_NON_CAP_SCORE + EXTRA_CAP_SORT_SCORE + eval::val_of(promo), mov));
             } else if mov == primary_killer {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + 2, mov));
             } else if mov == secondary_killer {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + 1, mov));
             } else {
-                ordered_mov_list.push((self.index_history_table[from][to] + self.piece_history_table[state.squares[from] as usize][to], mov));
+                ordered_mov_list.push((self.index_history_table[from][to], mov));
             }
         }
 
@@ -535,15 +547,17 @@ impl SearchEngine {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        if (pv_mov == 0 || has_potential_cut) && beta - alpha == 1 && !on_cut && !in_check && depth >= MULTICUT_DEPTH && self.multicut_search(state, &ordered_mov_list, beta, depth, ply) {
-            return beta
+        if !in_pv_range && (pv_mov == 0 || has_potential_cut) && !on_cut && !in_check && depth >= MULTICUT_DEPTH && in_endgame(state) {
+            if self.multicut_search(state, &ordered_mov_list, beta, depth, ply) {
+                return beta
+            }
         }
 
         if self.abort {
             return alpha
         }
 
-        for (score, mov) in ordered_mov_list {
+        for (_score, mov) in ordered_mov_list {
             mov_count += 1;
 
             let mut next_pv_table = [0; PV_TRACK_LENGTH];
@@ -551,23 +565,21 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
-            let is_win_capture = is_capture && score >= MAX_NON_CAP_SCORE;
-            let is_threating_pawn_mov = is_threating_pawn(state, from, to);
+            let is_threating_pawn_mov = (promo == 0 || def::is_q(promo)) && is_threating_pawn(state, from, to);
 
             state.do_mov(from, to, tp, promo);
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
             let mut depth = depth;
-            if under_threat {
-                depth += 1;
-            } else if gives_check && (!is_capture || is_win_capture) {
-                depth += 1;
-            } else if is_threating_pawn_mov && depth < 5 {
-                depth += 1;
+
+            if ply < MAX_EXTEND_PLY {
+                if under_threat || gives_check || is_threating_pawn_mov {
+                    depth += 1;
+                }
             }
 
-            let score = if depth > 1 && mov_count > 1 && !in_check && !gives_check && !under_threat && !is_win_capture && !is_threating_pawn_mov {
+            let score = if depth > 1 && mov_count > 1 && !in_check && !gives_check && !under_threat && !is_capture && !is_threating_pawn_mov {
                 let score = -self.ab_search(state, false, gives_check, false, history_pv_table, &mut next_pv_table, -alpha-1, -alpha, depth - 2, ply + 1);
                 if score > alpha {
                     if pv_found {
@@ -605,8 +617,11 @@ impl SearchEngine {
             }
 
             if score >= beta {
+                pv_table[0] = mov;
+                pv_table[1..PV_TRACK_LENGTH].copy_from_slice(&next_pv_table[0..PV_TRACK_LENGTH-1]);
+
                 if !is_capture {
-                    self.update_history_table(depth, from, to, state.squares[from]);
+                    self.update_history_table(depth, from, to);
                     self.update_killer_table(score, ply, mov);
                 }
 
@@ -665,7 +680,7 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             state.do_mov(from, to, tp, promo);
-            let scout_score = -self.ab_search(state, false, false, true, &mut EMPTY_HISTORY_PV_TABLE, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
+            let scout_score = -self.ab_search(state, false, false, true, &EMPTY_HISTORY_PV_TABLE, &mut EMPTY_PV_TABLE, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
             state.undo_mov(from, to, tp);
 
             if self.abort {
@@ -845,12 +860,12 @@ impl SearchEngine {
         }
 
         let (primary_killer_score, primary_killer_mov) = self.primary_killer_table[ply_index];
-        if score > primary_killer_score || primary_killer_score == 0 {
+        if score > primary_killer_score || primary_killer_mov == 0 {
             self.primary_killer_table[ply_index] = (score, mov);
             self.secondary_killer_table[ply_index] = (primary_killer_score, primary_killer_mov);
         } else {
-            let (killer_score, _killer_mov) = self.secondary_killer_table[ply_index];
-            if score > killer_score || killer_score == 0 {
+            let (killer_score, killer_mov) = self.secondary_killer_table[ply_index];
+            if score > killer_score || killer_mov == 0 {
                 self.secondary_killer_table[ply_index] = (score, mov);
             }
         }
@@ -876,7 +891,7 @@ impl SearchEngine {
         let (_killer_score, secondary_killer) = self.secondary_killer_table[ply_index];
 
         if secondary_killer == 0 && ply > 2 {
-            let (_killer_score, secondary_killer) = self.secondary_killer_table[ply_index - 2];
+            let (_killer_score, secondary_killer) = self.primary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }
@@ -885,17 +900,12 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn update_history_table(&mut self, depth: u8, from: usize, to: usize, moving_piece: u8) {
+    fn update_history_table(&mut self, depth: u8, from: usize, to: usize) {
         let history_score_increment = depth as i32 * depth as i32;
 
         let current_index_history_score = self.index_history_table[from][to];
         if current_index_history_score < MAX_HISTORY_SCORE - history_score_increment {
             self.index_history_table[from][to] = current_index_history_score + history_score_increment;
-        }
-
-        let current_piece_history_score = self.piece_history_table[moving_piece as usize][to];
-        if current_piece_history_score < MAX_HISTORY_SCORE - history_score_increment {
-            self.piece_history_table[moving_piece as usize][to] = current_piece_history_score + history_score_increment;
         }
     }
 
@@ -929,6 +939,7 @@ impl SearchEngine {
     }
 }
 
+#[inline]
 fn is_threating_pawn(state: &State, from: usize, to: usize) -> bool {
     if !def::is_p(state.squares[from]) {
         return false
@@ -954,6 +965,13 @@ fn is_threating_pawn(state: &State, from: usize, to: usize) -> bool {
     }
 
     false
+}
+
+#[inline]
+fn in_endgame(state: &State) -> bool {
+    eval::get_phase(state) <= eval::ENDGAME_PHASE
+    || state.bitboard.w_pawn == 0
+    || state.bitboard.b_pawn == 0
 }
 
 fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
@@ -1005,8 +1023,8 @@ mod tests {
         let bitmask = BitMask::new();
         let mut state = State::new("pnkq3r/pb2nppp/2p1b3/1r1N2R1/2PPP3/1Q3B2/PPP2PPP/RNB1K1NR b - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(250, see(&mut state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
-        assert_eq!(100, see(&mut state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
+        assert_eq!(240, see(&mut state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
+        assert_eq!(90, see(&mut state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
     }
 
     #[test]
@@ -1017,7 +1035,7 @@ mod tests {
 
         assert_eq!(-175, see(&mut state, util::map_sqr_notation_to_index("b3"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
         assert_eq!(250, see(&mut state, util::map_sqr_notation_to_index("a6"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
-        assert_eq!(0, see(&mut state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
+        assert_eq!(10, see(&mut state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
     }
 
     #[test]
@@ -1026,9 +1044,9 @@ mod tests {
         let bitmask = BitMask::new();
         let mut state = State::new("4n2r/5P2/8/7B/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(875, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WQ));
-        assert_eq!(700, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WN));
-        assert_eq!(875, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WR));
+        assert_eq!(865, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WQ));
+        assert_eq!(680, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WN));
+        assert_eq!(865, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WR));
     }
 
     #[test]
@@ -1036,7 +1054,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("1k6/1P6/1K6/8/8/8/8/8 b - - 0 1", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert!(search_engine.in_stale_mate(&mut state));
     }
@@ -1046,7 +1064,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("8/8/8/2r5/8/k7/1p6/1K6 w - - 0 1", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert!(search_engine.in_stale_mate(&mut state));
     }
@@ -1056,7 +1074,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("2k2r2/pp2br2/1np1p2q/2NpP2p/2PP2p1/1P1N4/P3Q1PP/3R1R1K b - - 8 27", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 5500, 64);
 
@@ -1070,7 +1088,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("r3r1k1/ppqb1ppp/8/4p1NQ/8/2P5/PP3PPP/R3R1K1 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 5500, 64);
 
@@ -1084,7 +1102,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("8/1k3ppp/8/5PPP/8/8/1K6/8 w - - 9 83", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 5500, 64);
 
@@ -1097,8 +1115,8 @@ mod tests {
     fn test_search_4() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("8/8/1r2b2p/8/8/2p5/2kR4/K7 b - - 3 56", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut state = State::new("8/8/1r2b3/8/8/2p5/2kR4/K7 b - - 3 56", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 1500, 64);
 
@@ -1112,7 +1130,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 500, 64);
 
@@ -1126,7 +1144,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("r5rk/2p1Nppp/3p3P/pp2p1P1/4P3/2qnPQK1/8/R6R w - - 1 0", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 500, 64);
 
@@ -1140,7 +1158,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("3r2k1/ppq2pp1/4p2p/3n3P/3N2P1/2P5/PP2QP2/K2R4 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 5500, 64);
 
@@ -1154,7 +1172,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 500, 64);
 
@@ -1168,7 +1186,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("8/8/8/5p1p/3k1P1P/5K2/8/8 b - - 1 59", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(def::DEFAULT_HASH_SIZE_UNIT);
 
         let best_mov = search_engine.search(&mut state, 25500, 64);
 
@@ -1182,7 +1200,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("1r4k1/7p/5np1/3p3n/8/2NB4/7P/3N1RK1 w - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 7500, 64);
 
@@ -1195,28 +1213,28 @@ mod tests {
     fn test_search_11() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut state = State::new("8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
 
-        let best_mov = search_engine.search(&mut state, 7500, 64);
+        let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("f5"));
-        assert_eq!(to, util::map_sqr_notation_to_index("h6"));
+        assert_eq!(from, util::map_sqr_notation_to_index("e1"));
+        assert_eq!(to, util::map_sqr_notation_to_index("f1"));
     }
 
     #[test]
     fn test_search_12() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("2r4k/pB4bp/1p4p1/6q1/1P1n4/2N5/P4PPP/2R1Q1K1 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
 
-        let best_mov = search_engine.search(&mut state, 15500, 64);
+        let best_mov = search_engine.search(&mut state, 25500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("g5"));
-        assert_eq!(to, util::map_sqr_notation_to_index("c1"));
+        assert_eq!(from, util::map_sqr_notation_to_index("h5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("h2"));
     }
 
     #[test]
@@ -1224,7 +1242,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("6k1/p3q2p/1nr3pB/8/3Q1P2/6P1/PP5P/3R2K1 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 25500, 64);
 
@@ -1238,7 +1256,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("1r1q1rk1/p1p2pbp/2pp1np1/6B1/4P3/2NQ4/PPP2PPP/3R1RK1 w - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
@@ -1251,14 +1269,14 @@ mod tests {
     fn test_search_15() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("h5"));
-        assert_eq!(to, util::map_sqr_notation_to_index("h2"));
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e5"));
     }
 
     #[test]
@@ -1266,7 +1284,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("q4rk1/1n1Qbppp/2p5/1p2p3/1P2P3/2P4P/6P1/2B1NRK1 b - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
@@ -1280,7 +1298,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("8/1k6/8/2R5/3K4/8/8/8 w - - 0 1", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
@@ -1293,14 +1311,14 @@ mod tests {
     fn test_search_18() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("r4rk1/1p2bppp/2n1p1n1/1p5P/3pPP2/1B1P4/PP1BN1P1/2KR3R b - - 0 18", &zob_keys, &bitmask);
-        let mut search_engine = SearchEngine::new(65536);
+        let mut state = State::new("r2qr1k1/3nbpp1/p2pbn2/1p2p1p1/4P2P/1NN1BP2/PPP5/2KRQB1R w - - 0 15", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("g6"));
-        assert_eq!(to, util::map_sqr_notation_to_index("h8"));
+        assert_eq!(from, util::map_sqr_notation_to_index("h4"));
+        assert_eq!(to, util::map_sqr_notation_to_index("g5"));
     }
 
     #[test]
@@ -1308,7 +1326,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert_eq!(20, search_engine.perft(&mut state, 1));
         assert_eq!(400, search_engine.perft(&mut state, 2));
@@ -1320,7 +1338,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert_eq!(14, search_engine.perft(&mut state, 1));
         assert_eq!(191, search_engine.perft(&mut state, 2));
@@ -1336,7 +1354,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert_eq!(44, search_engine.perft(&mut state, 1));
         assert_eq!(1486, search_engine.perft(&mut state, 2));
@@ -1350,7 +1368,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert_eq!(46, search_engine.perft(&mut state, 1));
         assert_eq!(2079, search_engine.perft(&mut state, 2));
@@ -1364,7 +1382,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert_eq!(6, search_engine.perft(&mut state, 1));
         assert_eq!(264, search_engine.perft(&mut state, 2));
@@ -1378,7 +1396,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("8/P1k5/K7/8/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
-        let search_engine = SearchEngine::new(65536);
+        let search_engine = SearchEngine::new(131072);
 
         assert_eq!(92683, search_engine.perft(&mut state, 6));
     }

@@ -6,27 +6,35 @@ use crate::{
     def,
 };
 
-static INIT_SEED: u64 = 123456789;
+static SEED_C89: u64 = 0b10110110_00101111_10100100_01011000_00001000_01100100_11010111_11111010;
+static SEED_A86: u64 = 0b10111001_11010011_00111100_00010100_00110000_00100110_11001111_10110110;
+
+const fn rotate(x: u64, k: usize) -> u64 {
+    (x << k) | (x >> (64 - k))
+}
 
 pub struct XorshiftPrng {
-    state: u64,
+    state: [u64; 2],
 }
 
 impl XorshiftPrng {
     pub fn new() -> XorshiftPrng {
         XorshiftPrng {
-            state: INIT_SEED,
+            state: [SEED_C89, SEED_A86],
         }
     }
 
     fn gen_rand(&mut self) -> u64 {
-        let mut x = self.state;
-        x ^= x << 15;
-        x ^= x >> 7;
-        x ^= x << 19;
-        self.state = x;
+        let s0 = self.state[0];
+        let mut s1 = self.state[1];
 
-        x
+        let next_rand = rotate(s0 * 5, 7) * 9;
+        s1 ^= s0;
+
+        self.state[0] = rotate(s0, 24) ^ s1 ^ (s1 << 16);
+        self.state[1] = rotate(s1, 37);
+
+        next_rand
     }
 
     pub fn create_prn_table(&mut self, fst_dim: usize, snd_dim: usize) -> Vec<Vec<u64>> {
