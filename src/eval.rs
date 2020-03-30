@@ -66,9 +66,9 @@ static MIDGAME_MOB_BASE_VAL: i32 = 2;
 static ENDGMAE_MOB_BASE_VAL: i32 = 2;
 
 static TRAPPED_Q_PEN: i32 = -90;
-static TRAPPED_R_PEN: i32 = -60;
-static TRAPPED_B_PEN: i32 = -30;
-static TRAPPED_N_PEN: i32 = -30;
+static TRAPPED_R_PEN: i32 = -90;
+static TRAPPED_B_PEN: i32 = -80;
+static TRAPPED_N_PEN: i32 = -80;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
