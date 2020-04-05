@@ -29,8 +29,7 @@ A master-level UCI chess engine written in Rust!
 - Late-Move Reductions
 - History Heuristic
 - Killer Heuristic
-- Linear Evaluation
-- Shower Detection
+- Tapered Evaluation
 - Null-Move Pruning
 - Multi-Cut Pruning
 - Mate Distance Pruning

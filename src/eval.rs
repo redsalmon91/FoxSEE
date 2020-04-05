@@ -31,7 +31,7 @@ static KING_EXPOSED_PEN: i32 = -50;
 static KING_THREAT_BASE_PEN: i32 = -10;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -30;
 
-static PASS_PAWN_BASE_VAL: i32 = 50;
+static PASS_PAWN_BASE_VAL: i32 = 30;
 static PASS_PAWN_RANK_VAL: i32 = 20;
 static QUEEN_SIDE_PAWN_VAL: i32 = 50;
 
@@ -53,7 +53,6 @@ static PIECE_OVER_DEFEND_COUNT: i32 = 1;
 
 static CENTER_PAWN_VAL: i32 = 20;
 static CENTER_KNIGHT_VAL: i32 = 20;
-static CENTER_BISHOP_VAL: i32 = 15;
 static CENTER_ATTACK_VAL: i32 = 10;
 
 static INVASION_VAL: i32 = 20;
@@ -76,6 +75,11 @@ static BLOCKED_Q_PEN: i32 = -20;
 static BLOCKED_R_PEN: i32 = -20;
 static BLOCKED_B_PEN: i32 = -20;
 static BLOCKED_N_PEN: i32 = -20;
+
+static BLOCKED_Q_MOB: u32 = 3;
+static BLOCKED_R_MOB: u32 = 1;
+static BLOCKED_B_MOB: u32 = 2;
+static BLOCKED_N_MOB: u32 = 1;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
@@ -145,7 +149,6 @@ pub struct FeatureMap {
 
     center_pawn_count: i32,
     center_knight_count: i32,
-    center_bishop_count: i32,
     center_attack_count: i32,
 
     invasion_count: i32,
@@ -201,7 +204,6 @@ impl FeatureMap {
 
             center_pawn_count: 0,
             center_knight_count: 0,
-            center_bishop_count: 0,
             center_attack_count: 0,
 
             invasion_count: 0,
@@ -331,7 +333,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.king_midgame_safe_pref_sqr_count * KING_MIDGAME_SAFE_PREF_SQR_VAL
         + w_features_map.center_pawn_count * CENTER_PAWN_VAL
         + w_features_map.center_knight_count * CENTER_KNIGHT_VAL
-        + w_features_map.center_bishop_count * CENTER_BISHOP_VAL
         + w_features_map.center_attack_count * CENTER_ATTACK_VAL
         + w_features_map.invasion_count * INVASION_VAL
         + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
@@ -348,7 +349,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.king_midgame_safe_pref_sqr_count * KING_MIDGAME_SAFE_PREF_SQR_VAL
         - b_features_map.center_pawn_count * CENTER_PAWN_VAL
         - b_features_map.center_knight_count * CENTER_KNIGHT_VAL
-        - b_features_map.center_bishop_count * CENTER_BISHOP_VAL
         - b_features_map.center_attack_count * CENTER_ATTACK_VAL
         - b_features_map.invasion_count * INVASION_VAL
         - b_features_map.defended_piece_count * DEFENDED_PIECE_VAL
@@ -1019,7 +1019,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_knight_count += 1;
-                } else if mov_mask & !bitboard.w_all == 0 {
+                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_N_MOB {
                     w_feature_map.blocked_knight_count += 1;
                 }
             },
@@ -1031,7 +1031,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_bishop_count += 1;
-                } else if mov_mask & !bitboard.w_all == 0 {
+                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_B_MOB {
                     w_feature_map.blocked_bishop_count += 1;
                 }
             },
@@ -1043,7 +1043,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_rook_count += 1;
-                } else if mov_mask & !bitboard.w_all == 0 {
+                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_R_MOB {
                     w_feature_map.blocked_rook_count += 1;
                 }
             },
@@ -1054,7 +1054,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 {
                     w_feature_map.trapped_queen_count += 1;
-                } else if mov_mask & !bitboard.w_all == 0 {
+                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_Q_MOB {
                     w_feature_map.blocked_queen_count += 1;
                 }
             },
@@ -1067,7 +1067,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_knight_count += 1;
-                } else if mov_mask & !bitboard.b_all == 0 {
+                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_N_MOB {
                     b_feature_map.blocked_knight_count += 1;
                 }
             },
@@ -1079,7 +1079,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_bishop_count += 1;
-                } else if mov_mask & !bitboard.b_all == 0 {
+                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_B_MOB {
                     b_feature_map.blocked_bishop_count += 1;
                 }
             },
@@ -1091,7 +1091,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_rook_count += 1;
-                } else if mov_mask & !bitboard.b_all == 0 {
+                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_R_MOB {
                     b_feature_map.blocked_rook_count += 1;
                 }
             },
@@ -1102,7 +1102,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 {
                     b_feature_map.trapped_queen_count += 1;
-                } else if mov_mask & !bitboard.b_all == 0 {
+                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_Q_MOB {
                     b_feature_map.blocked_queen_count += 1;
                 }
             },
@@ -1237,9 +1237,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     w_feature_map.center_knight_count = (bitboard.w_knight & CENTER_MASK).count_ones() as i32;
     b_feature_map.center_knight_count = (bitboard.b_knight & CENTER_MASK).count_ones() as i32;
-
-    w_feature_map.center_bishop_count = (bitboard.w_bishop & CENTER_MASK).count_ones() as i32;
-    b_feature_map.center_bishop_count = (bitboard.b_bishop & CENTER_MASK).count_ones() as i32;
 
     w_feature_map.center_attack_count = (wp_attack_mask & CENTER_MASK).count_ones() as i32;
     b_feature_map.center_attack_count = (bp_attack_mask & CENTER_MASK).count_ones() as i32;
@@ -1708,14 +1705,14 @@ mod tests {
         assert_eq!(0, b_features.trapped_queen_count);
 
         assert_eq!(0, w_features.blocked_knight_count);
-        assert_eq!(1, w_features.blocked_bishop_count);
-        assert_eq!(0, w_features.blocked_rook_count);
+        assert_eq!(2, w_features.blocked_bishop_count);
+        assert_eq!(2, w_features.blocked_rook_count);
         assert_eq!(1, w_features.blocked_queen_count);
 
         assert_eq!(0, b_features.blocked_knight_count);
         assert_eq!(0, b_features.blocked_bishop_count);
         assert_eq!(2, b_features.blocked_rook_count);
-        assert_eq!(0, b_features.blocked_queen_count);
+        assert_eq!(1, b_features.blocked_queen_count);
     }
 
     #[test]
@@ -1819,12 +1816,10 @@ mod tests {
 
         assert_eq!(1, w_features.center_pawn_count);
         assert_eq!(0, w_features.center_knight_count);
-        assert_eq!(1, w_features.center_bishop_count);
         assert_eq!(3, w_features.center_attack_count);
 
         assert_eq!(1, b_features.center_pawn_count);
         assert_eq!(1, b_features.center_knight_count);
-        assert_eq!(0, b_features.center_bishop_count);
         assert_eq!(2, b_features.center_attack_count);
     }
 
