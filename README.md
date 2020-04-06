@@ -30,6 +30,7 @@ A master-level UCI chess engine written in Rust!
 - History Heuristic
 - Killer Heuristic
 - Tapered Evaluation
+- Piece-Square Tables
 - Null-Move Pruning
 - Multi-Cut Pruning
 - Mate Distance Pruning
