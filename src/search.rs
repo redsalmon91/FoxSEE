@@ -1004,7 +1004,7 @@ const fn get_futility_margin(depth: u8) -> i32 {
 
 #[inline]
 fn need_verification(score: i32) -> bool {
-    score == 0 || score < -eval::TERM_VAL || score > eval::TERM_VAL
+    score < -eval::TERM_VAL || score > eval::TERM_VAL
 }
 
 #[cfg(test)]
