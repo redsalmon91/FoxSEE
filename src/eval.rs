@@ -71,15 +71,10 @@ static TRAPPED_R_PEN: i32 = -90;
 static TRAPPED_B_PEN: i32 = -60;
 static TRAPPED_N_PEN: i32 = -60;
 
-static BLOCKED_Q_PEN: i32 = -20;
-static BLOCKED_R_PEN: i32 = -20;
-static BLOCKED_B_PEN: i32 = -20;
-static BLOCKED_N_PEN: i32 = -20;
-
-static BLOCKED_Q_MOB: u32 = 3;
-static BLOCKED_R_MOB: u32 = 1;
-static BLOCKED_B_MOB: u32 = 2;
-static BLOCKED_N_MOB: u32 = 1;
+static BLOCKED_Q_PEN: i32 = -30;
+static BLOCKED_R_PEN: i32 = -30;
+static BLOCKED_B_PEN: i32 = -30;
+static BLOCKED_N_PEN: i32 = -30;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
@@ -943,14 +938,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if file_mask & BOARD_A_FILE == 0 {
                     let lower_file_mask = file_masks[index - 1];
-                    if lower_file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 && lower_file_mask & bitboard.w_rook == 0 {
+                    if lower_file_mask & bitboard.w_pawn == 0 && lower_file_mask & bitboard.w_rook == 0 {
                         w_feature_map.king_exposed += 1;
                     }
                 }
 
                 if file_mask & BOARD_H_FILE == 0 {
                     let higher_file_mask = file_masks[index + 1];
-                    if higher_file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 && higher_file_mask & bitboard.w_rook == 0 {
+                    if higher_file_mask & bitboard.w_pawn == 0 && higher_file_mask & bitboard.w_rook == 0 {
                         w_feature_map.king_exposed += 1;
                     }
                 }
@@ -983,14 +978,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if file_mask & BOARD_A_FILE == 0 {
                     let lower_file_mask = file_masks[index - 1];
-                    if lower_file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 && lower_file_mask & bitboard.b_rook == 0 {
+                    if lower_file_mask & bitboard.b_pawn == 0 && lower_file_mask & bitboard.b_rook == 0 {
                         b_feature_map.king_exposed += 1;
                     }
                 }
 
                 if file_mask & BOARD_H_FILE == 0 {
                     let higher_file_mask = file_masks[index + 1];
-                    if higher_file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 && higher_file_mask & bitboard.b_rook == 0 {
+                    if higher_file_mask & bitboard.b_pawn == 0 && higher_file_mask & bitboard.b_rook == 0 {
                         b_feature_map.king_exposed += 1;
                     }
                 }
@@ -1051,7 +1046,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_knight_count += 1;
-                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_N_MOB {
+                } else if mov_mask & !bitboard.w_pawn == 0 {
                     w_feature_map.blocked_knight_count += 1;
                 }
             },
@@ -1063,7 +1058,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_bishop_count += 1;
-                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_B_MOB {
+                } else if mov_mask & !bitboard.w_pawn == 0 {
                     w_feature_map.blocked_bishop_count += 1;
                 }
             },
@@ -1075,7 +1070,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_rook_count += 1;
-                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_R_MOB {
+                } else if mov_mask & !bitboard.w_pawn == 0 {
                     w_feature_map.blocked_rook_count += 1;
                 }
             },
@@ -1086,7 +1081,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 {
                     w_feature_map.trapped_queen_count += 1;
-                } else if (mov_mask & !bitboard.w_all).count_ones() <= BLOCKED_Q_MOB {
+                } else if mov_mask & !bitboard.w_pawn == 0 {
                     w_feature_map.blocked_queen_count += 1;
                 }
             },
@@ -1099,7 +1094,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_knight_count += 1;
-                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_N_MOB {
+                } else if mov_mask & !bitboard.b_pawn == 0 {
                     b_feature_map.blocked_knight_count += 1;
                 }
             },
@@ -1111,7 +1106,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_bishop_count += 1;
-                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_B_MOB {
+                } else if mov_mask & !bitboard.b_pawn == 0 {
                     b_feature_map.blocked_bishop_count += 1;
                 }
             },
@@ -1123,7 +1118,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_rook_count += 1;
-                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_R_MOB {
+                } else if mov_mask & !bitboard.b_pawn == 0 {
                     b_feature_map.blocked_rook_count += 1;
                 }
             },
@@ -1134,7 +1129,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if mov_mask == 0 {
                     b_feature_map.trapped_queen_count += 1;
-                } else if (mov_mask & !bitboard.b_all).count_ones() <= BLOCKED_Q_MOB {
+                } else if mov_mask & !bitboard.b_pawn == 0 {
                     b_feature_map.blocked_queen_count += 1;
                 }
             },
@@ -1713,14 +1708,14 @@ mod tests {
         assert_eq!(0, b_features.trapped_queen_count);
 
         assert_eq!(0, w_features.blocked_knight_count);
-        assert_eq!(2, w_features.blocked_bishop_count);
-        assert_eq!(2, w_features.blocked_rook_count);
-        assert_eq!(1, w_features.blocked_queen_count);
+        assert_eq!(1, w_features.blocked_bishop_count);
+        assert_eq!(0, w_features.blocked_rook_count);
+        assert_eq!(0, w_features.blocked_queen_count);
 
         assert_eq!(0, b_features.blocked_knight_count);
         assert_eq!(0, b_features.blocked_bishop_count);
-        assert_eq!(2, b_features.blocked_rook_count);
-        assert_eq!(1, b_features.blocked_queen_count);
+        assert_eq!(0, b_features.blocked_rook_count);
+        assert_eq!(0, b_features.blocked_queen_count);
     }
 
     #[test]
@@ -1731,7 +1726,7 @@ mod tests {
         let state = State::new("1krq1bnr/p1ppppp1/8/8/1P3P2/8/2PPP1PP/RNBQR1K1 w Qk - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(1, w_features.king_exposed);
+        assert_eq!(0, w_features.king_exposed);
         assert_eq!(2, b_features.king_exposed);
     }
 
