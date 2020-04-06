@@ -57,5 +57,4 @@ Aside from the standard set of UCI commands, `perft x` is also supported.
 [Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
 [Mediocre Chess Guides](http://mediocrechess.sourceforge.net/guides.html)  
 [Chess Programming Wiki](https://www.chessprogramming.org)  
-[Xorshiro128**](http://prng.di.unimi.it/)  
-[Important Mate Test Case taken from Dabbaba Homepage](http://www.jens-musik.dk/dabbaba.htm)
+[Xorshiro128**](http://prng.di.unimi.it/)
