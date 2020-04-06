@@ -356,23 +356,27 @@ impl SearchEngine {
 
                     match flag {
                         HASH_TYPE_EXACT => {
-                            return score
+                            if !need_verification(score) {
+                                return score
+                            }
                         },
                         HASH_TYPE_ALPHA => {
-                            if score <= alpha {
+                            if score <= alpha && !need_verification(score) {
                                 return alpha
                             }
                         },
                         HASH_TYPE_BETA => {
-                            if score >= beta {
-                                return beta
+                            if !need_verification(score) {
+                                if score >= beta {
+                                    return beta
+                                }
+    
+                                if score > alpha {
+                                    alpha = score;
+                                }
+    
+                                has_potential_cut = true;
                             }
-
-                            if score > alpha {
-                                alpha = score;
-                            }
-
-                            has_potential_cut = true;
                         },
                         _ => (),
                     }
@@ -389,36 +393,38 @@ impl SearchEngine {
 
         let mut under_threat = false;
 
-        if !on_pv && !on_cut && !in_check {
-            let in_endgame = in_endgame(state);
+        let in_endgame = in_endgame(state);
 
-            if !in_endgame && depth >= NM_DEPTH {
-                let depth_reduction = if depth > NM_DEPTH {
-                    NM_R + 1
-                } else {
-                    NM_R
-                };
+        if !on_cut && !in_check && !in_endgame && depth >= NM_DEPTH {
+            let depth_reduction = if depth > NM_DEPTH {
+                NM_R + 1
+            } else {
+                NM_R
+            };
 
-                state.do_null_mov();
-                let scout_score = -self.ab_search(state, false, true, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
-                state.undo_null_mov();
+            state.do_null_mov();
+            let scout_score = -self.ab_search(state, false, true, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
+            state.undo_null_mov();
 
-                if self.abort {
-                    return alpha
-                }
-
-                if scout_score >= beta {
-                    return beta
-                } else if scout_score < -eval::TERM_VAL {
-                    under_threat = true;
-                }
+            if self.abort {
+                return alpha
             }
 
-            let opponent_has_promoting_pawn =
-                (state.player == def::PLAYER_W && state.bitboard.b_pawn & bitboard::BP_PROMO_PAWNS_MASK != 0)
-                || (state.player == def::PLAYER_B && state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK != 0);
+            if scout_score >= beta {
+                if !on_pv {
+                    return beta
+                }
+            } else if scout_score < -eval::TERM_VAL {
+                under_threat = true;
+            }
+        }
 
-            if !in_endgame && !opponent_has_promoting_pawn && !under_threat && depth <= 6 {
+        if !on_pv && !in_check && !under_threat && depth <= 6 && !in_endgame {
+            let opponent_has_promoting_pawn =
+            (state.player == def::PLAYER_W && state.bitboard.b_pawn & bitboard::BP_PROMO_PAWNS_MASK != 0)
+            || (state.player == def::PLAYER_B && state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK != 0);
+
+            if !opponent_has_promoting_pawn {
                 if eval::eval_materials(state) - get_futility_margin(depth) >= beta {
                     return beta
                 }
@@ -535,7 +541,7 @@ impl SearchEngine {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
-        if !on_pv && (pv_mov == 0 || has_potential_cut) && !on_cut && !in_check && depth >= MULTICUT_DEPTH && in_endgame(state) {
+        if !on_pv && (pv_mov == 0 || has_potential_cut) && !on_cut && !in_check && !in_endgame && depth >= MULTICUT_DEPTH {
             if self.multicut_search(state, &ordered_mov_list, beta, depth, ply) {
                 return beta
             }
@@ -996,6 +1002,11 @@ const fn get_futility_margin(depth: u8) -> i32 {
     eval::FUTILITY_MARGIN_BASE * (depth / 2 + 1) as i32 + eval::MAX_POS_VAL
 }
 
+#[inline]
+fn need_verification(score: i32) -> bool {
+    score == 0 || score < -eval::TERM_VAL || score > eval::TERM_VAL
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1244,14 +1255,14 @@ mod tests {
     fn test_search_14() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("1r1q1rk1/p1p2pbp/2pp1np1/6B1/4P3/2NQ4/PPP2PPP/3R1RK1 w - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(131072);
 
         let best_mov = search_engine.search(&mut state, 15500, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("e4"));
-        assert_eq!(to, util::map_sqr_notation_to_index("e5"));
+        assert_eq!(from, util::map_sqr_notation_to_index("h5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("h2"));
     }
 
     #[test]
