@@ -47,9 +47,9 @@ static ROOK_OPEN_LINE_VAL: i32 = 25;
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
 static QUEEN_PIN_PEN: i32 = -20;
 
-static DEFENDED_PIECE_VAL: i32 = 20;
+static DEFENDED_PIECE_VAL: i32 = 10;
 
-static PIECE_OVER_DEFEND_COUNT: i32 = 1;
+static PIECE_OVER_DEFEND_COUNT: i32 = 2;
 
 static CENTER_PAWN_VAL: i32 = 20;
 static CENTER_KNIGHT_VAL: i32 = 20;
@@ -109,6 +109,9 @@ static K_ENDGAME_AVOID_MASK: u64 = 0b11100111_11000011_10000001_00000000_0000000
 
 static BOARD_L_MASK: u64 = 0b00000111_00000111_00000111_00000111_00000111_00000111_00000111_00000111;
 static BOARD_R_MASK: u64 = 0b11100000_11100000_11100000_11100000_11100000_11100000_11100000_11100000;
+
+static BOARD_A_FILE: u64 = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001;
+static BOARD_H_FILE: u64 = 0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
 
 static WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
 static BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
@@ -930,13 +933,28 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
 
-                if file_mask & bitboard.w_pawn == 0 {
+                if file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 {
                     w_feature_map.king_exposed += 1;
 
-                    if file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 {
+                    if file_mask & bitboard.w_pawn == 0 {
                         w_feature_map.king_exposed += 1;
                     }
                 }
+
+                if file_mask & BOARD_A_FILE == 0 {
+                    let lower_file_mask = file_masks[index - 1];
+                    if lower_file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 && lower_file_mask & bitboard.w_rook == 0 {
+                        w_feature_map.king_exposed += 1;
+                    }
+                }
+
+                if file_mask & BOARD_H_FILE == 0 {
+                    let higher_file_mask = file_masks[index + 1];
+                    if higher_file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 && higher_file_mask & bitboard.w_rook == 0 {
+                        w_feature_map.king_exposed += 1;
+                    }
+                }
+
             },
             def::BK => {
                 if index_mask & BK_MIDGAME_SAFE_MASK != 0 {
@@ -955,10 +973,24 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
 
-                if file_mask & bitboard.b_pawn == 0 {
+                if file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 {
                     b_feature_map.king_exposed += 1;
 
-                    if file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 {
+                    if file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.king_exposed += 1;
+                    }
+                }
+
+                if file_mask & BOARD_A_FILE == 0 {
+                    let lower_file_mask = file_masks[index - 1];
+                    if lower_file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 && lower_file_mask & bitboard.b_rook == 0 {
+                        b_feature_map.king_exposed += 1;
+                    }
+                }
+
+                if file_mask & BOARD_H_FILE == 0 {
+                    let higher_file_mask = file_masks[index + 1];
+                    if higher_file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 && higher_file_mask & bitboard.b_rook == 0 {
                         b_feature_map.king_exposed += 1;
                     }
                 }
@@ -1518,8 +1550,8 @@ mod tests {
         let state = State::new("r1bq1rk1/pp2ppbp/2np2p1/2n5/P3PP2/N1P2N2/1PB3PP/R1B1QRK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(4, w_features.defended_piece_count);
-        assert_eq!(4, b_features.defended_piece_count);
+        assert_eq!(7, w_features.defended_piece_count);
+        assert_eq!(5, b_features.defended_piece_count);
     }
 
     #[test]
@@ -1542,30 +1574,6 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("1kr2r2/pp2qpp1/1bn5/1p1p2n1/1P1P4/PBNP2N1/1P3P1P/R2Q1RK1 b Q - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(3, w_features.defended_piece_count);
-        assert_eq!(3, b_features.defended_piece_count);
-    }
-
-    #[test]
-    fn test_extract_features_4() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
-        let state = State::new("1kr1br2/1p1n1ppp/1p1P1b2/p2N3n/3P4/RB2P1N1/P1P2P1P/3Q1RK1 b - - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(3, w_features.defended_piece_count);
-        assert_eq!(1, b_features.defended_piece_count);
-    }
-
-    #[test]
-    fn test_extract_features_5() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
         let state = State::new("1q4kn/3r1p1p/1pbN1Pp1/r1ppP1P1/P4R2/2B1P3/2Q4P/3R2K1 b - - 2 29", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
@@ -1574,7 +1582,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_6() {
+    fn test_extract_features_4() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1589,7 +1597,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_7() {
+    fn test_extract_features_5() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1604,7 +1612,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_8() {
+    fn test_extract_features_6() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1616,7 +1624,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_9() {
+    fn test_extract_features_7() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1633,7 +1641,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_10() {
+    fn test_extract_features_8() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1648,7 +1656,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_11() {
+    fn test_extract_features_9() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1663,7 +1671,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_12() {
+    fn test_extract_features_10() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1675,7 +1683,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_13() {
+    fn test_extract_features_11() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1687,7 +1695,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_14() {
+    fn test_extract_features_12() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1716,19 +1724,19 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_15() {
+    fn test_extract_features_13() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("1krq1bnr/p1ppppp1/8/8/1P6/8/2PPPPPP/RNBQ1RK1 w Qk - 0 1", &zob_keys, &bitmask);
+        let state = State::new("1krq1bnr/p1ppppp1/8/8/1P3P2/8/2PPP1PP/RNBQR1K1 w Qk - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(0, w_features.king_exposed);
+        assert_eq!(1, w_features.king_exposed);
         assert_eq!(2, b_features.king_exposed);
     }
 
     #[test]
-    fn test_extract_features_16() {
+    fn test_extract_features_14() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1740,7 +1748,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_17() {
+    fn test_extract_features_15() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1771,7 +1779,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_18() {
+    fn test_extract_features_16() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1783,7 +1791,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_19() {
+    fn test_extract_features_17() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1795,7 +1803,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_20() {
+    fn test_extract_features_18() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1807,7 +1815,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_21() {
+    fn test_extract_features_19() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 

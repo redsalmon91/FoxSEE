@@ -56,5 +56,5 @@ Aside from the standard set of UCI commands, `perft x` is also supported.
 ## References
 [Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
 [Mediocre Chess Guides](http://mediocrechess.sourceforge.net/guides.html)  
-[Chess Programming Wiki](https://www.chessprogramming.org)
-[Xorshiro**](http://prng.di.unimi.it/)
+[Chess Programming Wiki](https://www.chessprogramming.org)  
+[Xorshiro128**](http://prng.di.unimi.it/)
