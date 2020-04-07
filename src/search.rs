@@ -17,7 +17,7 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const MAX_HISTORY_SCORE: i32 = 100000;
 const MAX_NON_CAP_SCORE: i32 = 200000;
-const PRIMARY_KILLER_SCORE: i32 = -11; // place the first killer in front of all equal captures (BISHOP-KNIGHT)
+const PRIMARY_KILLER_SCORE: i32 = -11; // place the first killer right after all equal captures (BISHOP-KNIGHT)
 const SECONDARY_KILLER_SCORE: i32 = -1001; // place the second killer after the last capture (-QUEEN-1)
 
 const WINDOW_SIZE: i32 = 30;

@@ -24,7 +24,7 @@ static N_VAL: i32 = 340;
 static P_VAL: i32 = 100;
 
 static KING_EXPOSED_PEN: i32 = -50;
-static KING_THREAT_BASE_PEN: i32 = -10;
+static KING_THREAT_BASE_PEN: i32 = -20;
 static KING_PAWN_THREAT_BASE_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
 
@@ -40,7 +40,6 @@ static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
 static ROOK_OPEN_LINE_VAL: i32 = 25;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
-static QUEEN_PIN_PEN: i32 = -20;
 
 static DEFENDED_PIECE_VAL: i32 = 20;
 
@@ -262,7 +261,6 @@ pub struct FeatureMap {
     open_rook_count: i32,
 
     open_queen_count: i32,
-    queen_pin_count: i32,
 
     defended_piece_count: i32,
 
@@ -303,7 +301,6 @@ impl FeatureMap {
             open_rook_count: 0,
 
             open_queen_count: 0,
-            queen_pin_count: 0,
 
             defended_piece_count: 0,
 
@@ -405,7 +402,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         + w_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        + w_features_map.queen_pin_count * QUEEN_PIN_PEN
         + w_features_map.mobility * MIDGAME_MOB_BASE_VAL
         + w_features_map.king_exposed * KING_EXPOSED_PEN
         + w_features_map.king_threat_count * KING_THREAT_BASE_PEN
@@ -417,7 +413,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         - b_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         - b_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        - b_features_map.queen_pin_count * QUEEN_PIN_PEN
         - b_features_map.mobility * MIDGAME_MOB_BASE_VAL
         - b_features_map.king_exposed * KING_EXPOSED_PEN
         - b_features_map.king_threat_count * KING_THREAT_BASE_PEN
@@ -818,54 +813,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 wq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
-
-                let pawn_mask = bitboard.w_pawn | bitboard.b_pawn;
-                let opponent_r_mask = bitboard.b_rook;
-                let opponent_b_mask = bitboard.b_bishop;
-
-                if bitmask.r_attack_masks[index] & opponent_r_mask != 0 {
-                    let up_mask = bitmask.up_attack_masks[index];
-                    if up_mask & opponent_r_mask != 0 && up_mask & (pawn_mask | bitboard.w_rook) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-
-                    let down_mask = bitmask.down_attack_masks[index];
-                    if down_mask & opponent_r_mask != 0 && down_mask & (pawn_mask | bitboard.w_rook) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-
-                    let left_mask = bitmask.left_attack_masks[index];
-                    if left_mask & opponent_r_mask != 0 && left_mask & (pawn_mask | bitboard.w_rook) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-
-                    let right_mask = bitmask.right_attack_masks[index];
-                    if right_mask & opponent_r_mask != 0 && right_mask & (pawn_mask | bitboard.w_rook) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-                }
-
-                if bitmask.b_attack_masks[index] & opponent_b_mask != 0 {
-                    let up_left_mask = bitmask.up_left_attack_masks[index];
-                    if up_left_mask & opponent_b_mask != 0 && up_left_mask & (pawn_mask | bitboard.w_bishop) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-
-                    let up_right_mask = bitmask.up_right_attack_masks[index];
-                    if up_right_mask & opponent_b_mask != 0 && up_right_mask & (pawn_mask | bitboard.w_bishop) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-
-                    let down_left_mask = bitmask.down_left_attack_masks[index];
-                    if down_left_mask & opponent_b_mask != 0 && down_left_mask & (pawn_mask | bitboard.w_bishop) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-
-                    let down_right_mask = bitmask.down_right_attack_masks[index];
-                    if down_right_mask & opponent_b_mask != 0 && down_right_mask & (pawn_mask | bitboard.w_bishop) == 0 {
-                        w_feature_map.queen_pin_count += 1;
-                    }
-                }
             },
             def::BQ => {
                 b_feature_map.midgame_sqr_point_count += SQR_TABLE_BQ[index];
@@ -935,63 +882,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 bq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
-
-                let pawn_mask = bitboard.w_pawn | bitboard.b_pawn;
-                let opponent_r_mask = bitboard.w_rook;
-                let opponent_b_mask = bitboard.w_bishop;
-
-                if bitmask.r_attack_masks[index] & opponent_r_mask != 0 {
-                    let up_mask = bitmask.up_attack_masks[index];
-                    if up_mask & opponent_r_mask != 0 && up_mask & (pawn_mask | bitboard.b_rook) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-
-                    let down_mask = bitmask.down_attack_masks[index];
-                    if down_mask & opponent_r_mask != 0 && down_mask & (pawn_mask | bitboard.b_rook) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-
-                    let left_mask = bitmask.left_attack_masks[index];
-                    if left_mask & opponent_r_mask != 0 && left_mask & (pawn_mask | bitboard.b_rook) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-
-                    let right_mask = bitmask.right_attack_masks[index];
-                    if right_mask & opponent_r_mask != 0 && right_mask & (pawn_mask | bitboard.b_rook) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-                }
-
-                if bitmask.b_attack_masks[index] & opponent_b_mask != 0 {
-                    let up_left_mask = bitmask.up_left_attack_masks[index];
-                    if up_left_mask & opponent_b_mask != 0 && up_left_mask & (pawn_mask | bitboard.b_bishop) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-
-                    let up_right_mask = bitmask.up_right_attack_masks[index];
-                    if up_right_mask & opponent_b_mask != 0 && up_right_mask & (pawn_mask | bitboard.b_bishop) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-
-                    let down_left_mask = bitmask.down_left_attack_masks[index];
-                    if down_left_mask & opponent_b_mask != 0 && down_left_mask & (pawn_mask | bitboard.b_bishop) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-
-                    let down_right_mask = bitmask.down_right_attack_masks[index];
-                    if down_right_mask & opponent_b_mask != 0 && down_right_mask & (pawn_mask | bitboard.b_bishop) == 0 {
-                        b_feature_map.queen_pin_count += 1;
-                    }
-                }
             },
 
             def::WK => {
                 w_feature_map.midgame_sqr_point_count += SQR_TABLE_WK[index];
                 w_feature_map.endgame_sqr_point_count += SQR_TABLE_WK_ENDGAME[index];
 
-                if bitboard.b_rook | bitboard.b_queen != 0 {
-                    let file_mask = file_masks[index];
+                let file_mask = file_masks[index];
 
+                if bitboard.b_rook | bitboard.b_queen != 0 {
                     if file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 {
                         w_feature_map.king_exposed += 1;
 
@@ -1001,20 +900,20 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     }
 
                     if file_mask & BOARD_A_FILE == 0 {
-                        let lower_file_mask = file_masks[index - 1];
-                        if lower_file_mask & bitboard.w_pawn == 0 && lower_file_mask & bitboard.w_rook == 0 {
+                        let left_file_mask = file_masks[index - 1];
+                        if left_file_mask & bitboard.w_pawn == 0 && left_file_mask & bitboard.w_rook == 0 {
                             w_feature_map.king_exposed += 1;
                         }
                     }
 
                     if file_mask & BOARD_H_FILE == 0 {
-                        let higher_file_mask = file_masks[index + 1];
-                        if higher_file_mask & bitboard.w_pawn == 0 && higher_file_mask & bitboard.w_rook == 0 {
+                        let right_file_mask = file_masks[index + 1];
+                        if right_file_mask & bitboard.w_pawn == 0 && right_file_mask & bitboard.w_rook == 0 {
                             w_feature_map.king_exposed += 1;
                         }
                     }
 
-                    if file_mask & bitboard.b_pawn == 0 {
+                    if bitboard.b_rook != 0 && file_mask & bitboard.b_pawn == 0 {
                         w_feature_map.king_exposed += 1;
                     }
                 }
@@ -1023,9 +922,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 b_feature_map.midgame_sqr_point_count += SQR_TABLE_BK[index];
                 b_feature_map.endgame_sqr_point_count += SQR_TABLE_BK_ENDGAME[index];
 
-                if bitboard.w_rook | bitboard.w_queen != 0 {
-                    let file_mask = file_masks[index];
+                let file_mask = file_masks[index];
 
+                if bitboard.w_rook | bitboard.w_queen != 0 {
                     if file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 {
                         b_feature_map.king_exposed += 1;
 
@@ -1035,20 +934,20 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     }
 
                     if file_mask & BOARD_A_FILE == 0 {
-                        let lower_file_mask = file_masks[index - 1];
-                        if lower_file_mask & bitboard.b_pawn == 0 && lower_file_mask & bitboard.b_rook == 0 {
+                        let left_file_mask = file_masks[index - 1];
+                        if left_file_mask & bitboard.b_pawn == 0 && left_file_mask & bitboard.b_rook == 0 {
                             b_feature_map.king_exposed += 1;
                         }
                     }
 
                     if file_mask & BOARD_H_FILE == 0 {
-                        let higher_file_mask = file_masks[index + 1];
-                        if higher_file_mask & bitboard.b_pawn == 0 && higher_file_mask & bitboard.b_rook == 0 {
+                        let right_file_mask = file_masks[index + 1];
+                        if right_file_mask & bitboard.b_pawn == 0 && right_file_mask & bitboard.b_rook == 0 {
                             b_feature_map.king_exposed += 1;
                         }
                     }
 
-                    if file_mask & bitboard.w_pawn == 0 {
+                    if bitboard.w_rook != 0 && file_mask & bitboard.w_pawn == 0 {
                         b_feature_map.king_exposed += 1;
                     }
                 }
@@ -1737,18 +1636,6 @@ mod tests {
 
         assert_eq!(1, w_features.king_lost_cas_rights);
         assert_eq!(1, b_features.king_lost_cas_rights);
-    }
-
-    #[test]
-    fn test_extract_features_x2() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
-        let state = State::new("rnbqr1k1/ppp2ppp/5n2/3b2B1/4N3/8/PPP1QPPP/RNBR2K1 w Qq - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(1, w_features.queen_pin_count);
-        assert_eq!(2, b_features.queen_pin_count);
     }
 
     #[test]
