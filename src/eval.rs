@@ -30,7 +30,7 @@ static KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
 
 static PASS_PAWN_BASE_VAL: i32 = 30;
 static PASS_PAWN_RANK_VAL: i32 = 20;
-static QUEEN_SIDE_PAWN_VAL: i32 = 50;
+static QUEEN_SIDE_PAWN_VAL: i32 = 20;
 
 static DUP_PAWN_PEN: i32 = -20;
 static ISOLATE_PAWN_PEN: i32 = -20;
@@ -1694,7 +1694,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_10() {
+    fn test_extract_features_x() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1709,7 +1709,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_11() {
+    fn test_extract_features_x1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1740,7 +1740,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_12() {
+    fn test_extract_features_x2() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
