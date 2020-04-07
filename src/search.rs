@@ -356,17 +356,17 @@ impl SearchEngine {
 
                     match flag {
                         HASH_TYPE_EXACT => {
-                            if !need_verification(score) {
+                            if !on_pv || !need_verification(score) {
                                 return score
                             }
                         },
                         HASH_TYPE_ALPHA => {
-                            if score <= alpha && !need_verification(score) {
+                            if score <= alpha && (!on_pv || !need_verification(score)) {
                                 return alpha
                             }
                         },
                         HASH_TYPE_BETA => {
-                            if !need_verification(score) {
+                            if !on_pv || !need_verification(score) {
                                 if score >= beta {
                                     return beta
                                 }
@@ -374,7 +374,7 @@ impl SearchEngine {
                                 if score > alpha {
                                     alpha = score;
                                 }
-    
+
                                 has_potential_cut = true;
                             }
                         },
@@ -940,26 +940,7 @@ fn is_threating_pawn(state: &State, from: usize, to: usize) -> bool {
         return false
     }
 
-    let pawn_rank = def::get_rank(state.player, to);
-
-    if pawn_rank <= 3 {
-        return false
-    }
-
-    if pawn_rank >= 6 {
-        return true
-    }
-
-    let bitboard = state.bitboard;
-    let bitmask = state.bitmask;
-
-    if state.player == def::PLAYER_W && bitmask.wp_forward_masks[to] & bitboard.b_pawn == 0 {
-        return true
-    } else if bitmask.bp_forward_masks[to] & bitboard.w_pawn == 0 {
-        return true
-    }
-
-    false
+    def::get_rank(state.player, to) >= 5
 }
 
 #[inline]
