@@ -26,6 +26,7 @@ A master-level UCI chess engine written in Rust!
 - Check Extensions
 - Mate-Threat Extensions
 - Pawn-Threat Extensions
+- Singular Extensions
 - Late-Move Reductions
 - History Heuristic
 - Killer Heuristic
