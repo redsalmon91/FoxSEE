@@ -25,6 +25,7 @@ static P_VAL: i32 = 100;
 
 static KING_EXPOSED_PEN: i32 = -50;
 static KING_THREAT_BASE_PEN: i32 = -10;
+static KING_PAWN_THREAT_BASE_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
 
 static PASS_PAWN_BASE_VAL: i32 = 30;
@@ -267,6 +268,7 @@ pub struct FeatureMap {
 
     king_exposed: i32,
     king_threat_count: i32,
+    king_pawn_threat_count: i32,
     king_lost_cas_rights: i32,
 }
 
@@ -307,6 +309,7 @@ impl FeatureMap {
 
             king_exposed: 0,
             king_threat_count: 0,
+            king_pawn_threat_count: 0,
             king_lost_cas_rights: 0,
         }
     }
@@ -406,6 +409,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.mobility * MIDGAME_MOB_BASE_VAL
         + w_features_map.king_exposed * KING_EXPOSED_PEN
         + w_features_map.king_threat_count * KING_THREAT_BASE_PEN
+        + w_features_map.king_pawn_threat_count * KING_PAWN_THREAT_BASE_PEN
         + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
         + w_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         + w_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN
@@ -417,6 +421,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.mobility * MIDGAME_MOB_BASE_VAL
         - b_features_map.king_exposed * KING_EXPOSED_PEN
         - b_features_map.king_threat_count * KING_THREAT_BASE_PEN
+        - b_features_map.king_pawn_threat_count * KING_PAWN_THREAT_BASE_PEN
         - b_features_map.defended_piece_count * DEFENDED_PIECE_VAL
         - b_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         - b_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN;
@@ -1211,10 +1216,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 defend_count += 1;
             }
 
-            if bp_attack_mask & index_mask != 0 {
-                attack_count += 1;
-            }
-
             if bn_attack_mask & !wp_attack_mask & index_mask != 0 {
                 attack_count += 1;
             }
@@ -1234,6 +1235,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             let attack_diff = (attack_count - defend_count).max(0);
 
             w_feature_map.king_threat_count += attack_diff * attack_diff;
+
+            if bp_attack_mask & index_mask != 0 {
+                w_feature_map.king_pawn_threat_count += 1;
+            }
         }
 
         protector_mask >>= 1;
@@ -1270,10 +1275,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 defend_count += 1;
             }
 
-            if wp_attack_mask & index_mask != 0 {
-                attack_count += 1;
-            }
-
             if wn_attack_mask & !bp_attack_mask & index_mask != 0 {
                 attack_count += 1;
             }
@@ -1293,6 +1294,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             let attack_diff = (attack_count - defend_count).max(0);
 
             b_feature_map.king_threat_count += attack_diff * attack_diff;
+
+            if wp_attack_mask & index_mask != 0 {
+                b_feature_map.king_pawn_threat_count += 1;
+            }
         }
 
         protector_mask >>= 1;
@@ -1595,7 +1600,7 @@ mod tests {
         assert_eq!(5, w_features.king_threat_count);
 
         assert_eq!(0, b_features.king_exposed);
-        assert_eq!(2, b_features.king_threat_count);
+        assert_eq!(1, b_features.king_threat_count);
     }
 
     #[test]
@@ -1693,11 +1698,14 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("1krq1bnr/p1ppppp1/8/8/1P3P2/8/2PPP1PP/RNBQR1K1 w Qk - 0 1", &zob_keys, &bitmask);
+        let state = State::new("1krq1bnr/p1p1ppp1/2P5/8/1P3P2/6pP/2PPP1P1/RNBQR1K1 w Qk - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(0, w_features.king_exposed);
+        assert_eq!(2, w_features.king_pawn_threat_count);
+
         assert_eq!(2, b_features.king_exposed);
+        assert_eq!(1, b_features.king_pawn_threat_count);
     }
 
     #[test]
