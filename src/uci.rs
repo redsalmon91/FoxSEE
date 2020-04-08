@@ -9,7 +9,7 @@ use crate::{
 
 use std::io::{self, prelude::*};
 
-const DEFAULT_MOVS_TO_GO: u128 = 20;
+const DEFAULT_MOVS_TO_GO: u128 = 28;
 const OVERHEAD_TIME: u128 = 100;
 
 pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
