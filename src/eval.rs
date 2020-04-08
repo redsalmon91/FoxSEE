@@ -88,6 +88,17 @@ static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
+static SQR_TABLE_BP_ENDGAME: [i32; def::BOARD_SIZE] = [
+     0,  0,  0,  0,  0,  0,  0,  0,
+    20, 30, 30, 30, 30, 30, 30, 20,
+    15, 20, 20, 20, 20, 20, 20, 15,
+    10, 15, 15, 15, 15, 15, 15, 10,
+     5, 10, 10, 10, 10, 10, 10,  5,
+     0,  0,  0,  0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,  0,  0,  0,
+];
+
 static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
      0,  0,  0,  0,  0,  0,  0,  0,
      5, 10, 10,-20,-20, 10, 10,  5,
@@ -97,6 +108,17 @@ static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
     10, 20, 20, 30, 30, 20, 20, 10,
     50, 50, 50, 50, 50, 50, 50, 50,
      0,  0,  0,  0,  0,  0,  0,  0,
+];
+
+static SQR_TABLE_WP_ENDGAME: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      5, 10, 10, 10, 10, 10, 10,  5,
+     10, 15, 15, 15, 15, 15, 15, 10,
+     15, 20, 20, 20, 20, 20, 20, 15,
+     20, 30, 30, 30, 30, 30, 30, 20,
+      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
 static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
@@ -520,6 +542,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         match moving_piece {
             def::WP => {
                 w_feature_map.midgame_sqr_point_count += SQR_TABLE_WP[index];
+                w_feature_map.endgame_sqr_point_count += SQR_TABLE_WP_ENDGAME[index];
 
                 wp_attack_mask |= bitmask.wp_attack_masks[index];
 
@@ -555,6 +578,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             },
             def::BP => {
                 b_feature_map.midgame_sqr_point_count += SQR_TABLE_BP[index];
+                b_feature_map.endgame_sqr_point_count += SQR_TABLE_BP_ENDGAME[index];
 
                 bp_attack_mask |= bitmask.bp_attack_masks[index];
 
