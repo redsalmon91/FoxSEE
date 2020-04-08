@@ -365,17 +365,40 @@ pub fn get_phase(state: &State) -> i32 {
 
 pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let bitboard = state.bitboard;
-    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-        if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
-            return 0
-        }
+    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen == 0 {
+        if bitboard.w_rook | bitboard.b_rook == 0 {
+            if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
+                return 0
+            }
 
-        if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
-            return 0
-        }
+            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
+                return 0
+            }
 
-        if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
-            return 0
+            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
+                return 0
+            }
+        } else {
+            let w_rook_count = bitboard.w_rook.count_ones();
+            let b_rook_count = bitboard.b_rook.count_ones();
+
+            if w_rook_count == 1 && b_rook_count == 1 {
+                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
+                    return 0
+                }
+
+                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
+                    return 0
+                }
+            } else if w_rook_count == 1 && b_rook_count == 0 {
+                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
+                    return 0
+                }
+            }  else if b_rook_count == 1 && w_rook_count == 0 {
+                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
+                    return 0
+                }
+            }
         }
     }
 
@@ -1639,11 +1662,47 @@ mod tests {
     }
 
     #[test]
-    fn test_draw_endgame() {
+    fn test_draw_endgame_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
         let state = State::new("8/2k5/8/8/8/4N3/5K2/8 w - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+    }
+
+    #[test]
+    fn test_draw_endgame_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("4nk2/8/8/8/4K3/3R4/8/8 w - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+    }
+
+    #[test]
+    fn test_draw_endgame_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("3r1k2/8/8/8/4K3/8/8/4B3 b - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+    }
+
+    #[test]
+    fn test_draw_endgame_4() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("3r1k2/8/8/4R3/4K3/5N2/8/8 w - - 0 1", &zob_keys, &bitmask);
+        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+    }
+
+    #[test]
+    fn test_draw_endgame_5() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("3rb3/2k5/8/4R3/4K3/8/8/8 b - - 0 1", &zob_keys, &bitmask);
         assert_eq!(0, eval_state(&state, eval_materials(&state)));
     }
 }
