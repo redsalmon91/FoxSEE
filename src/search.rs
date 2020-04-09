@@ -476,7 +476,7 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(pv_mov);
 
-            let is_threating_pawn_mov = (promo == 0 || def::is_q(promo)) && is_threating_pawn(state, from, to);
+            let is_threating_pawn_mov = (promo == 0 || def::is_q(promo) || def::is_n(promo)) && is_threating_pawn(state, from, to);
 
             state.do_mov(from, to, tp, promo);
 
@@ -569,7 +569,8 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
-            let is_threating_pawn_mov = (promo == 0 || def::is_q(promo)) && is_threating_pawn(state, from, to);
+
+            let is_threating_pawn_mov = (promo == 0 || def::is_q(promo) || def::is_n(promo)) && is_threating_pawn(state, from, to);
 
             state.do_mov(from, to, tp, promo);
 
