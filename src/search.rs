@@ -732,7 +732,9 @@ impl SearchEngine {
             alpha = score;
         }
 
-        if score + eval::DELTA_MAX_MARGIN < alpha {
+        let in_extreme_endgame = state.bitboard.w_pawn | state.bitboard.b_pawn == 0;
+
+        if !in_extreme_endgame && score + eval::DELTA_MAX_MARGIN < alpha {
             let promoting_pawn_mask = if state.player == def::PLAYER_W {
                 state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK
             } else {
@@ -766,10 +768,12 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
-            let gain = eval::val_of(squares[to]) + eval::val_of(promo);
+            if !in_extreme_endgame {
+                let gain = eval::val_of(squares[to]) + eval::val_of(promo);
 
-            if gain < delta {
-                continue
+                if gain < delta {
+                    continue
+                }
             }
 
             scored_cap_list.push((see(state, from, to, tp, promo), cap));
