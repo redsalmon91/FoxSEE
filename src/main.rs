@@ -10,6 +10,7 @@ mod mov_table;
 mod prng;
 mod search;
 mod state;
+mod time_control;
 mod uci;
 mod util;
 
@@ -17,12 +18,17 @@ use bitboard::BitMask;
 use prng::XorshiftPrng;
 use state::State;
 use search::SearchEngine;
+use time_control::TimeCapacity;
 use uci::{UciProcessResult, Rawmov};
 
 use std::io::{self, prelude::*};
 use std::u128;
 
-const DEFAULT_MAX_TIME_MILLIS: u128 = u128::MAX;
+const DEFAULT_MAX_TIME: TimeCapacity = TimeCapacity {
+    main_time_millis: u128::MAX,
+    extra_time_millis: 0,
+};
+
 const DEFAULT_MAX_DEPTH: u8 = 128;
 
 fn main() {
@@ -95,25 +101,25 @@ fn main() {
                 }
             },
             UciProcessResult::StartSearchWithTime(time_millis) => {
-                let best_mov = search_engine.search(&mut state, time_millis, DEFAULT_MAX_DEPTH);
+                let best_mov = search_engine.search(&mut state, TimeCapacity { main_time_millis: time_millis, extra_time_millis: 0 }, DEFAULT_MAX_DEPTH);
                 print_best_mov(best_mov);
             },
-            UciProcessResult::StartSearchWithComplextTimeControl(time_info) => {
-                let time_millis = if state.player == def::PLAYER_W {
-                    time_info.white_millis
+            UciProcessResult::StartSearchWithComplextTimeControl((w_time_info, b_time_info)) => {
+                let time_capacity = if state.player == def::PLAYER_W {
+                    time_control::calculate_time_capacity(w_time_info.all_time_millis, w_time_info.moves_to_go, w_time_info.increment_millis)
                 } else {
-                    time_info.black_millis
+                    time_control::calculate_time_capacity(b_time_info.all_time_millis, b_time_info.moves_to_go, b_time_info.increment_millis)
                 };
 
-                let best_mov = search_engine.search(&mut state, time_millis, DEFAULT_MAX_DEPTH);
+                let best_mov = search_engine.search(&mut state, time_capacity, DEFAULT_MAX_DEPTH);
                 print_best_mov(best_mov);
             },
             UciProcessResult::StartSearchToDepth(depth) => {
-                let best_mov = search_engine.search(&mut state, DEFAULT_MAX_TIME_MILLIS, depth);
+                let best_mov = search_engine.search(&mut state, DEFAULT_MAX_TIME, depth);
                 print_best_mov(best_mov);
             },
             UciProcessResult::StartSearchInfinite => {
-                let best_mov = search_engine.search(&mut state, DEFAULT_MAX_TIME_MILLIS, DEFAULT_MAX_DEPTH);
+                let best_mov = search_engine.search(&mut state, DEFAULT_MAX_TIME, DEFAULT_MAX_DEPTH);
                 print_best_mov(best_mov);
             },
             UciProcessResult::Perft(depth) => {

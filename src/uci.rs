@@ -10,7 +10,6 @@ use crate::{
 use std::io::{self, prelude::*};
 
 const DEFAULT_MOVS_TO_GO: u128 = 28;
-const OVERHEAD_TIME: u128 = 100;
 
 pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -22,8 +21,9 @@ pub struct Rawmov {
 }
 
 pub struct TimeInfo {
-    pub white_millis: u128,
-    pub black_millis: u128,
+    pub all_time_millis: u128,
+    pub moves_to_go: u128,
+    pub increment_millis: u128,
 }
 
 pub enum UciProcessResult {
@@ -35,7 +35,7 @@ pub enum UciProcessResult {
     Position(String, Vec<Rawmov>),
     PrintDebugInfo,
     StartSearchWithTime(u128),
-    StartSearchWithComplextTimeControl(TimeInfo),
+    StartSearchWithComplextTimeControl((TimeInfo, TimeInfo)),
     StartSearchToDepth(u8),
     StartSearchInfinite,
     Stop,
@@ -156,25 +156,18 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
         movs_to_go = DEFAULT_MOVS_TO_GO;
     };
 
-    let wtime = ((wtime + movs_to_go * winc) / movs_to_go).min(wtime);
-    let btime = ((btime + movs_to_go * binc) / movs_to_go).min(btime);
-
-    let wtime = if wtime > OVERHEAD_TIME {
-        wtime - OVERHEAD_TIME
-    } else {
-        wtime
-    };
-
-    let btime = if btime > OVERHEAD_TIME {
-        btime - OVERHEAD_TIME
-    } else {
-        btime
-    };
-
-    UciProcessResult::StartSearchWithComplextTimeControl(TimeInfo{
-        white_millis: wtime,
-        black_millis: btime,
-    })
+    UciProcessResult::StartSearchWithComplextTimeControl((
+        TimeInfo{
+            all_time_millis: wtime,
+            moves_to_go: movs_to_go,
+            increment_millis: winc,
+        },
+        TimeInfo{
+            all_time_millis: btime,
+            moves_to_go: movs_to_go,
+            increment_millis: binc,
+        }
+    ))
 }
 
 fn process_position(fen_str: &str) -> UciProcessResult {
