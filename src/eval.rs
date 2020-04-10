@@ -523,12 +523,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let mut br_attack_mask = 0;
     let mut bq_attack_mask = 0;
 
+    let mut w_semi_open_line_mask = 0;
+    let mut b_semi_open_line_mask = 0;
+
     let mut mov_mask_map = [0; def::BOARD_SIZE];
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
     let start_index = occupy_mask.trailing_zeros() as usize;
     let end_index = def::BOARD_SIZE - occupy_mask.leading_zeros() as usize;
-
 
     for index in start_index..end_index {
         let moving_piece = squares[index];
@@ -741,8 +743,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
                     if file_mask & bitboard.b_all == 0 {
                         w_feature_map.open_rook_count += 1;
-                    } else {
+                    } else if w_semi_open_line_mask & file_mask == 0 {
                         w_feature_map.semi_open_rook_count += 1;
+                        w_semi_open_line_mask |= file_mask;
                     }
                 }
             },
@@ -786,8 +789,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
                     if file_mask & bitboard.w_all == 0 {
                         b_feature_map.open_rook_count += 1;
-                    } else {
+                    } else if b_semi_open_line_mask & file_mask == 0 {
                         b_feature_map.semi_open_rook_count += 1;
+                        b_semi_open_line_mask |= file_mask;
                     }
                 }
             },
@@ -1683,6 +1687,18 @@ mod tests {
 
         assert_eq!(1, w_features.king_lost_cas_rights);
         assert_eq!(1, b_features.king_lost_cas_rights);
+    }
+
+    #[test]
+    fn test_extract_features_x2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+
+        let state = State::new("1nbqkbrr/p1ppppp1/1p6/8/8/8/RPPPPPPP/RNBQKBN1 w Qk - 0 1", &zob_keys, &bitmask);
+        let (w_features, b_features) = extract_features(&state);
+
+        assert_eq!(1, w_features.semi_open_rook_count);
+        assert_eq!(1, b_features.semi_open_rook_count);
     }
 
     #[test]
