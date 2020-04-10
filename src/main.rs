@@ -136,15 +136,13 @@ fn main() {
             UciProcessResult::IgnoredOption => {
                 print_uci_ok();
             },
-            UciProcessResult::Noop => {
-                print_uci_ok();
-            },
             UciProcessResult::Reset => {
                 search_engine.reset();
             },
             UciProcessResult::Quit => {
                 std::process::exit(0);
-            }
+            },
+            UciProcessResult::Noop => {},
         }
     }
 }
