@@ -21,7 +21,7 @@ const MAX_NON_CAP_SCORE: i32 = 200000;
 const PRIMARY_KILLER_SCORE: i32 = -11; // place the first killer right after all equal captures (BISHOP-KNIGHT)
 const SECONDARY_KILLER_SCORE: i32 = -1001; // place the second killer after the last capture (-QUEEN-1)
 
-const WINDOW_SIZE: i32 = 30;
+const WINDOW_SIZE: i32 = 20;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
