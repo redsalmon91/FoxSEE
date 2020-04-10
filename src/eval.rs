@@ -558,7 +558,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.passed_pawn_rank_count += rank;
 
                     if behind_mask & bitmask.k_attack_masks[index] & bitboard.w_pawn != 0 {
-                        w_feature_map.passed_pawn_rank_count += rank / 2;
+                        w_feature_map.passed_pawn_rank_count += 1;
                     }
                 }
 
@@ -594,7 +594,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.passed_pawn_rank_count += rank;
 
                     if behind_mask & bitmask.k_attack_masks[index] & bitboard.b_pawn != 0 {
-                        b_feature_map.passed_pawn_rank_count += rank / 2;
+                        b_feature_map.passed_pawn_rank_count += 1;
                     }
                 }
 
@@ -1597,7 +1597,7 @@ mod tests {
         assert_eq!(5, w_features.passed_pawn_rank_count);
 
         assert_eq!(1, b_features.passed_pawn_count);
-        assert_eq!(6, b_features.passed_pawn_rank_count);
+        assert_eq!(5, b_features.passed_pawn_rank_count);
     }
 
     #[test]

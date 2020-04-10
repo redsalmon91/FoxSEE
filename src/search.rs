@@ -1388,7 +1388,7 @@ mod tests {
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d4"));
-        assert_eq!(to, util::map_sqr_notation_to_index("d5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("c3"));
     }
 
     #[test]
