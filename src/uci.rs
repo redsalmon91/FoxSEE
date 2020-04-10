@@ -10,6 +10,7 @@ use crate::{
 use std::io::{self, prelude::*};
 
 const DEFAULT_MOVS_TO_GO: u128 = 28;
+const DEFAULT_MOVS_TO_GO_NO_INCREMENT: u128 = 42;
 
 pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -153,7 +154,7 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
 
         movs_to_go = DEFAULT_MOVS_TO_GO;
     } else {
-        movs_to_go = DEFAULT_MOVS_TO_GO;
+        movs_to_go = DEFAULT_MOVS_TO_GO_NO_INCREMENT;
     };
 
     UciProcessResult::StartSearchWithComplextTimeControl((
