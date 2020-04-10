@@ -18,10 +18,10 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const MAX_HISTORY_SCORE: i32 = 100000;
 const MAX_NON_CAP_SCORE: i32 = 200000;
-const PRIMARY_KILLER_SCORE: i32 = -11; // place the first killer right after all equal captures (BISHOP-KNIGHT)
-const SECONDARY_KILLER_SCORE: i32 = -1001; // place the second killer after the last capture (-QUEEN-1)
+const PRIMARY_KILLER_SCORE: i32 = -11;
+const SECONDARY_KILLER_SCORE: i32 = -1001;
 
-const WINDOW_SIZE: i32 = 20;
+const WINDOW_SIZE: i32 = 25;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -39,7 +39,8 @@ const IID_R: u8 = 2;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
-const SIGNIFICANT_SCORE_DROP: i32 = 200;
+const SIGNIFICANT_SCORE_DIFF: i32 = 100;
+const THREAT_SCORE_DIFF: i32 = 170;
 
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
@@ -196,7 +197,7 @@ impl SearchEngine {
                 break
             }
 
-            if score < self.recent_search_score - SIGNIFICANT_SCORE_DROP && self.max_time_millis == time_capacity.main_time_millis {
+            if score < self.recent_search_score - SIGNIFICANT_SCORE_DIFF && self.max_time_millis == time_capacity.main_time_millis {
                 self.max_time_millis += time_capacity.extra_time_millis;
             } else if !pv_changed {
                 if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
@@ -426,7 +427,7 @@ impl SearchEngine {
                 if !on_pv {
                     return beta
                 }
-            } else if scout_score < -eval::TERM_VAL {
+            } else if scout_score + THREAT_SCORE_DIFF <= alpha {
                 under_threat = true;
             }
         }
@@ -579,7 +580,7 @@ impl SearchEngine {
             let mut depth = depth;
 
             if ply < MAX_EXTEND_PLY {
-                if under_threat || gives_check || is_threating_pawn_mov {
+                if gives_check || under_threat || is_threating_pawn_mov {
                     depth += 1;
                 }
             }
@@ -1388,6 +1389,25 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("d4"));
         assert_eq!(to, util::map_sqr_notation_to_index("d5"));
+    }
+
+    #[test]
+    fn test_search_x8() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("b3r3/P7/P6p/3k1B1P/3B1pP1/3K4/8/8 w - - 3 72", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 25500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("g4"));
+        assert_eq!(to, util::map_sqr_notation_to_index("g5"));
     }
 
     #[test]

@@ -24,7 +24,7 @@ A master-level UCI chess engine written in Rust!
 - Static Exchange Evalution (SEE)
 - MVV/LVA
 - Check Extensions
-- Mate-Threat Extensions
+- Deep Search Extensions
 - Pawn-Threat Extensions
 - Singular Extensions
 - Late-Move Reductions
