@@ -26,7 +26,7 @@ static P_VAL: i32 = 100;
 static KING_EXPOSED_PEN: i32 = -50;
 static KING_THREAT_BASE_PEN: i32 = -20;
 static KING_PAWN_THREAT_BASE_PEN: i32 = -30;
-static KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
+static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
 static PASS_PAWN_BASE_VAL: i32 = 30;
 static PASS_PAWN_RANK_VAL: i32 = 20;
