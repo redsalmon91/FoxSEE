@@ -48,7 +48,6 @@ fn main() {
         match uci_cmd_process_result {
             UciProcessResult::SetHashSize(hash_size) => {
                 search_engine.set_hash_size(hash_size);
-                print_uci_ok();
             },
             UciProcessResult::Position(fen_str, mov_list) => {
                 state = State::new(&fen_str, &zob_keys, &bitmask);
@@ -131,16 +130,14 @@ fn main() {
             }
             UciProcessResult::Stop => {
                 search_engine.stop();
-                print_uci_ok();
-            },
-            UciProcessResult::IgnoredOption => {
-                print_uci_ok();
             },
             UciProcessResult::Reset => {
                 search_engine.reset();
             },
             UciProcessResult::Quit => {
                 std::process::exit(0);
+            },
+            UciProcessResult::IgnoredOption => {
             },
             UciProcessResult::Noop => {},
         }
@@ -150,12 +147,6 @@ fn main() {
 #[inline]
 fn print_best_mov(best_mov: u32) {
     println!("bestmove {}", util::format_mov(best_mov));
-    io::stdout().flush().ok();
-}
-
-#[inline]
-fn print_uci_ok() {
-    println!("uciok");
     io::stdout().flush().ok();
 }
 
