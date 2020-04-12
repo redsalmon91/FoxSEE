@@ -51,11 +51,6 @@ static ENDGMAE_MOB_BASE_VAL: i32 = 2;
 static ENDGAME_ROOK_EXTRA_VAL: i32 = 30;
 static ENDGAME_QUEEN_EXTRA_VAL: i32 = 30;
 
-static TRAPPED_Q_PEN: i32 = -90;
-static TRAPPED_R_PEN: i32 = -80;
-static TRAPPED_B_PEN: i32 = -60;
-static TRAPPED_N_PEN: i32 = -60;
-
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
 static R_PHASE_WEIGHT: i32 = 8;
@@ -274,11 +269,6 @@ pub struct FeatureMap {
 
     mobility: i32,
 
-    trapped_knight_count: i32,
-    trapped_bishop_count: i32,
-    trapped_rook_count: i32,
-    trapped_queen_count: i32,
-
     semi_open_rook_count: i32,
     open_rook_count: i32,
 
@@ -313,11 +303,6 @@ impl FeatureMap {
             behind_pawn_count: 0,
 
             mobility: 0,
-
-            trapped_knight_count: 0,
-            trapped_bishop_count: 0,
-            trapped_rook_count: 0,
-            trapped_queen_count: 0,
 
             semi_open_rook_count: 0,
             open_rook_count: 0,
@@ -432,16 +417,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 
     let (w_features_map, b_features_map) = extract_features(state);
 
-    let shared_positional_score =
-        w_features_map.trapped_knight_count * TRAPPED_N_PEN
-        + w_features_map.trapped_bishop_count * TRAPPED_B_PEN
-        + w_features_map.trapped_rook_count * TRAPPED_R_PEN
-        + w_features_map.trapped_queen_count * TRAPPED_Q_PEN
-        - b_features_map.trapped_knight_count * TRAPPED_N_PEN
-        - b_features_map.trapped_bishop_count * TRAPPED_B_PEN
-        - b_features_map.trapped_rook_count * TRAPPED_R_PEN
-        - b_features_map.trapped_queen_count * TRAPPED_Q_PEN;
-
     let midgame_positional_score =
         w_features_map.midgame_sqr_point_count
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
@@ -495,7 +470,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     + b_features_map.bishop_count * B_PHASE_WEIGHT
     + b_features_map.knight_count * N_PHASE_WEIGHT;
 
-    let extra_score = shared_positional_score + (midgame_positional_score * phase + endgame_positional_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
+    let extra_score = (midgame_positional_score * phase + endgame_positional_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
 
     material_score + extra_score * score_sign + TEMPO_VAL
 }
@@ -525,8 +500,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     let mut w_semi_open_line_mask = 0;
     let mut b_semi_open_line_mask = 0;
-
-    let mut mov_mask_map = [0; def::BOARD_SIZE];
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
     let start_index = occupy_mask.trailing_zeros() as usize;
@@ -620,14 +593,12 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let mov_mask = bitmask.n_attack_masks[index];
                 wn_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
             },
             def::BN => {
                 b_feature_map.midgame_sqr_point_count += SQR_TABLE_BN[index];
 
                 let mov_mask = bitmask.n_attack_masks[index];
                 bn_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
             },
 
             def::WB => {
@@ -664,7 +635,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 wb_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
             },
             def::BB => {
                 b_feature_map.midgame_sqr_point_count += SQR_TABLE_BB[index];
@@ -700,7 +670,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 bb_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
             },
 
             def::WR => {
@@ -737,7 +706,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 wr_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
 
                 let file_mask = file_masks[index];
                 if file_mask & (bitboard.w_all ^ bitboard.w_rook) == 0 {
@@ -783,7 +751,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 br_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
 
                 let file_mask = file_masks[index];
                 if file_mask & (bitboard.b_all ^ bitboard.b_rook) == 0 {
@@ -863,7 +830,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 wq_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
             },
             def::BQ => {
                 b_feature_map.midgame_sqr_point_count += SQR_TABLE_BQ[index];
@@ -932,7 +898,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
 
                 bq_attack_mask |= mov_mask;
-                mov_mask_map[index] = mov_mask;
             },
 
             def::WK => {
@@ -1036,102 +1001,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         w_feature_map.queen_side_pawn_count = (bitboard.w_pawn & BOARD_R_MASK).count_ones() as i32;
     } else if bk_index_mask & BOARD_R_MASK != 0 {
         w_feature_map.queen_side_pawn_count = (bitboard.w_pawn & BOARD_L_MASK).count_ones() as i32;
-    }
-
-    // check trapped pieces
-
-    let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index];
-    let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
-
-    for index in start_index..end_index {
-        let moving_piece = squares[index];
-
-        if moving_piece == 0 {
-            continue
-        }
-
-        match moving_piece {
-            def::WN => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !bp_attack_mask;
-                mov_mask &= !(b_attack_mask & !(w_attack_mask & !bitmask.n_attack_masks[index]));
-
-                if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
-                    w_feature_map.trapped_knight_count += 1;
-                }
-            },
-            def::WB => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !bp_attack_mask;
-                mov_mask &= !(b_attack_mask & !(w_attack_mask & !bitmask.b_attack_masks[index]));
-
-                if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
-                    w_feature_map.trapped_bishop_count += 1;
-                }
-            },
-            def::WR => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !(bp_attack_mask | bn_attack_mask | bb_attack_mask);
-                mov_mask &= !(b_attack_mask & !(w_attack_mask & !bitmask.r_attack_masks[index]));
-
-                if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
-                    w_feature_map.trapped_rook_count += 1;
-                }
-            },
-            def::WQ => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask);
-
-                if mov_mask == 0 {
-                    w_feature_map.trapped_queen_count += 1;
-                }
-            },
-
-            def::BN => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !wp_attack_mask;
-                mov_mask &= !(w_attack_mask & !(b_attack_mask & !bitmask.n_attack_masks[index]));
-
-                if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
-                    b_feature_map.trapped_knight_count += 1;
-                }
-            },
-            def::BB => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !wp_attack_mask;
-                mov_mask &= !(w_attack_mask & !(b_attack_mask & !bitmask.b_attack_masks[index]));
-
-                if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
-                    b_feature_map.trapped_bishop_count += 1;
-                }
-            },
-            def::BR => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !(wp_attack_mask | wn_attack_mask | wb_attack_mask);
-                mov_mask &= !(w_attack_mask & !(b_attack_mask & !bitmask.r_attack_masks[index]));
-
-                if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
-                    b_feature_map.trapped_rook_count += 1;
-                }
-            },
-            def::BQ => {
-                let mut mov_mask = mov_mask_map[index];
-
-                mov_mask &= !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask);
-
-                if mov_mask == 0 {
-                    b_feature_map.trapped_queen_count += 1;
-                }
-            },
-            _ => {},
-        }
     }
 
     // king threats
@@ -1575,21 +1444,6 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("8/p7/1p6/2p5/4P3/4P3/4P3/8 w - - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(3, w_features.dup_pawn_count);
-        assert_eq!(3, w_features.isolate_pawn_count);
-
-        assert_eq!(0, b_features.dup_pawn_count);
-        assert_eq!(0, b_features.isolate_pawn_count);
-    }
-
-    #[test]
-    fn test_extract_features_6() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
         let state = State::new("rnbqkbnr/3p4/6P1/3P4/1pp5/1N6/3P4/R1BQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
@@ -1601,7 +1455,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_7() {
+    fn test_extract_features_6() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1613,38 +1467,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_8() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
-        let state = State::new("rnbqkbnr/ppp3p1/3p1p1p/4p3/2P1P3/P2P4/1P3PPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(2, w_features.behind_pawn_count);
-        assert_eq!(1, b_features.behind_pawn_count);
-    }
-
-    #[test]
-    fn test_extract_features_9() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
-        let state = State::new("rnbqk1nr/p1p1pppp/3p4/Np6/2p1P3/6P1/PPPPNP1b/R1BQKB1R w KQkq - 0 1", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(1, w_features.trapped_knight_count);
-        assert_eq!(0, w_features.trapped_bishop_count);
-        assert_eq!(0, w_features.trapped_rook_count);
-        assert_eq!(0, w_features.trapped_queen_count);
-
-        assert_eq!(0, b_features.trapped_knight_count);
-        assert_eq!(1, b_features.trapped_bishop_count);
-        assert_eq!(0, b_features.trapped_rook_count);
-        assert_eq!(0, b_features.trapped_queen_count);
-    }
-
-    #[test]
-    fn test_extract_features_x() {
+    fn test_extract_features_7() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1659,7 +1482,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_x1() {
+    fn test_extract_features_8() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1690,7 +1513,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_x2() {
+    fn test_extract_features_9() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
