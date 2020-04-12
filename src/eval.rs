@@ -1710,7 +1710,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("4nk2/8/8/8/4K3/3R4/8/8 w - - 0 1", &zob_keys, &bitmask);
+        let state = State::new("8/2k5/8/4N3/8/4N3/5K2/8 w - - 0 1", &zob_keys, &bitmask);
         let (score, is_draw) = eval_materials(&state);
         assert_eq!(0, score);
         assert!(is_draw);
@@ -1721,29 +1721,7 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("3r1k2/8/8/8/4K3/8/8/4B3 b - - 0 1", &zob_keys, &bitmask);
-        let (score, is_draw) = eval_materials(&state);
-        assert_eq!(0, score);
-        assert!(is_draw);
-    }
-
-    #[test]
-    fn test_draw_endgame_4() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
-        let state = State::new("3r1k2/8/8/4R3/4K3/5N2/8/8 w - - 0 1", &zob_keys, &bitmask);
-        let (score, is_draw) = eval_materials(&state);
-        assert_eq!(0, score);
-        assert!(is_draw);
-    }
-
-    #[test]
-    fn test_draw_endgame_5() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
-        let state = State::new("3rb3/2k5/8/4R3/4K3/8/8/8 b - - 0 1", &zob_keys, &bitmask);
+        let state = State::new("4b3/2k5/8/5N2/4K3/8/8/8 b - - 0 1", &zob_keys, &bitmask);
         let (score, is_draw) = eval_materials(&state);
         assert_eq!(0, score);
         assert!(is_draw);
