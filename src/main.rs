@@ -100,7 +100,7 @@ fn main() {
                 }
             },
             UciProcessResult::StartSearchWithTime(time_millis) => {
-                let best_mov = search_engine.search(&mut state, TimeCapacity { main_time_millis: time_millis, extra_time_millis: 0 }, DEFAULT_MAX_DEPTH);
+                let best_mov = search_engine.search(&mut state, time_control::calculate_time_capacity(time_millis, 1, 0), DEFAULT_MAX_DEPTH);
                 print_best_mov(best_mov);
             },
             UciProcessResult::StartSearchWithComplextTimeControl((w_time_info, b_time_info)) => {
