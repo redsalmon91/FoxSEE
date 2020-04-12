@@ -373,40 +373,17 @@ pub fn val_of(piece: u8) -> i32 {
 pub fn eval_materials(state: &State) -> (i32, bool) {
     let bitboard = state.bitboard;
 
-    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen == 0 {
-        if bitboard.w_rook | bitboard.b_rook == 0 {
-            if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
-                return (0, true)
-            }
+    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen | bitboard.w_rook | bitboard.b_rook == 0 {
+        if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
+            return (0, true)
+        }
 
-            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
-                return (0, true)
-            }
+        if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
+            return (0, true)
+        }
 
-            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
-                return (0, true)
-            }
-        } else {
-            let w_rook_count = bitboard.w_rook.count_ones();
-            let b_rook_count = bitboard.b_rook.count_ones();
-
-            if w_rook_count == 1 && b_rook_count == 1 {
-                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
-                    return (0, true)
-                }
-
-                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
-                    return (0, true)
-                }
-            } else if w_rook_count == 1 && b_rook_count == 0 {
-                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
-                    return (0, true)
-                }
-            }  else if b_rook_count == 1 && w_rook_count == 0 {
-                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
-                    return (0, true)
-                }
-            }
+        if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
+            return (0, true)
         }
     }
 
