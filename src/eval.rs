@@ -340,8 +340,45 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
-pub fn eval_materials(state: &State) -> i32 {
+pub fn eval_materials(state: &State) -> (i32, bool) {
     let bitboard = state.bitboard;
+
+    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen == 0 {
+        if bitboard.w_rook | bitboard.b_rook == 0 {
+            if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
+                return (0, true)
+            }
+
+            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
+                return (0, true)
+            }
+
+            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
+                return (0, true)
+            }
+        } else {
+            let w_rook_count = bitboard.w_rook.count_ones();
+            let b_rook_count = bitboard.b_rook.count_ones();
+
+            if w_rook_count == 1 && b_rook_count == 1 {
+                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
+                    return (0, true)
+                }
+
+                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
+                    return (0, true)
+                }
+            } else if w_rook_count == 1 && b_rook_count == 0 {
+                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
+                    return (0, true)
+                }
+            }  else if b_rook_count == 1 && w_rook_count == 0 {
+                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
+                    return (0, true)
+                }
+            }
+        }
+    }
 
     let score_sign = if state.player == def::PLAYER_W {
         1
@@ -349,7 +386,7 @@ pub fn eval_materials(state: &State) -> i32 {
         -1
     };
 
-    (bitboard.w_queen.count_ones() as i32 * Q_VAL
+    let score = (bitboard.w_queen.count_ones() as i32 * Q_VAL
     + bitboard.w_rook.count_ones() as i32 * R_VAL
     + bitboard.w_bishop.count_ones() as i32 * B_VAL
     + bitboard.w_knight.count_ones() as i32 * N_VAL
@@ -358,7 +395,9 @@ pub fn eval_materials(state: &State) -> i32 {
     - bitboard.b_rook.count_ones() as i32 * R_VAL
     - bitboard.b_bishop.count_ones() as i32 * B_VAL
     - bitboard.b_knight.count_ones() as i32 * N_VAL
-    - bitboard.b_pawn.count_ones() as i32 * P_VAL) * score_sign
+    - bitboard.b_pawn.count_ones() as i32 * P_VAL) * score_sign;
+
+    (score, false)
 }
 
 pub fn get_phase(state: &State) -> i32 {
@@ -371,44 +410,6 @@ pub fn get_phase(state: &State) -> i32 {
 }
 
 pub fn eval_state(state: &State, material_score: i32) -> i32 {
-    let bitboard = state.bitboard;
-    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen == 0 {
-        if bitboard.w_rook | bitboard.b_rook == 0 {
-            if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
-                return 0
-            }
-
-            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
-                return 0
-            }
-
-            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
-                return 0
-            }
-        } else {
-            let w_rook_count = bitboard.w_rook.count_ones();
-            let b_rook_count = bitboard.b_rook.count_ones();
-
-            if w_rook_count == 1 && b_rook_count == 1 {
-                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
-                    return 0
-                }
-
-                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
-                    return 0
-                }
-            } else if w_rook_count == 1 && b_rook_count == 0 {
-                if bitboard.w_knight | bitboard.w_bishop == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 {
-                    return 0
-                }
-            }  else if b_rook_count == 1 && w_rook_count == 0 {
-                if bitboard.b_knight | bitboard.b_bishop == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 {
-                    return 0
-                }
-            }
-        }
-    }
-
     let score_sign = if state.player == def::PLAYER_W {
         1
     } else {
@@ -1530,7 +1531,9 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("8/2k5/8/8/8/4N3/5K2/8 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+        let (score, is_draw) = eval_materials(&state);
+        assert_eq!(0, score);
+        assert!(is_draw);
     }
 
     #[test]
@@ -1539,7 +1542,9 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("4nk2/8/8/8/4K3/3R4/8/8 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+        let (score, is_draw) = eval_materials(&state);
+        assert_eq!(0, score);
+        assert!(is_draw);
     }
 
     #[test]
@@ -1548,7 +1553,9 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("3r1k2/8/8/8/4K3/8/8/4B3 b - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+        let (score, is_draw) = eval_materials(&state);
+        assert_eq!(0, score);
+        assert!(is_draw);
     }
 
     #[test]
@@ -1557,7 +1564,9 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("3r1k2/8/8/4R3/4K3/5N2/8/8 w - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+        let (score, is_draw) = eval_materials(&state);
+        assert_eq!(0, score);
+        assert!(is_draw);
     }
 
     #[test]
@@ -1566,6 +1575,8 @@ mod tests {
         let bitmask = BitMask::new();
 
         let state = State::new("3rb3/2k5/8/4R3/4K3/8/8/8 b - - 0 1", &zob_keys, &bitmask);
-        assert_eq!(0, eval_state(&state, eval_materials(&state)));
+        let (score, is_draw) = eval_materials(&state);
+        assert_eq!(0, score);
+        assert!(is_draw);
     }
 }
