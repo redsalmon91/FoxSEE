@@ -21,7 +21,7 @@ const MAX_NON_CAP_SCORE: i32 = 200000;
 const PRIMARY_KILLER_SCORE: i32 = -11;
 const SECONDARY_KILLER_SCORE: i32 = -1001;
 
-const WINDOW_SIZE: i32 = 25;
+const WINDOW_SIZE: i32 = 45;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -54,7 +54,6 @@ pub struct SearchEngine {
     primary_killer_table: [(i32, u32); PV_TRACK_LENGTH],
     secondary_killer_table: [(i32, u32); PV_TRACK_LENGTH],
     index_history_table: [[i32; def::BOARD_SIZE]; def::BOARD_SIZE],
-    root_node_mov_list: Vec<(u8, i32, u32)>,
     time_tracker: Instant,
 
     abort: bool,
@@ -70,7 +69,6 @@ impl SearchEngine {
             primary_killer_table: [(0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0); PV_TRACK_LENGTH],
             index_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
-            root_node_mov_list: Vec::new(),
             time_tracker: Instant::now(),
 
             abort: false,
@@ -133,7 +131,6 @@ impl SearchEngine {
         self.time_tracker = Instant::now();
         self.max_time_millis = time_capacity.main_time_millis;
         self.abort = false;
-        self.root_node_mov_list.clear();
 
         self.primary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0); PV_TRACK_LENGTH];
@@ -222,47 +219,81 @@ impl SearchEngine {
     }
 
     fn root_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, depth: u8, ply: u8) -> (i32, u32) {
-        if self.root_node_mov_list.is_empty() {
-            let mut mov_list = [0; def::MAX_MOV_COUNT];
-
-            mov_table::gen_reg_mov_list(state, &mut mov_list);
-
-            for mov_index in 0..def::MAX_CAP_COUNT {
-                let mov = mov_list[mov_index];
-
-                if mov == 0 {
-                    break
-                }
-
-                let (from, to, tp, promo) = util::decode_u32_mov(mov);
-
-                if state.squares[to] != 0 {
-                    self.root_node_mov_list.push((depth, see(state, from, to, tp, promo), mov));
-                } else {
-                    self.root_node_mov_list.push((depth, -eval::val_of(state.squares[from]), mov));
-                }
-            }
-        }
-
-        self.root_node_mov_list.sort_by(|(depth_a, score_a, _), (depth_b, score_b, _)| {
-            if depth_a == depth_b {
-                score_b.partial_cmp(&score_a).unwrap()
-            } else {
-                depth_b.partial_cmp(&depth_a).unwrap()
-            }
-        });
-
         let original_alpha = alpha;
 
         let mut pv_found = false;
         let mut best_mov = 0;
+        let mut pv_mov = 0;
 
-        for mov_index in 0..self.root_node_mov_list.len() {
+        match self.get_hash(state, depth) {
+            Match(_flag, _score, mov) => {
+                pv_mov = mov;
+            },
+            MovOnly(mov) => {
+                pv_mov = mov;
+            },
+            _ => (),
+        }
+
+        if pv_mov != 0 {
+            let (from, to, tp, promo) = util::decode_u32_mov(pv_mov);
+
+            state.do_mov(from, to, tp, promo);
+
+            let gives_check = mov_table::is_in_check(state, state.player);
+
+            let score = -self.ab_search(state, gives_check, false, -beta, -alpha, depth - 1, ply + 1);
+
+            state.undo_mov(from, to, tp);
+
+            if self.abort {
+                return (alpha, pv_mov)
+            }
+
+            if score >= beta {
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
+
+                return (score, pv_mov)
+            }
+
+            if score > alpha {
+                alpha = score;
+                pv_found = true;
+                best_mov = pv_mov;
+            }
+        }
+
+        let mut mov_list = [0; def::MAX_MOV_COUNT];
+
+        mov_table::gen_reg_mov_list(state, &mut mov_list);
+
+        let mut scored_mov_list = Vec::new();
+
+        for mov_index in 0..def::MAX_CAP_COUNT {
+            let mov = mov_list[mov_index];
+
+            if mov == 0 {
+                break
+            }
+
+            let (from, to, tp, promo) = util::decode_u32_mov(mov);
+
+            if state.squares[to] != 0 {
+                scored_mov_list.push((see(state, from, to, tp, promo), mov));
+            } else {
+                scored_mov_list.push((-eval::val_of(state.squares[from]), mov));
+            }
+        }
+
+        scored_mov_list.sort_by(|(score_a, _), (score_b, _)| {
+            score_b.partial_cmp(&score_a).unwrap()
+        });
+
+        for (_score, mov) in scored_mov_list {
             if self.abort {
                 break
             }
 
-            let (_depth, _score, mov) = self.root_node_mov_list[mov_index];
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             state.do_mov(from, to, tp, promo);
@@ -286,8 +317,6 @@ impl SearchEngine {
             if self.abort {
                 break
             }
-
-            self.root_node_mov_list[mov_index] = (depth, score, mov);
 
             if score >= beta {
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
