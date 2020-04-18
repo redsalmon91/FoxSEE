@@ -6,7 +6,7 @@ A master-level UCI chess engine written in Rust!
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)
 ![License](https://img.shields.io/github/license/redsalmon91/FoxSEE)
 
-[CCRL Blitz Rating (v2.12.0)](http://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=FoxSEE%202.12.0%2064-bit#FoxSEE_2_12_0_64-bit)
+[CCRL Blitz Rating (v3.2.1)](http://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=FoxSEE%203.2.1%2064-bit#FoxSEE_3_2_1_64-bit)
 
 [Lichess Profile](https://lichess.org/@/FoxSEEEngine)
 

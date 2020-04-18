@@ -3,7 +3,7 @@
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "3.2.2";
+pub static VERSION: &str = "3.2.3";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -75,6 +75,11 @@ pub fn get_rank(player: u8, index: usize) -> usize {
 }
 
 #[inline]
+pub fn get_file_distance(index1: usize, index2: usize) -> i32 {
+    ((index1 % DIM_SIZE) as isize - (index2 % DIM_SIZE) as isize).abs() as i32
+}
+
+#[inline]
 pub const fn is_k(piece_code: u8) -> bool {
     piece_code & K != 0
 }
@@ -125,6 +130,12 @@ mod tests {
         assert_eq!(7, get_rank(PLAYER_B, 2));
         assert_eq!(3, get_rank(PLAYER_B, 35));
         assert_eq!(7, get_rank(PLAYER_W, 58));
+    }
+
+    #[test]
+    fn test_get_file_distance() {
+        assert_eq!(3, get_file_distance(0, 27));
+        assert_eq!(3, get_file_distance(1, 12));
     }
 
     #[test]
