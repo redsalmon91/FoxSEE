@@ -27,7 +27,7 @@ pub struct TimeInfo {
     pub increment_millis: u128,
 }
 
-pub enum UciProcessResult {
+pub enum UciCommand {
     Noop,
     Reset,
     IgnoredOption,
@@ -39,11 +39,9 @@ pub enum UciProcessResult {
     StartSearchWithComplextTimeControl((TimeInfo, TimeInfo)),
     StartSearchToDepth(u8),
     StartSearchInfinite,
-    Stop,
-    Quit,
 }
 
-pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
+pub fn process_uci_cmd(uci_cmd: &str) -> UciCommand {
     let mut cmd_seq: Vec<&str> = uci_cmd.split(' ').collect();
     match cmd_seq[0] {
         "uci" => {
@@ -52,13 +50,13 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             println!("option name Hash type spin default {} min {} max {}", def::DEFAULT_HASH_SIZE_MB, def::MIN_HASH_SIZE_MB, def::MAX_HASH_SIZE_MB);
             println!("uciok");
             io::stdout().flush().ok();
-            UciProcessResult::Noop
+            UciCommand::Noop
         },
-        "debug" => UciProcessResult::PrintDebugInfo,
+        "debug" => UciCommand::PrintDebugInfo,
         "isready" => {
             println!("readyok");
             io::stdout().flush().ok();
-            UciProcessResult::Noop
+            UciCommand::Noop
         },
         "setoption" => {
             match cmd_seq[2] {
@@ -68,16 +66,16 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
 
                     if hash_ratio == 0 || hash_ratio & (hash_ratio - 1) != 0 {
                         println!("hash size {} is not supported", hash_size_mb);
-                        return UciProcessResult::IgnoredOption
+                        return UciCommand::IgnoredOption
                     }
 
-                    UciProcessResult::SetHashSize(hash_ratio * def::MIN_HASH_SIZE_UNIT)
+                    UciCommand::SetHashSize(hash_ratio * def::MIN_HASH_SIZE_UNIT)
                 },
-                _ => UciProcessResult::IgnoredOption,
+                _ => UciCommand::IgnoredOption,
             }
         },
-        "register" => UciProcessResult::Noop,
-        "ucinewgame" => UciProcessResult::Reset,
+        "register" => UciCommand::Noop,
+        "ucinewgame" => UciCommand::Reset,
         "position" => match cmd_seq[1] {
             "startpos" => {
                 if cmd_seq.len() > 3 {
@@ -94,33 +92,31 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciProcessResult {
             },
             _ => {
                 eprintln!("only support fen or startpos with mov list");
-                UciProcessResult::Noop
+                UciCommand::Noop
             }
         },
         "go" => process_go_cmd(cmd_seq.split_off(0)),
-        "perft" => UciProcessResult::Perft(cmd_seq[1].parse::<u8>().unwrap()),
-        "stop" => UciProcessResult::Stop,
-        "ponderhit" => UciProcessResult::Noop,
-        "quit" => UciProcessResult::Quit,
+        "perft" => UciCommand::Perft(cmd_seq[1].parse::<u8>().unwrap()),
+        "ponderhit" => UciCommand::Noop,
         _ => {
             eprintln!("unknown uci command {}", cmd_seq[0]);
-            UciProcessResult::Noop
+            UciCommand::Noop
         }
     }
 }
 
-fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciProcessResult {
+fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciCommand {
     match go_cmd_seq[1] {
         "wtime" => process_time_control(go_cmd_seq),
-        "movetime" => UciProcessResult::StartSearchWithTime(go_cmd_seq[2].parse::<u128>().unwrap()),
-        "depth" => UciProcessResult::StartSearchToDepth(go_cmd_seq[2].parse::<u8>().unwrap()),
-        "infinite" => UciProcessResult::StartSearchInfinite,
-        "ponder" => UciProcessResult::Noop,
+        "movetime" => UciCommand::StartSearchWithTime(go_cmd_seq[2].parse::<u128>().unwrap()),
+        "depth" => UciCommand::StartSearchToDepth(go_cmd_seq[2].parse::<u8>().unwrap()),
+        "infinite" => UciCommand::StartSearchInfinite,
+        "ponder" => UciCommand::Noop,
         sub_cmd => panic!("unsupported sub command {}", sub_cmd),
     }
 }
 
-fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
+fn process_time_control(go_cmd_seq: Vec<&str>) -> UciCommand {
     assert!(go_cmd_seq[1] == "wtime");
     let wtime = go_cmd_seq[2].parse::<u128>().unwrap();
 
@@ -157,7 +153,7 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
         movs_to_go = DEFAULT_MOVS_TO_GO_NO_INCREMENT;
     };
 
-    UciProcessResult::StartSearchWithComplextTimeControl((
+    UciCommand::StartSearchWithComplextTimeControl((
         TimeInfo{
             all_time_millis: wtime,
             moves_to_go: movs_to_go,
@@ -171,17 +167,17 @@ fn process_time_control(go_cmd_seq: Vec<&str>) -> UciProcessResult {
     ))
 }
 
-fn process_position(fen_str: &str) -> UciProcessResult {
-    UciProcessResult::Position(fen_str.to_owned(), vec![])
+fn process_position(fen_str: &str) -> UciCommand {
+    UciCommand::Position(fen_str.to_owned(), vec![])
 }
 
-fn process_position_with_mov_list(fen_str: &str, mov_str_list: Vec<&str>) -> UciProcessResult {
+fn process_position_with_mov_list(fen_str: &str, mov_str_list: Vec<&str>) -> UciCommand {
     let mut mov_list = Vec::new();
     for mov_str in mov_str_list {
         mov_list.push(parse_mov_str(mov_str));
     }
 
-    UciProcessResult::Position(fen_str.to_owned(), mov_list)
+    UciCommand::Position(fen_str.to_owned(), mov_list)
 }
 
 fn parse_mov_str(mov_str: &str) -> Rawmov {

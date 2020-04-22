@@ -45,6 +45,8 @@ const THREAT_SCORE_DIFF: i32 = 170;
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
 
+pub static mut ABORT_SEARCH: bool = false;
+
 use std::time::Instant;
 use LookupResult::*;
 
@@ -56,7 +58,6 @@ pub struct SearchEngine {
     index_history_table: [[i32; def::BOARD_SIZE]; def::BOARD_SIZE],
     time_tracker: Instant,
 
-    abort: bool,
     max_time_millis: u128,
     recent_search_score: i32,
 }
@@ -71,14 +72,9 @@ impl SearchEngine {
             index_history_table: [[0; def::BOARD_SIZE]; def::BOARD_SIZE],
             time_tracker: Instant::now(),
 
-            abort: false,
             max_time_millis: 0,
             recent_search_score: 0,
         }
-    }
-
-    pub fn stop(&mut self) {
-        self.abort = true;
     }
 
     pub fn reset(&mut self) {
@@ -130,11 +126,14 @@ impl SearchEngine {
     pub fn search(&mut self, state: &mut State, time_capacity: TimeCapacity, max_depth: u8) -> u32 {
         self.time_tracker = Instant::now();
         self.max_time_millis = time_capacity.main_time_millis;
-        self.abort = false;
 
         self.primary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.index_history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
+
+        unsafe {
+            ABORT_SEARCH = false;
+        }
 
         let mut alpha = self.recent_search_score - WINDOW_SIZE;
         let mut beta = self.recent_search_score + WINDOW_SIZE;
@@ -151,8 +150,10 @@ impl SearchEngine {
 
             let (score, mov) = self.root_search(state, alpha, beta, depth, 0);
 
-            if self.abort {
-                break
+            unsafe {
+                if ABORT_SEARCH {
+                    break
+                }
             }
 
             if score <= alpha {
@@ -246,8 +247,10 @@ impl SearchEngine {
 
             state.undo_mov(from, to, tp);
 
-            if self.abort {
-                return (alpha, pv_mov)
+            unsafe {
+                if ABORT_SEARCH {
+                    return (alpha, pv_mov)
+                }
             }
 
             if score >= beta {
@@ -290,8 +293,10 @@ impl SearchEngine {
         });
 
         for (_score, mov) in scored_mov_list {
-            if self.abort {
-                break
+            unsafe {
+                if ABORT_SEARCH {
+                    break
+                }
             }
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
@@ -314,8 +319,10 @@ impl SearchEngine {
 
             state.undo_mov(from, to, tp);
 
-            if self.abort {
-                break
+            unsafe {
+                if ABORT_SEARCH {
+                    break
+                }
             }
 
             if score >= beta {
@@ -341,15 +348,17 @@ impl SearchEngine {
     }
 
     fn ab_search(&mut self, state: &mut State, in_check: bool, on_cut: bool, mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
-        if self.abort {
-            return alpha
+        unsafe {
+            if ABORT_SEARCH {
+                return alpha
+            }
         }
 
         unsafe {
             NODE_COUNT += 1;
 
             if (NODE_COUNT & TIME_CHECK_INTEVAL == 0) && self.time_tracker.elapsed().as_millis() > self.max_time_millis {
-                self.abort = true;
+                ABORT_SEARCH = true;
                 return alpha
             }
         }
@@ -448,8 +457,10 @@ impl SearchEngine {
             let scout_score = -self.ab_search(state, false, true, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
             state.undo_null_mov();
 
-            if self.abort {
-                return alpha
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
             }
 
             if scout_score >= beta {
@@ -482,8 +493,10 @@ impl SearchEngine {
         if on_pv && pv_mov == 0 && depth >= 5 {
             self.ab_search(state, in_check, false, alpha, beta, depth - IID_R, ply);
 
-            if self.abort {
-                return alpha
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
             }
 
             match self.get_hash(state, depth) {
@@ -529,8 +542,10 @@ impl SearchEngine {
 
             state.undo_mov(from, to, tp);
 
-            if self.abort {
-                return alpha
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
             }
 
             if score >= beta {
@@ -595,8 +610,10 @@ impl SearchEngine {
             }
         }
 
-        if self.abort {
-            return alpha
+        unsafe {
+            if ABORT_SEARCH {
+                return alpha
+            }
         }
 
         for (_score, mov) in ordered_mov_list {
@@ -653,8 +670,10 @@ impl SearchEngine {
 
             state.undo_mov(from, to, tp);
 
-            if self.abort {
-                return alpha
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
             }
 
             if score >= beta {
@@ -718,8 +737,10 @@ impl SearchEngine {
             let scout_score = -self.ab_search(state, false, true, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
             state.undo_mov(from, to, tp);
 
-            if self.abort {
-                return false
+            unsafe {
+                if ABORT_SEARCH {
+                    return false
+                }
             }
 
             if scout_score >= beta {
@@ -735,8 +756,10 @@ impl SearchEngine {
     }
 
     fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8) -> i32 {
-        if self.abort {
-            return alpha
+        unsafe {
+            if ABORT_SEARCH {
+                return alpha
+            }
         }
 
         unsafe {
@@ -835,8 +858,10 @@ impl SearchEngine {
             let score = -self.q_search(state, -beta, -alpha, ply + 1);
             state.undo_mov(from, to, tp);
 
-            if self.abort {
-                return alpha
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
             }
 
             if score >= beta {
