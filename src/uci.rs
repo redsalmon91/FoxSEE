@@ -52,7 +52,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciCommand {
             io::stdout().flush().ok();
             UciCommand::Noop
         },
-        "debug" => UciCommand::PrintDebugInfo,
+        "printdebug" => UciCommand::PrintDebugInfo,
         "isready" => {
             println!("readyok");
             io::stdout().flush().ok();
