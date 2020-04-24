@@ -24,7 +24,7 @@ static N_VAL: i32 = 340;
 static P_VAL: i32 = 100;
 
 static KING_EXPOSED_PEN: i32 = -50;
-static KING_THREAT_BASE_PEN: i32 = -20;
+static KING_THREAT_BASE_PEN: i32 = -30;
 static KING_PAWN_THREAT_BASE_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
@@ -1045,8 +1045,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         }
     }
 
-    let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index];
-    let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
+    let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask;
+    let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
 
     // piece counts
 
@@ -1187,7 +1187,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     if bitboard.b_queen != 0 {
         let protector_mask = bitmask.k_attack_masks[state.wk_index];
         w_feature_map.king_pawn_threat_count = (bp_attack_mask & protector_mask).count_ones() as i32;
-        w_feature_map.king_threat_count += ((bn_attack_mask & !wp_attack_mask) & protector_mask).count_ones() as i32;
         w_feature_map.king_threat_count += ((bb_attack_mask & !wp_attack_mask) & protector_mask).count_ones() as i32;
         w_feature_map.king_threat_count += ((br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)) & protector_mask).count_ones() as i32;
         w_feature_map.king_threat_count += ((bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)) & protector_mask).count_ones() as i32;
@@ -1196,7 +1195,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     if bitboard.w_queen != 0 {
         let protector_mask = bitmask.k_attack_masks[state.bk_index];
         b_feature_map.king_pawn_threat_count = (wp_attack_mask & protector_mask).count_ones() as i32;
-        b_feature_map.king_threat_count += ((wn_attack_mask & !bp_attack_mask) & protector_mask).count_ones() as i32;
         b_feature_map.king_threat_count += ((wb_attack_mask & !bp_attack_mask) & protector_mask).count_ones() as i32;
         b_feature_map.king_threat_count += ((wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)) & protector_mask).count_ones() as i32;
         b_feature_map.king_threat_count += ((wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)) & protector_mask).count_ones() as i32;
@@ -1253,8 +1251,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WR => {
                 if (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask != 0 {
                     w_feature_map.threatened_piece_count += 1;
-                } else if w_attack_mask & index_mask != 0 {
-                    w_feature_map.defended_piece_count += 1;
                 }
             },
             def::WQ => {
@@ -1280,8 +1276,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BR => {
                 if (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask != 0 {
                     b_feature_map.threatened_piece_count += 1;
-                } else if b_attack_mask & index_mask != 0 {
-                    b_feature_map.defended_piece_count += 1;
                 }
             },
             def::BQ => {
