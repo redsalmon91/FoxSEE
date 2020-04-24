@@ -66,6 +66,9 @@ pub struct BitMask {
     pub wp_init_mov_masks: [u64; def::BOARD_SIZE],
     pub bp_init_mov_masks: [u64; def::BOARD_SIZE],
 
+    pub wp_front_control_sqr_masks: [u64; def::BOARD_SIZE],
+    pub bp_front_control_sqr_masks: [u64; def::BOARD_SIZE],
+
     pub n_attack_masks: [u64; def::BOARD_SIZE],
     pub k_attack_masks: [u64; def::BOARD_SIZE],
     pub b_attack_masks: [u64; def::BOARD_SIZE],
@@ -102,6 +105,9 @@ impl BitMask {
             wp_init_mov_masks: [0; def::BOARD_SIZE],
             bp_init_mov_masks: [0; def::BOARD_SIZE],
 
+            wp_front_control_sqr_masks: [0; def::BOARD_SIZE],
+            bp_front_control_sqr_masks: [0; def::BOARD_SIZE],
+
             n_attack_masks: [0; def::BOARD_SIZE],
             k_attack_masks: [0; def::BOARD_SIZE],
             b_attack_masks: [0; def::BOARD_SIZE],
@@ -137,8 +143,8 @@ impl BitMask {
 
         bitmask.init_p_attack_masks();
         bitmask.init_p_mov_masks();
-
         bitmask.init_p_misc_masks();
+        bitmask.init_p_endgame_masks();
 
         bitmask
     }
@@ -399,5 +405,55 @@ impl BitMask {
                 self.bp_behind_masks[index] ^= self.up_attack_masks[index + 1] ^ self.index_masks[index + 1];
             }
         }
+    }
+
+    fn init_p_endgame_masks(&mut self) {
+        for index in 8..def::BOARD_SIZE - 16 {
+            let mut front_control_mask = 0;
+
+            front_control_mask |= self.index_masks[index + 16];
+
+            if index % 8 != 0 {
+                front_control_mask |= self.index_masks[index + 15];
+            }
+
+            if index % 8 != 7 {
+                front_control_mask |= self.index_masks[index + 17];
+            }
+
+            self.wp_front_control_sqr_masks[index] = front_control_mask;
+        }
+
+        for index in 16..def::BOARD_SIZE - 8 {
+            let mut front_control_mask = 0;
+
+            front_control_mask |= self.index_masks[index - 16];
+
+            if index % 8 != 0 {
+                front_control_mask |= self.index_masks[index - 17];
+            }
+
+            if index % 8 != 7 {
+                front_control_mask |= self.index_masks[index - 15];
+            }
+
+            self.bp_front_control_sqr_masks[index] = front_control_mask;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util;
+
+    #[test]
+    fn test_gen_p_endgame_masks() {
+        let bitmask = BitMask::new();
+
+        assert_eq!(0b00000000_00000000_00111000_00000000_00000000_00000000_00000000_00000000, bitmask.wp_front_control_sqr_masks[util::map_sqr_notation_to_index("e4")]);
+        assert_eq!(0b11000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000, bitmask.wp_front_control_sqr_masks[util::map_sqr_notation_to_index("h6")]);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000011, bitmask.bp_front_control_sqr_masks[util::map_sqr_notation_to_index("a3")]);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000111, bitmask.bp_front_control_sqr_masks[util::map_sqr_notation_to_index("b3")]);
     }
 }

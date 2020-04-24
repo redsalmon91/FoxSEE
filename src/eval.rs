@@ -31,7 +31,7 @@ static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 static PASS_PAWN_BASE_VAL: i32 = 30;
 static PASS_PAWN_RANK_VAL: i32 = 20;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 200;
-static QUEEN_SIDE_PAWN_VAL: i32 = 20;
+static CONTROLLED_PASS_PAWN_VAL: i32 = 30;
 
 static DUP_PAWN_PEN: i32 = -20;
 static ISOLATE_PAWN_PEN: i32 = -20;
@@ -70,9 +70,6 @@ static N_PHASE_WEIGHT: i32 = 4;
 pub static ENDGAME_PHASE: i32 = 16;
 
 static TEMPO_VAL: i32 = 10;
-
-static BOARD_L_MASK: u64 = 0b00000111_00000111_00000111_00000111_00000111_00000111_00000111_00000111;
-static BOARD_R_MASK: u64 = 0b11100000_11100000_11100000_11100000_11100000_11100000_11100000_11100000;
 
 static BOARD_A_FILE: u64 = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001;
 static BOARD_H_FILE: u64 = 0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
@@ -272,7 +269,7 @@ pub struct FeatureMap {
     passed_pawn_count: i32,
     passed_pawn_rank_count: i32,
     unstoppable_passed_pawn_count: i32,
-    queen_side_pawn_count: i32,
+    controlled_passed_pawn_count: i32,
 
     dup_pawn_count: i32,
     isolate_pawn_count: i32,
@@ -319,7 +316,7 @@ impl FeatureMap {
             passed_pawn_count: 0,
             passed_pawn_rank_count: 0,
             unstoppable_passed_pawn_count: 0,
-            queen_side_pawn_count: 0,
+            controlled_passed_pawn_count: 0,
 
             dup_pawn_count: 0,
             isolate_pawn_count: 0,
@@ -478,7 +475,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.passed_pawn_count * PASS_PAWN_BASE_VAL
         + w_features_map.passed_pawn_rank_count * PASS_PAWN_RANK_VAL
         + w_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
-        + w_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
+        + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         + w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         + w_features_map.mobility * ENDGMAE_MOB_BASE_VAL
@@ -488,7 +485,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.passed_pawn_count * PASS_PAWN_BASE_VAL
         - b_features_map.passed_pawn_rank_count * PASS_PAWN_RANK_VAL
         - b_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
-        - b_features_map.queen_side_pawn_count * QUEEN_SIDE_PAWN_VAL
+        - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.mobility * ENDGMAE_MOB_BASE_VAL
@@ -541,8 +538,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let start_index = occupy_mask.trailing_zeros() as usize;
     let end_index = def::BOARD_SIZE - occupy_mask.leading_zeros() as usize;
 
-    let w_piece_mask = bitboard.w_all ^ bitboard.w_pawn ^ bitmask.index_masks[state.wk_index];
-    let b_piece_mask = bitboard.b_all ^ bitboard.b_pawn ^ bitmask.index_masks[state.bk_index];
+    let piece_mask = bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen | bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen;
 
     for index in start_index..end_index {
         let moving_piece = squares[index];
@@ -573,7 +569,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                         w_feature_map.passed_pawn_rank_count += 1;
                     }
 
-                    if b_piece_mask == 0 {
+                    if piece_mask == 0 {
                         let king_distance = def::get_file_distance(index, state.bk_index);
                         if state.player == def::PLAYER_W {
                             if king_distance > 7 - rank {
@@ -583,6 +579,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                             if king_distance - 1 > 7 - rank {
                                 w_feature_map.unstoppable_passed_pawn_count += 1;
                             }
+                        }
+
+                        let pawn_control_mask = bitmask.wp_front_control_sqr_masks[index];
+                        if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.wk_index] != 0 {
+                            w_feature_map.controlled_passed_pawn_count += 1;
                         }
                     }
                 }
@@ -622,7 +623,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                         b_feature_map.passed_pawn_rank_count += 1;
                     }
 
-                    if w_piece_mask == 0 {
+                    if piece_mask == 0 {
                         let king_distance = def::get_file_distance(index, state.wk_index);
                         if state.player == def::PLAYER_B {
                             if king_distance > 7 - rank {
@@ -632,6 +633,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                             if king_distance - 1 > 7 - rank {
                                 b_feature_map.unstoppable_passed_pawn_count += 1;
                             }
+                        }
+
+                        let pawn_control_mask = bitmask.bp_front_control_sqr_masks[index];
+                        if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.bk_index] != 0 {
+                            b_feature_map.controlled_passed_pawn_count += 1;
                         }
                     }
                 }
@@ -1062,23 +1068,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.rook_count = bitboard.b_rook.count_ones() as i32;
     b_feature_map.queen_count = bitboard.b_queen.count_ones() as i32;
 
-    // queen-side pawns
-
-    let wk_index_mask = bitmask.index_masks[state.wk_index];
-    let bk_index_mask = bitmask.index_masks[state.bk_index];
-
-    if wk_index_mask & BOARD_L_MASK != 0 {
-        b_feature_map.queen_side_pawn_count = (bitboard.b_pawn & BOARD_R_MASK).count_ones() as i32;
-    } else if wk_index_mask & BOARD_R_MASK != 0 {
-        b_feature_map.queen_side_pawn_count = (bitboard.b_pawn & BOARD_L_MASK).count_ones() as i32;
-    }
-
-    if bk_index_mask & BOARD_L_MASK != 0 {
-        w_feature_map.queen_side_pawn_count = (bitboard.w_pawn & BOARD_R_MASK).count_ones() as i32;
-    } else if bk_index_mask & BOARD_R_MASK != 0 {
-        w_feature_map.queen_side_pawn_count = (bitboard.w_pawn & BOARD_L_MASK).count_ones() as i32;
-    }
-
     // check trapped pieces
 
     for index in start_index..end_index {
@@ -1309,9 +1298,9 @@ mod tests {
         let state = State::new("r1b2rk1/pp2ppbp/1qnp2p1/2nP4/P2QPP2/N1P2N2/2B3PP/1RB2RK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(6, w_features.defended_piece_count);
+        assert_eq!(4, w_features.defended_piece_count);
         assert_eq!(1, w_features.threatened_piece_count);
-        assert_eq!(4, b_features.defended_piece_count);
+        assert_eq!(2, b_features.defended_piece_count);
         assert_eq!(2, b_features.threatened_piece_count);
     }
 
@@ -1394,11 +1383,14 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("5k2/5ppp/1p2p3/8/2P5/1P4P1/5P1P/6K1 w - - 0 1", &zob_keys, &bitmask);
+        let state = State::new("8/8/2K1kp2/8/3P4/8/8/8 w - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(2, w_features.queen_side_pawn_count);
-        assert_eq!(1, b_features.queen_side_pawn_count);
+        assert_eq!(1, w_features.passed_pawn_count);
+        assert_eq!(1, w_features.controlled_passed_pawn_count);
+
+        assert_eq!(1, b_features.passed_pawn_count);
+        assert_eq!(0, b_features.controlled_passed_pawn_count);
     }
 
     #[test]
@@ -1491,6 +1483,18 @@ mod tests {
         assert_eq!(0, w_features.unstoppable_passed_pawn_count);
         assert_eq!(1, b_features.passed_pawn_count);
         assert_eq!(1, b_features.unstoppable_passed_pawn_count);
+
+        let state = State::new("8/3k4/8/8/8/8/3K1p2/8 b - - 0 1", &zob_keys, &bitmask);
+        let (_w_features, b_features) = extract_features(&state);
+
+        assert_eq!(1, b_features.passed_pawn_count);
+        assert_eq!(1, b_features.unstoppable_passed_pawn_count);
+
+        let state = State::new("8/1P1k4/8/8/8/2K5/8/8 b - - 0 1", &zob_keys, &bitmask);
+        let (w_features, _b_features) = extract_features(&state);
+
+        assert_eq!(1, w_features.passed_pawn_count);
+        assert_eq!(0, w_features.unstoppable_passed_pawn_count);
     }
 
     #[test]
