@@ -42,8 +42,9 @@ static ROOK_OPEN_LINE_VAL: i32 = 25;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
 
-static THREATENED_PIECE_PEN: i32 = -20;
-static DEFENDED_PIECE_VAL: i32 = 20;
+static THREATENED_PIECE_PEN: i32 = -30;
+static DEFENDED_PIECE_VAL: i32 = 15;
+static DEFENDED_PAWN_VAL: i32 = 10;
 
 static MIDGAME_MOB_BASE_VAL: i32 = 2;
 static ENDGMAE_MOB_BASE_VAL: i32 = 2;
@@ -294,6 +295,7 @@ pub struct FeatureMap {
 
     threatened_piece_count: i32,
     defended_piece_count: i32,
+    defended_pawn_count: i32,
 
     king_exposed: i32,
     king_threat_count: i32,
@@ -341,6 +343,7 @@ impl FeatureMap {
 
             threatened_piece_count: 0,
             defended_piece_count: 0,
+            defended_pawn_count: 0,
 
             king_exposed: 0,
             king_threat_count: 0,
@@ -435,6 +438,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.blocked_bishop_count * BLOCKED_B_PEN
         + w_features_map.blocked_rook_count * BLOCKED_R_PEN
         + w_features_map.blocked_queen_count * BLOCKED_Q_PEN
+        + w_features_map.threatened_piece_count * THREATENED_PIECE_PEN
+        + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
+        + w_features_map.defended_pawn_count * DEFENDED_PAWN_VAL
         - b_features_map.trapped_knight_count * TRAPPED_N_PEN
         - b_features_map.trapped_bishop_count * TRAPPED_B_PEN
         - b_features_map.trapped_rook_count * TRAPPED_R_PEN
@@ -442,7 +448,10 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.blocked_knight_count * BLOCKED_N_PEN
         - b_features_map.blocked_bishop_count * BLOCKED_B_PEN
         - b_features_map.blocked_rook_count * BLOCKED_R_PEN
-        - b_features_map.blocked_queen_count * BLOCKED_Q_PEN;
+        - b_features_map.blocked_queen_count * BLOCKED_Q_PEN
+        - b_features_map.threatened_piece_count * THREATENED_PIECE_PEN
+        - b_features_map.defended_piece_count * DEFENDED_PIECE_VAL
+        - b_features_map.defended_pawn_count * DEFENDED_PAWN_VAL;
 
     let midgame_positional_score =
         w_features_map.midgame_sqr_point_count
@@ -453,8 +462,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.king_exposed * KING_EXPOSED_PEN
         + w_features_map.king_threat_count * KING_THREAT_BASE_PEN
         + w_features_map.king_pawn_threat_count * KING_PAWN_THREAT_BASE_PEN
-        + w_features_map.threatened_piece_count * THREATENED_PIECE_PEN
-        + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
         + w_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         + w_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN
         - b_features_map.midgame_sqr_point_count
@@ -465,8 +472,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.king_exposed * KING_EXPOSED_PEN
         - b_features_map.king_threat_count * KING_THREAT_BASE_PEN
         - b_features_map.king_pawn_threat_count * KING_PAWN_THREAT_BASE_PEN
-        - b_features_map.threatened_piece_count * THREATENED_PIECE_PEN
-        - b_features_map.defended_piece_count * DEFENDED_PIECE_VAL
         - b_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         - b_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN;
 
@@ -1082,6 +1087,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mut mov_mask = mov_mask_map[index];
 
                 mov_mask &= !bp_attack_mask;
+                mov_mask &= !(b_attack_mask & !wp_attack_mask);
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_knight_count += 1;
@@ -1093,6 +1099,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mut mov_mask = mov_mask_map[index];
 
                 mov_mask &= !bp_attack_mask;
+                mov_mask &= !(b_attack_mask & !wp_attack_mask);
 
                 if mov_mask == 0 && w_attack_mask & index_masks[index] == 0 {
                     w_feature_map.trapped_bishop_count += 1;
@@ -1127,6 +1134,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mut mov_mask = mov_mask_map[index];
 
                 mov_mask &= !wp_attack_mask;
+                mov_mask &= !(w_attack_mask & !bp_attack_mask);
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_knight_count += 1;
@@ -1138,6 +1146,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mut mov_mask = mov_mask_map[index];
 
                 mov_mask &= !wp_attack_mask;
+                mov_mask &= !(w_attack_mask & !bp_attack_mask);
 
                 if mov_mask == 0 && b_attack_mask & index_masks[index] == 0 {
                     b_feature_map.trapped_bishop_count += 1;
@@ -1216,13 +1225,12 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             continue
         }
 
-        let piece = state.squares[index];
-
-        if def::is_p(piece) || def::is_k(piece) {
-            continue
-        }
-
-        match piece {
+        match state.squares[index] {
+            def::WP => {
+                if bp_attack_mask & index_mask == 0 && (w_attack_mask ^ wq_attack_mask) & index_mask != 0 {
+                    w_feature_map.defended_pawn_count += 1;
+                }
+            },
             def::WN => {
                 if bp_attack_mask & index_mask != 0 {
                     w_feature_map.threatened_piece_count += 1;
@@ -1240,6 +1248,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WR => {
                 if (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask != 0 {
                     w_feature_map.threatened_piece_count += 1;
+                } else if w_attack_mask & index_mask != 0 {
+                    w_feature_map.defended_piece_count += 1;
                 }
             },
             def::WQ => {
@@ -1248,6 +1258,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
             },
 
+            def::BP => {
+                if wp_attack_mask & index_mask == 0 && (b_attack_mask ^ bq_attack_mask) & index_mask != 0 {
+                    b_feature_map.defended_pawn_count += 1;
+                }
+            },
             def::BN => {
                 if wp_attack_mask & index_mask != 0 {
                     b_feature_map.threatened_piece_count += 1;
@@ -1265,6 +1280,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BR => {
                 if (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask != 0 {
                     b_feature_map.threatened_piece_count += 1;
+                } else if b_attack_mask & index_mask != 0 {
+                    b_feature_map.defended_piece_count += 1;
                 }
             },
             def::BQ => {
@@ -1298,9 +1315,9 @@ mod tests {
         let state = State::new("r1b2rk1/pp2ppbp/1qnp2p1/2nP4/P2QPP2/N1P2N2/2B3PP/1RB2RK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
-        assert_eq!(4, w_features.defended_piece_count);
+        assert_eq!(5, w_features.defended_piece_count);
         assert_eq!(1, w_features.threatened_piece_count);
-        assert_eq!(2, b_features.defended_piece_count);
+        assert_eq!(3, b_features.defended_piece_count);
         assert_eq!(2, b_features.threatened_piece_count);
     }
 
