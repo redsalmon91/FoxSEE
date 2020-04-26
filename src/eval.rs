@@ -43,9 +43,9 @@ static ROOK_OPEN_LINE_VAL: i32 = 25;
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
 static QUEEN_PINNED_PEN: i32 = -20;
 
+static DEFENDED_PIECE_VAL: i32 = 20;
 static THREATENED_PIECE_PEN: i32 = -30;
-static DEFENDED_PIECE_VAL: i32 = 15;
-static DEFENDED_PAWN_VAL: i32 = 10;
+static THREATENED_PAWN_PEN: i32 = -20;
 
 static MIDGAME_MOB_BASE_VAL: i32 = 2;
 static ENDGMAE_MOB_BASE_VAL: i32 = 2;
@@ -295,9 +295,9 @@ pub struct FeatureMap {
     open_queen_count: i32,
     pinned_queen_count: i32,
 
-    threatened_piece_count: i32,
     defended_piece_count: i32,
-    defended_pawn_count: i32,
+    threatened_piece_count: i32,
+    threatened_pawn_count: i32,
 
     king_exposed: i32,
     king_threat_count: i32,
@@ -344,9 +344,9 @@ impl FeatureMap {
             open_queen_count: 0,
             pinned_queen_count: 0,
 
-            threatened_piece_count: 0,
             defended_piece_count: 0,
-            defended_pawn_count: 0,
+            threatened_piece_count: 0,
+            threatened_pawn_count: 0,
 
             king_exposed: 0,
             king_threat_count: 0,
@@ -441,9 +441,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.blocked_bishop_count * BLOCKED_B_PEN
         + w_features_map.blocked_rook_count * BLOCKED_R_PEN
         + w_features_map.blocked_queen_count * BLOCKED_Q_PEN
-        + w_features_map.threatened_piece_count * THREATENED_PIECE_PEN
         + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
-        + w_features_map.defended_pawn_count * DEFENDED_PAWN_VAL
+        + w_features_map.threatened_piece_count * THREATENED_PIECE_PEN
+        + w_features_map.threatened_pawn_count * THREATENED_PAWN_PEN
         + w_features_map.pinned_queen_count * QUEEN_PINNED_PEN
         - b_features_map.trapped_knight_count * TRAPPED_N_PEN
         - b_features_map.trapped_bishop_count * TRAPPED_B_PEN
@@ -453,9 +453,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.blocked_bishop_count * BLOCKED_B_PEN
         - b_features_map.blocked_rook_count * BLOCKED_R_PEN
         - b_features_map.blocked_queen_count * BLOCKED_Q_PEN
-        - b_features_map.threatened_piece_count * THREATENED_PIECE_PEN
         - b_features_map.defended_piece_count * DEFENDED_PIECE_VAL
-        - b_features_map.defended_pawn_count * DEFENDED_PAWN_VAL
+        - b_features_map.threatened_piece_count * THREATENED_PIECE_PEN
+        - b_features_map.threatened_pawn_count * THREATENED_PAWN_PEN
         - b_features_map.pinned_queen_count * QUEEN_PINNED_PEN;
 
     let midgame_positional_score =
@@ -1128,6 +1128,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask;
     let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
+    let wk_attack_mask = bitmask.k_attack_masks[state.wk_index];
+    let bk_attack_mask = bitmask.k_attack_masks[state.bk_index];
 
     // piece counts
 
@@ -1321,8 +1323,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
         match state.squares[index] {
             def::WP => {
-                if bp_attack_mask & index_mask == 0 && (w_attack_mask ^ wq_attack_mask) & index_mask != 0 {
-                    w_feature_map.defended_pawn_count += 1;
+                if bp_attack_mask & index_mask == 0 && b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
+                    w_feature_map.threatened_pawn_count += 1;
                 }
             },
             def::WN => {
@@ -1330,6 +1332,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.threatened_piece_count += 1;
                 } else if w_attack_mask & index_mask != 0 {
                     w_feature_map.defended_piece_count += 1;
+                } else if b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
+                    w_feature_map.threatened_piece_count += 1;
                 }
             },
             def::WB => {
@@ -1337,6 +1341,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.threatened_piece_count += 1;
                 } else if w_attack_mask & index_mask != 0 {
                     w_feature_map.defended_piece_count += 1;
+                } else if b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
+                    w_feature_map.threatened_piece_count += 1;
                 }
             },
             def::WR => {
@@ -1344,6 +1350,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.threatened_piece_count += 1;
                 } else if w_attack_mask & index_mask != 0 {
                     w_feature_map.defended_piece_count += 1;
+                } else if b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
+                    w_feature_map.threatened_piece_count += 1;
                 }
             },
             def::WQ => {
@@ -1353,8 +1361,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             },
 
             def::BP => {
-                if wp_attack_mask & index_mask == 0 && (b_attack_mask ^ bq_attack_mask) & index_mask != 0 {
-                    b_feature_map.defended_pawn_count += 1;
+                if wp_attack_mask & index_mask == 0 && w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
+                    b_feature_map.threatened_pawn_count += 1;
                 }
             },
             def::BN => {
@@ -1362,6 +1370,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.threatened_piece_count += 1;
                 } else if b_attack_mask & index_mask != 0 {
                     b_feature_map.defended_piece_count += 1;
+                } else if w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
+                    b_feature_map.threatened_piece_count += 1;
                 }
             },
             def::BB => {
@@ -1369,6 +1379,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.threatened_piece_count += 1;
                 } else if b_attack_mask & index_mask != 0 {
                     b_feature_map.defended_piece_count += 1;
+                } else if w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
+                    b_feature_map.threatened_piece_count += 1;
                 }
             },
             def::BR => {
@@ -1376,6 +1388,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.threatened_piece_count += 1;
                 } else if b_attack_mask & index_mask != 0 {
                     b_feature_map.defended_piece_count += 1;
+                } else if w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
+                    b_feature_map.threatened_piece_count += 1;
                 }
             },
             def::BQ => {
@@ -1406,13 +1420,16 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("r1b2rk1/pp2ppbp/1qnp2p1/2nP4/P2QPP2/N1P2N2/2B3PP/1RB2RK1 b - - 0 1", &zob_keys, &bitmask);
+        let state = State::new("r1b2rk1/pp2ppb1/1qnp2p1/2nP4/P2QPP1p/N1P2N2/2B3PP/1RB2RK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(5, w_features.defended_piece_count);
         assert_eq!(1, w_features.threatened_piece_count);
+        assert_eq!(0, w_features.threatened_pawn_count);
+
         assert_eq!(3, b_features.defended_piece_count);
         assert_eq!(2, b_features.threatened_piece_count);
+        assert_eq!(1, b_features.threatened_pawn_count);
     }
 
     #[test]
