@@ -1387,8 +1387,8 @@ mod tests {
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 5500,
-            extra_time_millis: 5500,
+            main_time_millis: 15500,
+            extra_time_millis: 15500,
         };
 
         let best_mov = search_engine.search(&mut state, time_capacity, 64);

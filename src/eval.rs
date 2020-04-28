@@ -44,8 +44,6 @@ static QUEEN_OPEN_LINE_VAL: i32 = 20;
 static QUEEN_PINNED_PEN: i32 = -20;
 
 static DEFENDED_PIECE_VAL: i32 = 20;
-static THREATENED_PIECE_PEN: i32 = -30;
-static THREATENED_PAWN_PEN: i32 = -20;
 
 static MIDGAME_MOB_BASE_VAL: i32 = 2;
 static ENDGMAE_MOB_BASE_VAL: i32 = 2;
@@ -62,6 +60,16 @@ static BLOCKED_Q_PEN: i32 = -30;
 static BLOCKED_R_PEN: i32 = -30;
 static BLOCKED_B_PEN: i32 = -30;
 static BLOCKED_N_PEN: i32 = -30;
+
+static P_THREAT_POINT: i32 = -20;
+static NB_THREAT_POINT: i32 = -30;
+static R_THREAT_POINT: i32 = -30;
+static P_NB_THREAT_POINT: i32 = -30;
+static P_R_THREAT_POINT: i32 = -40;
+static P_Q_THREAT_POINT: i32 = -60;
+static NB_R_THREAT_POINT: i32 = -30;
+static NB_Q_THREAT_POINT: i32 = -50;
+static R_Q_THREAT_POINT: i32 = -40;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
@@ -296,8 +304,7 @@ pub struct FeatureMap {
     pinned_queen_count: i32,
 
     defended_piece_count: i32,
-    threatened_piece_count: i32,
-    threatened_pawn_count: i32,
+    threat_point_count: i32,
 
     king_exposed: i32,
     king_threat_count: i32,
@@ -345,8 +352,7 @@ impl FeatureMap {
             pinned_queen_count: 0,
 
             defended_piece_count: 0,
-            threatened_piece_count: 0,
-            threatened_pawn_count: 0,
+            threat_point_count: 0,
 
             king_exposed: 0,
             king_threat_count: 0,
@@ -442,8 +448,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.blocked_rook_count * BLOCKED_R_PEN
         + w_features_map.blocked_queen_count * BLOCKED_Q_PEN
         + w_features_map.defended_piece_count * DEFENDED_PIECE_VAL
-        + w_features_map.threatened_piece_count * THREATENED_PIECE_PEN
-        + w_features_map.threatened_pawn_count * THREATENED_PAWN_PEN
+        + w_features_map.threat_point_count
         + w_features_map.pinned_queen_count * QUEEN_PINNED_PEN
         - b_features_map.trapped_knight_count * TRAPPED_N_PEN
         - b_features_map.trapped_bishop_count * TRAPPED_B_PEN
@@ -454,8 +459,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.blocked_rook_count * BLOCKED_R_PEN
         - b_features_map.blocked_queen_count * BLOCKED_Q_PEN
         - b_features_map.defended_piece_count * DEFENDED_PIECE_VAL
-        - b_features_map.threatened_piece_count * THREATENED_PIECE_PEN
-        - b_features_map.threatened_pawn_count * THREATENED_PAWN_PEN
+        - b_features_map.threat_point_count
         - b_features_map.pinned_queen_count * QUEEN_PINNED_PEN;
 
     let midgame_positional_score =
@@ -1145,7 +1149,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     b_feature_map.rook_count = bitboard.b_rook.count_ones() as i32;
     b_feature_map.queen_count = bitboard.b_queen.count_ones() as i32;
 
-    // check trapped pieces
+    // check trapped pieces & double attacks
 
     for index in start_index..end_index {
         let moving_piece = squares[index];
@@ -1324,77 +1328,89 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         match state.squares[index] {
             def::WP => {
                 if bp_attack_mask & index_mask == 0 && b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
-                    w_feature_map.threatened_pawn_count += 1;
+                    w_feature_map.threat_point_count += P_THREAT_POINT;
                 }
             },
             def::WN => {
                 if bp_attack_mask & index_mask != 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                    w_feature_map.threat_point_count += P_NB_THREAT_POINT;
                 } else if w_attack_mask & index_mask != 0 {
                     w_feature_map.defended_piece_count += 1;
                 } else if b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                    w_feature_map.threat_point_count += NB_THREAT_POINT;
                 }
             },
             def::WB => {
                 if bp_attack_mask & index_mask != 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                    w_feature_map.threat_point_count += P_NB_THREAT_POINT;
                 } else if w_attack_mask & index_mask != 0 {
                     w_feature_map.defended_piece_count += 1;
                 } else if b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                    w_feature_map.threat_point_count += NB_THREAT_POINT;
                 }
             },
             def::WR => {
-                if (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask != 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                if bp_attack_mask & index_mask != 0 {
+                    w_feature_map.threat_point_count += P_R_THREAT_POINT;
+                } else if (bn_attack_mask | bb_attack_mask) & index_mask != 0 {
+                    w_feature_map.threat_point_count += NB_R_THREAT_POINT;
                 } else if w_attack_mask & index_mask != 0 {
                     w_feature_map.defended_piece_count += 1;
                 } else if b_attack_mask & index_mask != 0 && (w_attack_mask | wk_attack_mask) & index_mask == 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                    w_feature_map.threat_point_count += R_THREAT_POINT;
                 }
             },
             def::WQ => {
-                if (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask != 0 {
-                    w_feature_map.threatened_piece_count += 1;
+                if bp_attack_mask & index_mask != 0 {
+                    w_feature_map.threat_point_count += P_Q_THREAT_POINT;
+                } else if (bn_attack_mask | bb_attack_mask) & index_mask != 0 {
+                    w_feature_map.threat_point_count += NB_Q_THREAT_POINT;
+                } else if br_attack_mask & index_mask != 0 {
+                    w_feature_map.threat_point_count += R_Q_THREAT_POINT;
                 }
             },
 
             def::BP => {
                 if wp_attack_mask & index_mask == 0 && w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
-                    b_feature_map.threatened_pawn_count += 1;
+                    b_feature_map.threat_point_count += P_THREAT_POINT;
                 }
             },
             def::BN => {
                 if wp_attack_mask & index_mask != 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                    b_feature_map.threat_point_count += P_NB_THREAT_POINT;
                 } else if b_attack_mask & index_mask != 0 {
                     b_feature_map.defended_piece_count += 1;
                 } else if w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                    b_feature_map.threat_point_count += NB_THREAT_POINT;
                 }
             },
             def::BB => {
                 if wp_attack_mask & index_mask != 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                    b_feature_map.threat_point_count += P_NB_THREAT_POINT;
                 } else if b_attack_mask & index_mask != 0 {
                     b_feature_map.defended_piece_count += 1;
                 } else if w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                    b_feature_map.threat_point_count += NB_THREAT_POINT;
                 }
             },
             def::BR => {
-                if (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask != 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                if wp_attack_mask & index_mask != 0 {
+                    b_feature_map.threat_point_count += P_R_THREAT_POINT;
+                } else if (wn_attack_mask | wb_attack_mask) & index_mask != 0 {
+                    b_feature_map.threat_point_count += NB_R_THREAT_POINT;
                 } else if b_attack_mask & index_mask != 0 {
                     b_feature_map.defended_piece_count += 1;
                 } else if w_attack_mask & index_mask != 0 && (b_attack_mask | bk_attack_mask) & index_mask == 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                    b_feature_map.threat_point_count += R_THREAT_POINT;
                 }
             },
             def::BQ => {
-                if (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask != 0 {
-                    b_feature_map.threatened_piece_count += 1;
+                if wp_attack_mask & index_mask != 0 {
+                    b_feature_map.threat_point_count += P_Q_THREAT_POINT;
+                } else if (wn_attack_mask | wb_attack_mask) & index_mask != 0 {
+                    b_feature_map.threat_point_count += NB_Q_THREAT_POINT;
+                } else if wr_attack_mask & index_mask != 0 {
+                    b_feature_map.threat_point_count += R_Q_THREAT_POINT;
                 }
             },
 
@@ -1424,12 +1440,10 @@ mod tests {
         let (w_features, b_features) = extract_features(&state);
 
         assert_eq!(5, w_features.defended_piece_count);
-        assert_eq!(1, w_features.threatened_piece_count);
-        assert_eq!(0, w_features.threatened_pawn_count);
+        assert_eq!(NB_Q_THREAT_POINT, w_features.threat_point_count);
 
         assert_eq!(3, b_features.defended_piece_count);
-        assert_eq!(2, b_features.threatened_piece_count);
-        assert_eq!(1, b_features.threatened_pawn_count);
+        assert_eq!(P_THREAT_POINT + P_NB_THREAT_POINT + R_Q_THREAT_POINT, b_features.threat_point_count);
     }
 
     #[test]
