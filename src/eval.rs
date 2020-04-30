@@ -387,7 +387,7 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     let bitboard = state.bitboard;
 
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen | bitboard.w_rook | bitboard.b_rook == 0 {
-        if ((bitboard.w_bishop | bitboard.w_knight).count_ones() as i32 - (bitboard.b_bishop | bitboard.b_knight).count_ones() as i32).abs() < 2 {
+        if (bitboard.w_bishop | bitboard.w_knight).count_ones() < 2 && (bitboard.b_bishop | bitboard.b_knight).count_ones() < 2 {
             return (0, true)
         }
 
