@@ -107,6 +107,7 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciCommand {
 
 fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciCommand {
     match go_cmd_seq[1] {
+        "movestogo" => process_time_control_with_movestogo(go_cmd_seq),
         "wtime" => process_time_control(go_cmd_seq),
         "movetime" => UciCommand::StartSearchWithTime(go_cmd_seq[2].parse::<u128>().unwrap()),
         "depth" => UciCommand::StartSearchToDepth(go_cmd_seq[2].parse::<u8>().unwrap()),
@@ -114,6 +115,43 @@ fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciCommand {
         "ponder" => UciCommand::Noop,
         sub_cmd => panic!("unsupported sub command {}", sub_cmd),
     }
+}
+
+fn process_time_control_with_movestogo(go_cmd_seq: Vec<&str>) -> UciCommand {
+    assert!(go_cmd_seq[1] == "movestogo");
+    let movs_to_go = go_cmd_seq[2].parse::<u128>().unwrap();
+
+    assert!(go_cmd_seq[3] == "wtime");
+    let wtime = go_cmd_seq[4].parse::<u128>().unwrap();
+
+    assert!(go_cmd_seq[5] == "btime");
+    let btime = go_cmd_seq[6].parse::<u128>().unwrap();
+
+    let mut winc = 0;
+    let mut binc = 0;
+
+    if go_cmd_seq.len() > 7 {
+        if go_cmd_seq[7] == "winc" {
+            winc = go_cmd_seq[8].parse::<u128>().unwrap();
+        }
+
+        if go_cmd_seq[9] == "binc" {
+            binc = go_cmd_seq[10].parse::<u128>().unwrap();
+        }
+    }
+
+    UciCommand::StartSearchWithComplextTimeControl((
+        TimeInfo{
+            all_time_millis: wtime,
+            moves_to_go: movs_to_go,
+            increment_millis: winc,
+        },
+        TimeInfo{
+            all_time_millis: btime,
+            moves_to_go: movs_to_go,
+            increment_millis: binc,
+        }
+    ))
 }
 
 fn process_time_control(go_cmd_seq: Vec<&str>) -> UciCommand {
