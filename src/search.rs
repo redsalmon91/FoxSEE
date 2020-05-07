@@ -3,7 +3,6 @@
  */
 
 use crate::{
-    bitboard,
     def,
     eval,
     hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
@@ -33,8 +32,6 @@ const MULTICUT_R: u8 = 2;
 const MULTICUT_MOV_COUNT: u8 = 3;
 const MULTICUT_CUT_COUNT: u8 = 2;
 
-const MAX_EXTEND_PLY: u8 = 32;
-
 const MAX_DEPTH: u8 = 128;
 
 const IID_R: u8 = 2;
@@ -48,6 +45,9 @@ static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
 
 pub static mut ABORT_SEARCH: bool = false;
+
+static WP_PROMO_PAWNS_MASK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
+static BP_PROMO_PAWNS_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
 
 use std::time::Instant;
 use LookupResult::*;
@@ -478,8 +478,8 @@ impl SearchEngine {
 
         if !on_pv && !in_check && !under_threat && depth <= 6 && !in_endgame {
             let opponent_has_promoting_pawn =
-            (state.player == def::PLAYER_W && state.bitboard.b_pawn & bitboard::BP_PROMO_PAWNS_MASK != 0)
-            || (state.player == def::PLAYER_B && state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK != 0);
+            (state.player == def::PLAYER_W && state.bitboard.b_pawn & BP_PROMO_PAWNS_MASK != 0)
+            || (state.player == def::PLAYER_B && state.bitboard.w_pawn & WP_PROMO_PAWNS_MASK != 0);
 
             if !opponent_has_promoting_pawn {
                 let (score, is_draw) = eval::eval_materials(state);
@@ -536,10 +536,9 @@ impl SearchEngine {
             let is_promoting_pawn = def::is_p(state.squares[to]) && def::get_rank(state.player, to) == 1;
 
             let mut depth = depth;
-            if ply < MAX_EXTEND_PLY {
-                if gives_check || under_threat || is_singular_mov || is_promoting_pawn {
-                    depth += 1;
-                }
+
+            if gives_check || under_threat || is_singular_mov || is_promoting_pawn {
+                depth += 1;
             }
 
             let score = -self.ab_search(state, gives_check, false, -beta, -alpha, depth - 1, ply + 1);
@@ -800,13 +799,11 @@ impl SearchEngine {
             alpha = score;
         }
 
-        let in_extreme_endgame = state.bitboard.w_pawn | state.bitboard.b_pawn == 0;
-
-        if !in_extreme_endgame && score + eval::DELTA_MAX_MARGIN < alpha {
+        if score + eval::DELTA_MAX_MARGIN < alpha {
             let promoting_pawn_mask = if state.player == def::PLAYER_W {
-                state.bitboard.w_pawn & bitboard::WP_PROMO_PAWNS_MASK
+                state.bitboard.w_pawn & WP_PROMO_PAWNS_MASK
             } else {
-                state.bitboard.b_pawn & bitboard::BP_PROMO_PAWNS_MASK
+                state.bitboard.b_pawn & BP_PROMO_PAWNS_MASK
             };
 
             if promoting_pawn_mask == 0 {
@@ -836,12 +833,10 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
-            if !in_extreme_endgame {
-                let gain = eval::val_of(squares[to]) + eval::val_of(promo);
+            let gain = eval::val_of(squares[to]) + eval::val_of(promo);
 
-                if gain < delta {
-                    continue
-                }
+            if gain < delta {
+                continue
             }
 
             scored_cap_list.push((see(state, from, to, tp, promo), cap));
