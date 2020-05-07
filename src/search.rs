@@ -639,7 +639,11 @@ impl SearchEngine {
             }
 
             let score = if depth > 1 && mov_count > 1 && !in_check && !gives_check && !under_threat && !is_capture && !is_promoting_pawn {
-                let depth_reduction = (2 + (mov_count * (1 + ply / 4) / 8)).min(depth);
+                let depth_reduction = if on_pv {
+                    (2 + (mov_count * (1 + depth / 8) / 8)).min(depth)
+                } else {
+                    (2 + (mov_count * (1 + depth / 5) / 8)).min(depth)
+                };
 
                 let score = -self.ab_search(state, gives_check, false, -alpha-1, -alpha, depth - depth_reduction, ply + 1);
                 if score > alpha {
