@@ -38,7 +38,6 @@ const IID_R: u8 = 2;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
-const SIGNIFICANT_SCORE_DIFF: i32 = 100;
 const THREAT_SCORE_DIFF: i32 = 90;
 
 static mut NODE_COUNT: u64 = 0;
@@ -143,6 +142,7 @@ impl SearchEngine {
         let mut depth = 1;
         let mut best_mov = 0;
         let mut accumulated_time_taken = 0;
+        let mut extra_time_used = false;
 
         loop {
             unsafe {
@@ -160,6 +160,11 @@ impl SearchEngine {
 
             if score <= alpha {
                 alpha = -eval::MATE_VAL;
+
+                if !extra_time_used && score < alpha && self.time_tracker.elapsed().as_millis() > self.max_time_millis / 2 {
+                    self.max_time_millis += time_capacity.extra_time_millis;
+                    extra_time_used = true;
+                }
 
                 continue
             }
@@ -197,9 +202,7 @@ impl SearchEngine {
                 break
             }
 
-            if score < self.recent_search_score - SIGNIFICANT_SCORE_DIFF && self.max_time_millis == time_capacity.main_time_millis {
-                self.max_time_millis += time_capacity.extra_time_millis;
-            } else if !pv_changed {
+            if !pv_changed {
                 if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
                     break
                 }
