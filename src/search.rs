@@ -424,7 +424,7 @@ impl SearchEngine {
                                 if score >= beta {
                                     return beta
                                 }
-    
+
                                 if score > alpha {
                                     alpha = score;
                                 }
@@ -1403,7 +1403,7 @@ mod tests {
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 5500,
+            main_time_millis: 15500,
             extra_time_millis: 5500,
         };
 
@@ -1422,7 +1422,7 @@ mod tests {
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 5500,
+            main_time_millis: 15500,
             extra_time_millis: 5500,
         };
 
