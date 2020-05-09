@@ -28,7 +28,7 @@ static KING_THREAT_BASE_PEN: i32 = -30;
 static KING_PAWN_THREAT_BASE_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
-static PASS_PAWN_BASE_VAL: i32 = 20;
+static PASS_PAWN_BASE_VAL: i32 = 10;
 static PASS_PAWN_RANK_VAL: i32 = 10;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 190;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 30;
@@ -44,9 +44,6 @@ static QUEEN_OPEN_LINE_VAL: i32 = 20;
 static QUEEN_PINNED_PEN: i32 = -25;
 
 static DEFENDED_PIECE_VAL: i32 = 20;
-
-static MIDGAME_MOB_BASE_VAL: i32 = 2;
-static ENDGMAE_MOB_BASE_VAL: i32 = 2;
 
 static ENDGAME_ROOK_EXTRA_VAL: i32 = 30;
 static ENDGAME_QUEEN_EXTRA_VAL: i32 = 30;
@@ -285,8 +282,6 @@ pub struct FeatureMap {
     isolate_pawn_count: i32,
     behind_pawn_count: i32,
 
-    mobility: i32,
-
     trapped_knight_count: i32,
     trapped_bishop_count: i32,
     trapped_rook_count: i32,
@@ -332,8 +327,6 @@ impl FeatureMap {
             dup_pawn_count: 0,
             isolate_pawn_count: 0,
             behind_pawn_count: 0,
-
-            mobility: 0,
 
             trapped_knight_count: 0,
             trapped_bishop_count: 0,
@@ -494,7 +487,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         + w_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        + w_features_map.mobility * MIDGAME_MOB_BASE_VAL
         + w_features_map.king_exposed * KING_EXPOSED_PEN
         + w_features_map.king_threat_count * KING_THREAT_BASE_PEN
         + w_features_map.king_pawn_threat_count * KING_PAWN_THREAT_BASE_PEN
@@ -504,7 +496,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.semi_open_rook_count * ROOK_SEMI_OPEN_LINE_VAL
         - b_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         - b_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        - b_features_map.mobility * MIDGAME_MOB_BASE_VAL
         - b_features_map.king_exposed * KING_EXPOSED_PEN
         - b_features_map.king_threat_count * KING_THREAT_BASE_PEN
         - b_features_map.king_pawn_threat_count * KING_PAWN_THREAT_BASE_PEN
@@ -519,7 +510,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         + w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
-        + w_features_map.mobility * ENDGMAE_MOB_BASE_VAL
         + w_features_map.rook_count * ENDGAME_ROOK_EXTRA_VAL
         + w_features_map.queen_count * ENDGAME_QUEEN_EXTRA_VAL
         - b_features_map.endgame_sqr_point_count
@@ -529,7 +519,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         - b_features_map.dup_pawn_count * DUP_PAWN_PEN
-        - b_features_map.mobility * ENDGMAE_MOB_BASE_VAL
         - b_features_map.rook_count * ENDGAME_ROOK_EXTRA_VAL
         - b_features_map.queen_count * ENDGAME_QUEEN_EXTRA_VAL;
 
@@ -1325,14 +1314,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         b_feature_map.king_threat_count += ((wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)) & protector_mask).count_ones() as i32;
     }
 
-    // mobility
-
-    w_feature_map.mobility = (wn_attack_mask & !bitboard.w_pawn & !bp_attack_mask).count_ones() as i32;
-    w_feature_map.mobility += (wb_attack_mask & !bitboard.w_pawn & !bp_attack_mask).count_ones() as i32;
-
-    b_feature_map.mobility = (bn_attack_mask & !bitboard.b_pawn & !wp_attack_mask).count_ones() as i32;
-    b_feature_map.mobility += (bb_attack_mask & !bitboard.b_pawn & !wp_attack_mask).count_ones() as i32;
-
     // penalty for losing castling rights
 
     if (state.cas_rights | state.cas_history) & 0b1100 == 0 {
@@ -1478,18 +1459,6 @@ mod tests {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
-        let state = State::new("1q4kn/3r1p1p/1pbN1Pp1/r1ppP1P1/P4R2/2B1P3/2Q4P/3R2K1 b - - 2 29", &zob_keys, &bitmask);
-        let (w_features, b_features) = extract_features(&state);
-
-        assert_eq!(9, w_features.mobility);
-        assert_eq!(4, b_features.mobility);
-    }
-
-    #[test]
-    fn test_extract_features_3() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
-        let bitmask = BitMask::new();
-
         let state = State::new("1kr3r1/pp3p1p/P1pn4/2Bpb3/4p2q/3PP3/PPP1NPPP/R2Q1RK1 b - - 0 1", &zob_keys, &bitmask);
         let (w_features, b_features) = extract_features(&state);
 
@@ -1501,7 +1470,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_4() {
+    fn test_extract_features_3() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1518,7 +1487,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_5() {
+    fn test_extract_features_4() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1533,7 +1502,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_6() {
+    fn test_extract_features_5() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1548,7 +1517,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_7() {
+    fn test_extract_features_6() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1563,7 +1532,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_8() {
+    fn test_extract_features_7() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1575,7 +1544,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_9() {
+    fn test_extract_features_8() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1590,7 +1559,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_x() {
+    fn test_extract_features_9() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1621,7 +1590,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_x1() {
+    fn test_extract_features_x() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 
@@ -1633,7 +1602,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_features_x2() {
+    fn test_extract_features_x1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
 

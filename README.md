@@ -4,10 +4,6 @@ A master-level UCI chess engine written in Rust!
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)
 ![License](https://img.shields.io/github/license/redsalmon91/FoxSEE)
 
-[CCRL Blitz Rating (v3.2.1)](http://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=FoxSEE%203.2.1%2064-bit#FoxSEE_3_2_1_64-bit)
-
-[Lichess Profile](https://lichess.org/@/FoxSEEEngine)
-
 ## Features
 
 - Principal Variance Search
@@ -23,7 +19,7 @@ A master-level UCI chess engine written in Rust!
 - MVV/LVA
 - Check Extensions
 - Deep Search Extensions
-- Pawn-Threat Extensions
+- Passed-Pawn Extensions
 - Singular Extensions
 - Late-Move Reductions
 - History Heuristic
