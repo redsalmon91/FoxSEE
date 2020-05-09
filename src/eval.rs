@@ -28,9 +28,9 @@ static KING_THREAT_BASE_PEN: i32 = -30;
 static KING_PAWN_THREAT_BASE_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
-static PASS_PAWN_BASE_VAL: i32 = 30;
-static PASS_PAWN_RANK_VAL: i32 = 20;
-static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 200;
+static PASS_PAWN_BASE_VAL: i32 = 20;
+static PASS_PAWN_RANK_VAL: i32 = 10;
+static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 190;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 30;
 
 static DUP_PAWN_PEN: i32 = -20;
@@ -41,7 +41,7 @@ static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
 static ROOK_OPEN_LINE_VAL: i32 = 25;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
-static QUEEN_PINNED_PEN: i32 = -20;
+static QUEEN_PINNED_PEN: i32 = -25;
 
 static DEFENDED_PIECE_VAL: i32 = 20;
 
@@ -91,7 +91,7 @@ static BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_
 
 static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
      0,  0,  0,  0,  0,  0,  0,  0,
-    50, 50, 50, 50, 50, 50, 50, 50,
+    20, 30, 30, 30, 30, 30, 30, 20,
     10, 20, 20, 30, 30, 20, 20, 10,
      5,  5, 10, 25, 25, 10,  5,  5,
      0,  0,  0, 20, 20,  0,  0,  0,
@@ -118,7 +118,7 @@ static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
      0,  0,  0, 20, 20,  0,  0,  0,
      5,  5, 10, 25, 25, 10,  5,  5,
     10, 20, 20, 30, 30, 20, 20, 10,
-    50, 50, 50, 50, 50, 50, 50, 50,
+    20, 30, 30, 30, 30, 30, 30, 20,
      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
@@ -386,7 +386,9 @@ pub fn val_of(piece: u8) -> i32 {
 pub fn eval_materials(state: &State) -> (i32, bool) {
     let bitboard = state.bitboard;
 
-    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_queen | bitboard.b_queen | bitboard.w_rook | bitboard.b_rook == 0 {
+    let mut is_endgame_with_different_colored_bishop = false;
+
+    if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
         if (bitboard.w_bishop | bitboard.w_knight).count_ones() < 2 && (bitboard.b_bishop | bitboard.b_knight).count_ones() < 2 {
             return (0, true)
         }
@@ -400,13 +402,34 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
         }
     }
 
+    if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
+        if bitboard.w_bishop.count_ones() == 1 && bitboard.b_bishop.count_ones() == 1 {
+            let mut wb_reachable_mask = 0;
+            let mut bb_reachable_mask = 0;
+
+            for index in 0..def::BOARD_SIZE {
+                match state.squares[index] {
+                    def::WB => {
+                        wb_reachable_mask = state.bitmask.b_attack_masks[index];
+                    },
+                    def::BB => {
+                        bb_reachable_mask = state.bitmask.b_attack_masks[index]
+                    },
+                    _ => {}
+                }
+            }
+
+            is_endgame_with_different_colored_bishop = wb_reachable_mask & bb_reachable_mask == 0;
+        }
+    }
+
     let score_sign = if state.player == def::PLAYER_W {
         1
     } else {
         -1
     };
 
-    let score = (bitboard.w_queen.count_ones() as i32 * Q_VAL
+    let mut score = (bitboard.w_queen.count_ones() as i32 * Q_VAL
     + bitboard.w_rook.count_ones() as i32 * R_VAL
     + bitboard.w_bishop.count_ones() as i32 * B_VAL
     + bitboard.w_knight.count_ones() as i32 * N_VAL
@@ -416,6 +439,10 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     - bitboard.b_bishop.count_ones() as i32 * B_VAL
     - bitboard.b_knight.count_ones() as i32 * N_VAL
     - bitboard.b_pawn.count_ones() as i32 * P_VAL) * score_sign;
+
+    if is_endgame_with_different_colored_bishop {
+        score /= 2;
+    }
 
     (score, false)
 }
@@ -580,8 +607,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     w_feature_map.passed_pawn_count += 1;
                     w_feature_map.passed_pawn_rank_count += rank;
 
-                    if behind_mask & bitmask.k_attack_masks[index] & bitboard.w_pawn != 0 {
-                        w_feature_map.passed_pawn_rank_count += 1;
+                    if bitmask.k_attack_masks[index] & !file_mask & bitboard.w_pawn != 0 {
+                        w_feature_map.passed_pawn_rank_count += rank / 2;
                     }
 
                     if piece_mask == 0 {
@@ -634,8 +661,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     b_feature_map.passed_pawn_count += 1;
                     b_feature_map.passed_pawn_rank_count += rank;
 
-                    if behind_mask & bitmask.k_attack_masks[index] & bitboard.b_pawn != 0 {
-                        b_feature_map.passed_pawn_rank_count += 1;
+                    if bitmask.k_attack_masks[index] & !file_mask & bitboard.b_pawn != 0 {
+                        b_feature_map.passed_pawn_rank_count += rank / 2;
                     }
 
                     if piece_mask == 0 {
@@ -1517,7 +1544,7 @@ mod tests {
         assert_eq!(5, w_features.passed_pawn_rank_count);
 
         assert_eq!(1, b_features.passed_pawn_count);
-        assert_eq!(5, b_features.passed_pawn_rank_count);
+        assert_eq!(6, b_features.passed_pawn_rank_count);
     }
 
     #[test]
