@@ -17,7 +17,7 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const MAX_HISTORY_SCORE: i32 = 100000;
 const MAX_NON_CAP_SCORE: i32 = 200000;
-const PRIMARY_KILLER_SCORE: i32 = -11;
+const PRIMARY_KILLER_SCORE: i32 = -21;
 const SECONDARY_KILLER_SCORE: i32 = -1001;
 
 const WINDOW_SIZE: i32 = 45;
@@ -804,18 +804,6 @@ impl SearchEngine {
 
         if score > alpha {
             alpha = score;
-        }
-
-        if score + eval::DELTA_MAX_MARGIN < alpha {
-            let promoting_pawn_mask = if state.player == def::PLAYER_W {
-                state.bitboard.w_pawn & WP_PROMO_PAWNS_MASK
-            } else {
-                state.bitboard.b_pawn & BP_PROMO_PAWNS_MASK
-            };
-
-            if promoting_pawn_mask == 0 {
-                return alpha
-            }
         }
 
         let delta = alpha - score - eval::DELTA_MARGIN;

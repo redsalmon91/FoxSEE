@@ -12,7 +12,6 @@ pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
 pub static DELTA_MARGIN: i32 = 90;
-pub static DELTA_MAX_MARGIN: i32 = 1090;
 
 pub const FUTILITY_MARGIN_BASE: i32 = 230;
 pub const MAX_POS_VAL: i32 = 90;
@@ -47,7 +46,7 @@ static ROOK_OPEN_LINE_VAL: i32 = 25;
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
 static QUEEN_PINNED_PEN: i32 = -25;
 
-static DEFENDED_PIECE_VAL: i32 = 20;
+static DEFENDED_PIECE_VAL: i32 = 10;
 
 static ENDGAME_ROOK_EXTRA_VAL: i32 = 30;
 static ENDGAME_QUEEN_EXTRA_VAL: i32 = 30;
@@ -440,7 +439,11 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     - bitboard.b_pawn.count_ones() as i32 * P_VAL) * score_sign;
 
     if is_endgame_with_different_colored_bishop {
-        score /= 2;
+        if score > 0  {
+            score -= P_VAL;
+        } else if score < 0 {
+            score += P_VAL;
+        }
     }
 
     (score, false)
