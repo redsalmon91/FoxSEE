@@ -29,7 +29,7 @@ static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
 static PASS_PAWN_MIDGAME_BASE_VAL: i32 = 10;
 static PASS_PAWN_MIDGAME_RANK_VAL: i32 = 10;
-static PASS_PAWN_ENDGAME_BASE_VAL: i32 = 30;
+static PASS_PAWN_ENDGAME_BASE_VAL: i32 = 20;
 static PASS_PAWN_ENDGAME_RANK_VAL: i32 = 10;
 
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 190;
@@ -57,9 +57,9 @@ static TRAPPED_B_PEN: i32 = -60;
 static TRAPPED_N_PEN: i32 = -60;
 
 static BLOCKED_Q_PEN: i32 = -30;
-static BLOCKED_R_PEN: i32 = -30;
-static BLOCKED_B_PEN: i32 = -30;
-static BLOCKED_N_PEN: i32 = -30;
+static BLOCKED_R_PEN: i32 = -20;
+static BLOCKED_B_PEN: i32 = -20;
+static BLOCKED_N_PEN: i32 = -20;
 
 static P_THREAT_POINT: i32 = -20;
 static NB_THREAT_POINT: i32 = -30;
@@ -137,9 +137,9 @@ static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
     -30,-20,-20,-20,-20,-20,-20,-30,
     -20,-20,  0, 10, 10,  0,-20,-20,
     -20,  0, 15, 20, 20, 15,  0,-20,
-    -20,  5, 15, 25, 25, 15,  5,-20,
-    -20,  0, 15, 20, 20, 15,  0,-20,
-    -20,  5, 10, 15, 15, 10,  5,-20,
+    -20,  5, 10, 25, 25, 10,  5,-20,
+    -20,  0, 10, 20, 20, 10,  0,-20,
+    -20,  5, 10,  0,  0, 10,  5,-20,
     -20,-20,  0,  0,  0,  0,-20,-20,
     -30,-20,-20,-20,-20,-20,-20,-30,
 ];
@@ -147,9 +147,9 @@ static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
 static SQR_TABLE_WN: [i32; def::BOARD_SIZE] = [
     -30,-20,-20,-20,-20,-20,-20,-30,
     -20,-20,  0,  0,  0,  0,-20,-20,
-    -20,  5, 10, 15, 15, 10,  5,-20,
-    -20,  0, 15, 20, 20, 15,  0,-20,
-    -20,  5, 15, 25, 25, 15,  5,-20,
+    -20,  5, 10,  0,  0, 10,  5,-20,
+    -20,  0, 10, 20, 20, 10,  0,-20,
+    -20,  5, 10, 25, 25, 10,  5,-20,
     -20,  0, 15, 20, 20, 15,  0,-20,
     -20,-20,  0, 10, 10,  0,-20,-20,
     -30,-20,-20,-20,-20,-20,-20,-30,
@@ -616,8 +616,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                     w_passed_pawn_surround_mask |= bitmask.k_attack_masks[index];
 
-                    if bitmask.k_attack_masks[index] & !file_mask & bitboard.w_pawn != 0 {
-                        w_feature_map.passed_pawn_rank_count += rank / 2;
+                    if behind_mask & bitmask.k_attack_masks[index] & !file_mask & bitboard.w_pawn != 0 {
+                        w_feature_map.passed_pawn_rank_count += 1;
                     }
 
                     if piece_mask == 0 {
@@ -676,8 +676,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                     b_passed_pawn_surround_mask |= bitmask.k_attack_masks[index];
 
-                    if bitmask.k_attack_masks[index] & !file_mask & bitboard.b_pawn != 0 {
-                        b_feature_map.passed_pawn_rank_count += rank / 2;
+                    if behind_mask & bitmask.k_attack_masks[index] & !file_mask & bitboard.b_pawn != 0 {
+                        b_feature_map.passed_pawn_rank_count += 1;
                     }
 
                     if piece_mask == 0 {
@@ -1121,14 +1121,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                     if file_mask & BOARD_A_FILE == 0 {
                         let left_file_mask = file_masks[index - 1];
-                        if left_file_mask & bitboard.w_pawn == 0 && left_file_mask & bitboard.w_rook == 0 {
+                        if left_file_mask & pawn_mask == 0 && left_file_mask & bitboard.w_rook == 0 {
                             w_feature_map.king_exposed += 1;
                         }
                     }
 
                     if file_mask & BOARD_H_FILE == 0 {
                         let right_file_mask = file_masks[index + 1];
-                        if right_file_mask & bitboard.w_pawn == 0 && right_file_mask & bitboard.w_rook == 0 {
+                        if right_file_mask & pawn_mask == 0 && right_file_mask & bitboard.w_rook == 0 {
                             w_feature_map.king_exposed += 1;
                         }
                     }
@@ -1155,14 +1155,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                     if file_mask & BOARD_A_FILE == 0 {
                         let left_file_mask = file_masks[index - 1];
-                        if left_file_mask & bitboard.b_pawn == 0 && left_file_mask & bitboard.b_rook == 0 {
+                        if left_file_mask & pawn_mask == 0 && left_file_mask & bitboard.b_rook == 0 {
                             b_feature_map.king_exposed += 1;
                         }
                     }
 
                     if file_mask & BOARD_H_FILE == 0 {
                         let right_file_mask = file_masks[index + 1];
-                        if right_file_mask & bitboard.b_pawn == 0 && right_file_mask & bitboard.b_rook == 0 {
+                        if right_file_mask & pawn_mask == 0 && right_file_mask & bitboard.b_rook == 0 {
                             b_feature_map.king_exposed += 1;
                         }
                     }
@@ -1331,16 +1331,12 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     if bitboard.b_queen != 0 {
         let protector_mask = bitmask.k_attack_masks[state.wk_index];
         w_feature_map.king_pawn_threat_count = (bp_attack_mask & protector_mask).count_ones() as i32;
-        w_feature_map.king_threat_count += ((bb_attack_mask & !wp_attack_mask) & protector_mask).count_ones() as i32;
-        w_feature_map.king_threat_count += ((br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)) & protector_mask).count_ones() as i32;
         w_feature_map.king_threat_count += ((bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)) & protector_mask).count_ones() as i32;
     }
 
     if bitboard.w_queen != 0 {
         let protector_mask = bitmask.k_attack_masks[state.bk_index];
         b_feature_map.king_pawn_threat_count = (wp_attack_mask & protector_mask).count_ones() as i32;
-        b_feature_map.king_threat_count += ((wb_attack_mask & !bp_attack_mask) & protector_mask).count_ones() as i32;
-        b_feature_map.king_threat_count += ((wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)) & protector_mask).count_ones() as i32;
         b_feature_map.king_threat_count += ((wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)) & protector_mask).count_ones() as i32;
     }
 

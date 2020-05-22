@@ -2,7 +2,7 @@
  * Copyright (C) 2020 Zixiao Han
  */
 
-static OVERHEAD_TIME: u128 = 50;
+static OVERHEAD_TIME: u128 = 20;
 
 pub struct TimeCapacity {
     pub main_time_millis: u128,
@@ -38,11 +38,11 @@ mod tests {
     #[test]
     fn test_calculate_time_capacity() {
         let time_capacity = calculate_time_capacity(180_000, 40, 0);
-        assert_eq!(5404, time_capacity.main_time_millis);
+        assert_eq!(5434, time_capacity.main_time_millis);
         assert_eq!(4363, time_capacity.extra_time_millis);
 
         let time_capacity = calculate_time_capacity(5000, 28, 1000);
-        assert_eq!(1067, time_capacity.main_time_millis);
+        assert_eq!(1097, time_capacity.main_time_millis);
         assert_eq!(138, time_capacity.extra_time_millis);
     }
 }
