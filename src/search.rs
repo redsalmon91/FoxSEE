@@ -602,7 +602,7 @@ impl SearchEngine {
             } else if mov == secondary_killer {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + SECONDARY_KILLER_SCORE, mov));
             } else {
-                ordered_mov_list.push((self.index_history_table[from][to], mov));
+                ordered_mov_list.push((self.index_history_table[from][to] + eval::get_square_val(state.squares[from], to), mov));
             }
         }
 
