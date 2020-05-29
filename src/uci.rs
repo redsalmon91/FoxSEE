@@ -9,8 +9,8 @@ use crate::{
 
 use std::io::{self, prelude::*};
 
-const DEFAULT_MOVS_TO_GO: u128 = 60;
-const DEFAULT_MOVS_TO_GO_NO_INCREMENT: u128 = 50;
+const DEFAULT_MOVS_TO_GO: u128 = 50;
+const DEFAULT_MOVS_TO_GO_NO_INCREMENT: u128 = 60;
 
 pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
