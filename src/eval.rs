@@ -13,13 +13,13 @@ pub static TERM_VAL: i32 = 10000;
 
 pub static DELTA_MARGIN: i32 = 90;
 
-pub const FUTILITY_MARGIN_BASE: i32 = 230;
+pub const FUTILITY_MARGIN_BASE: i32 = 300;
 pub const MAX_POS_VAL: i32 = 90;
 
-static Q_VAL: i32 = 1000;
-static R_VAL: i32 = 525;
-static B_VAL: i32 = 350;
-static N_VAL: i32 = 340;
+static Q_VAL: i32 = 1100;
+static R_VAL: i32 = 600;
+static B_VAL: i32 = 400;
+static N_VAL: i32 = 400;
 static P_VAL: i32 = 100;
 
 static KING_EXPOSED_PEN: i32 = -50;
@@ -32,7 +32,7 @@ static PASS_PAWN_MIDGAME_RANK_VAL: i32 = 10;
 static PASS_PAWN_ENDGAME_BASE_VAL: i32 = 20;
 static PASS_PAWN_ENDGAME_RANK_VAL: i32 = 10;
 
-static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 190;
+static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
 static NEAR_PASS_PAWN_VAL: i32 = 20;
 
@@ -44,12 +44,11 @@ static ROOK_SEMI_OPEN_LINE_VAL: i32 = 20;
 static ROOK_OPEN_LINE_VAL: i32 = 25;
 
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
-static QUEEN_PINNED_PEN: i32 = -25;
+static QUEEN_PINNED_PEN: i32 = -15;
+
+static BISHOP_PAIR_VAL: i32 = 50;
 
 static DEFENDED_PIECE_VAL: i32 = 10;
-
-static ENDGAME_ROOK_EXTRA_VAL: i32 = 30;
-static ENDGAME_QUEEN_EXTRA_VAL: i32 = 30;
 
 static TRAPPED_Q_PEN: i32 = -90;
 static TRAPPED_R_PEN: i32 = -80;
@@ -132,25 +131,25 @@ static SQR_TABLE_WP_ENDGAME: [i32; def::BOARD_SIZE] = [
 ];
 
 static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
-    -30,-20,-20,-20,-20,-20,-20,-30,
-    -20,-20,  0, 10, 10,  0,-20,-20,
+    -90,-20,-20,-20,-20,-20,-20,-90,
+    -20,-30, 20, 10, 10, 20,-30,-20,
     -20,  0, 15, 20, 20, 15,  0,-20,
     -20,  5, 10, 25, 25, 10,  5,-20,
     -20,  0, 10, 20, 20, 10,  0,-20,
     -20,  5, 10,  0,  0, 10,  5,-20,
-    -20,-20,  0,  0,  0,  0,-20,-20,
-    -30,-20,-20,-20,-20,-20,-20,-30,
+    -20,-30,  0,  0,  0,  0,-30,-20,
+    -90,-20,-20,-20,-20,-20,-20,-90,
 ];
 
 static SQR_TABLE_WN: [i32; def::BOARD_SIZE] = [
-    -30,-20,-20,-20,-20,-20,-20,-30,
-    -20,-20,  0,  0,  0,  0,-20,-20,
+    -90,-20,-20,-20,-20,-20,-20,-90,
+    -20,-30,  0,  0,  0,  0,-30,-20,
     -20,  5, 10,  0,  0, 10,  5,-20,
     -20,  0, 10, 20, 20, 10,  0,-20,
     -20,  5, 10, 25, 25, 10,  5,-20,
     -20,  0, 15, 20, 20, 15,  0,-20,
-    -20,-20,  0, 10, 10,  0,-20,-20,
-    -30,-20,-20,-20,-20,-20,-20,-30,
+    -20,-30, 20, 10, 10, 20,-30,-20,
+    -90,-20,-20,-20,-20,-20,-20,-90,
 ];
 
 static SQR_TABLE_BB: [i32; def::BOARD_SIZE] = [
@@ -183,11 +182,11 @@ static SQR_TABLE_BR: [i32; def::BOARD_SIZE] = [
      -5,  0,  0,  0,  0,  0,  0, -5,
      -5,  0,  0,  0,  0,  0,  0, -5,
     -10, -5,  0,  0,  0,  0, -5,-10,
-      0,  0,  0,  0,  0,  0,  0,  0,
+     -5,  0,  0,  0,  0,  0,  0, -5,
 ];
 
 static SQR_TABLE_WR: [i32; def::BOARD_SIZE] = [
-      0,  0,  0,  0,  0,  0,  0,  0,
+     -5,  0,  0,  0,  0,  0,  0, -5,
     -10, -5,  0,  0,  0,  0, -5,-10,
      -5,  0,  0,  0,  0,  0,  0, -5,
      -5,  0,  0,  0,  0,  0,  0, -5,
@@ -265,12 +264,6 @@ static SQR_TABLE_WK_ENDGAME: [i32; def::BOARD_SIZE] = [
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
-    pawn_count: i32,
-    queen_count: i32,
-    rook_count: i32,
-    bishop_count: i32,
-    knight_count: i32,
-
     midgame_sqr_point_count: i32,
     endgame_sqr_point_count: i32,
 
@@ -312,12 +305,6 @@ pub struct FeatureMap {
 impl FeatureMap {
     pub fn empty() -> Self {
         FeatureMap {
-            pawn_count: 0,
-            queen_count: 0,
-            rook_count: 0,
-            bishop_count: 0,
-            knight_count: 0,
-
             midgame_sqr_point_count: 0,
             endgame_sqr_point_count: 0,
 
@@ -533,7 +520,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.passed_pawn_count * PASS_PAWN_MIDGAME_BASE_VAL
         - b_features_map.passed_pawn_rank_count * PASS_PAWN_MIDGAME_RANK_VAL;
 
-    let endgame_positional_score =
+    let mut endgame_positional_score =
         w_features_map.endgame_sqr_point_count
         + w_features_map.passed_pawn_count * PASS_PAWN_ENDGAME_BASE_VAL
         + w_features_map.passed_pawn_rank_count * PASS_PAWN_ENDGAME_RANK_VAL
@@ -542,8 +529,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.near_passed_pawn_count * NEAR_PASS_PAWN_VAL
         + w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
         + w_features_map.dup_pawn_count * DUP_PAWN_PEN
-        + w_features_map.rook_count * ENDGAME_ROOK_EXTRA_VAL
-        + w_features_map.queen_count * ENDGAME_QUEEN_EXTRA_VAL
         - b_features_map.endgame_sqr_point_count
         - b_features_map.passed_pawn_count * PASS_PAWN_ENDGAME_BASE_VAL
         - b_features_map.passed_pawn_rank_count * PASS_PAWN_ENDGAME_RANK_VAL
@@ -551,18 +536,17 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.near_passed_pawn_count * NEAR_PASS_PAWN_VAL
         - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
-        - b_features_map.dup_pawn_count * DUP_PAWN_PEN
-        - b_features_map.rook_count * ENDGAME_ROOK_EXTRA_VAL
-        - b_features_map.queen_count * ENDGAME_QUEEN_EXTRA_VAL;
+        - b_features_map.dup_pawn_count * DUP_PAWN_PEN;
 
-    let phase = w_features_map.queen_count * Q_PHASE_WEIGHT
-    + w_features_map.rook_count * R_PHASE_WEIGHT
-    + w_features_map.bishop_count * B_PHASE_WEIGHT
-    + w_features_map.knight_count * N_PHASE_WEIGHT
-    + b_features_map.queen_count * Q_PHASE_WEIGHT
-    + b_features_map.rook_count * R_PHASE_WEIGHT
-    + b_features_map.bishop_count * B_PHASE_WEIGHT
-    + b_features_map.knight_count * N_PHASE_WEIGHT;
+    if state.bitboard.w_bishop.count_ones() > 1 {
+        endgame_positional_score += BISHOP_PAIR_VAL;
+    }
+
+    if state.bitboard.b_bishop.count_ones() > 1 {
+        endgame_positional_score -= BISHOP_PAIR_VAL;
+    }
+
+    let phase = get_phase(state);
 
     let extra_score = shared_positional_score + (midgame_positional_score * phase + endgame_positional_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
 
@@ -1193,18 +1177,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             _ => {}
         }
     }
-
-    w_feature_map.pawn_count = bitboard.w_pawn.count_ones() as i32;
-    w_feature_map.knight_count = bitboard.w_knight.count_ones() as i32;
-    w_feature_map.bishop_count = bitboard.w_bishop.count_ones() as i32;
-    w_feature_map.rook_count = bitboard.w_rook.count_ones() as i32;
-    w_feature_map.queen_count = bitboard.w_queen.count_ones() as i32;
-
-    b_feature_map.pawn_count = bitboard.b_pawn.count_ones() as i32;
-    b_feature_map.knight_count = bitboard.b_knight.count_ones() as i32;
-    b_feature_map.bishop_count = bitboard.b_bishop.count_ones() as i32;
-    b_feature_map.rook_count = bitboard.b_rook.count_ones() as i32;
-    b_feature_map.queen_count = bitboard.b_queen.count_ones() as i32;
 
     let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask;
     let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
