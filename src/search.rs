@@ -34,6 +34,9 @@ const MULTICUT_CUT_COUNT: u8 = 2;
 
 const MAX_DEPTH: u8 = 128;
 
+const FP_DEPTH: u8 = 6;
+
+const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
@@ -479,7 +482,7 @@ impl SearchEngine {
             }
         }
 
-        if !on_pv && !in_check && !under_threat && depth <= 6 && !in_endgame {
+        if !on_pv && !in_check && !under_threat && depth <= FP_DEPTH && !in_endgame {
             let opponent_has_promoting_pawn =
             (state.player == def::PLAYER_W && state.bitboard.b_pawn & BP_PROMO_PAWNS_MASK != 0)
             || (state.player == def::PLAYER_B && state.bitboard.w_pawn & WP_PROMO_PAWNS_MASK != 0);
@@ -497,7 +500,7 @@ impl SearchEngine {
             }
         }
 
-        if on_pv && pv_mov == 0 && depth >= 5 {
+        if on_pv && pv_mov == 0 && depth >= IID_DEPTH {
             self.ab_search(state, in_check, false, alpha, beta, depth - IID_R, ply);
 
             unsafe {
@@ -1072,8 +1075,8 @@ mod tests {
         let bitmask = BitMask::new();
         let mut state = State::new("pnkq3r/pb2nppp/2p1b3/1r1N2R1/2PPP3/1Q3B2/PPP2PPP/RNB1K1NR b - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(240, see(&mut state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
-        assert_eq!(90, see(&mut state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
+        assert_eq!(300, see(&mut state, util::map_sqr_notation_to_index("c6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
+        assert_eq!(100, see(&mut state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d5"), def::MOV_REG, 0));
     }
 
     #[test]
@@ -1082,9 +1085,9 @@ mod tests {
         let bitmask = BitMask::new();
         let mut state = State::new("pnkq3r/pbr2ppp/P1pnb3/N5R1/3PP3/1R1Q1B2/PPP2PPP/1NB1K1NR w - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(-175, see(&mut state, util::map_sqr_notation_to_index("b3"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
-        assert_eq!(250, see(&mut state, util::map_sqr_notation_to_index("a6"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
-        assert_eq!(10, see(&mut state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
+        assert_eq!(-200, see(&mut state, util::map_sqr_notation_to_index("b3"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
+        assert_eq!(300, see(&mut state, util::map_sqr_notation_to_index("a6"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
+        assert_eq!(0, see(&mut state, util::map_sqr_notation_to_index("a5"), util::map_sqr_notation_to_index("b7"), def::MOV_REG, 0));
     }
 
     #[test]
@@ -1093,9 +1096,9 @@ mod tests {
         let bitmask = BitMask::new();
         let mut state = State::new("4n2r/5P2/8/7B/8/8/8/8 w - - 0 1", &zob_keys, &bitmask);
 
-        assert_eq!(865, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WQ));
-        assert_eq!(680, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WN));
-        assert_eq!(865, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WR));
+        assert_eq!(1000, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WQ));
+        assert_eq!(800, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WN));
+        assert_eq!(1000, see(&mut state, util::map_sqr_notation_to_index("f7"), util::map_sqr_notation_to_index("e8"), def::MOV_PROMO, def::WR));
     }
 
     #[test]
