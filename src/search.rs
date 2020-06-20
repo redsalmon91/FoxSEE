@@ -17,8 +17,8 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const MAX_HISTORY_SCORE: i32 = 100000;
 const MAX_NON_CAP_SCORE: i32 = 200000;
-const PRIMARY_KILLER_SCORE: i32 = -21;
-const SECONDARY_KILLER_SCORE: i32 = -1001;
+const PRIMARY_KILLER_SCORE: i32 = -100;
+const SECONDARY_KILLER_SCORE: i32 = -1000;
 
 const WINDOW_SIZE: i32 = 45;
 const UNIT_WINDOW_SIZE: i32 = 5;
@@ -622,12 +622,13 @@ impl SearchEngine {
             }
         }
 
-        for (_score, mov) in ordered_mov_list {
+        for (score, mov) in ordered_mov_list {
             mov_count += 1;
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
+            let is_good_capture = is_capture && score >= MAX_NON_CAP_SCORE;
 
             state.do_mov(from, to, tp, promo);
 
@@ -641,7 +642,7 @@ impl SearchEngine {
                 depth += 1;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !in_check && !gives_check && !under_threat && !is_capture && !is_promoting_pawn {
+            let score = if depth > 1 && mov_count > 1 && !in_check && !gives_check && !under_threat && !is_good_capture && !is_promoting_pawn {
                 let depth_reduction = if on_pv {
                     (2 + (mov_count * (1 + depth / 8) / 8)).min(depth)
                 } else {
