@@ -34,7 +34,7 @@ A master-level UCI chess engine written in Rust!
 - Perft
 
 ## How to build
-Install [Rust](https://www.rust-lang.org/)
+Install [Rust](https://www.rust-lang.org/learn/get-started)
 
 Run `cargo build --release`
 
