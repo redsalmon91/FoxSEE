@@ -49,7 +49,7 @@ static R_PHASE_WEIGHT: i32 = 8;
 static B_PHASE_WEIGHT: i32 = 4;
 static N_PHASE_WEIGHT: i32 = 4;
 
-pub static ENDGAME_PHASE: i32 = 16;
+pub static ENDGAME_PHASE: i32 = 32;
 
 static TEMPO_VAL: i32 = 10;
 

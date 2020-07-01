@@ -470,9 +470,7 @@ impl SearchEngine {
             }
 
             if scout_score >= beta {
-                if !on_pv {
-                    return beta
-                }
+                return beta
             } else if scout_score + THREAT_SCORE_DIFF <= alpha {
                 under_threat = true;
             }
