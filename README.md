@@ -16,22 +16,17 @@ A master-level UCI chess engine written in Rust!
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
-- MVV/LVA
 - Check Extensions
-- Deep Search Extensions
 - Passed-Pawn Extensions
-- Singular Extensions
 - Late-Move Reductions
 - History Heuristic
 - Killer Heuristic
 - Tapered Evaluation
 - Piece-Square Tables
 - Null-Move Pruning
-- Multi-Cut Pruning
 - Mate Distance Pruning
 - Delta Pruning
 - Reversed Futility Pruning
-- Perft
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/learn/get-started)

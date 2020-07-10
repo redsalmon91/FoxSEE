@@ -14,34 +14,38 @@ pub static TERM_VAL: i32 = 10000;
 static Q_VAL: i32 = 1200;
 static R_VAL: i32 = 600;
 static B_VAL: i32 = 400;
-static N_VAL: i32 = 380;
+static N_VAL: i32 = 400;
 static P_VAL: i32 = 100;
 
 static ENDGAME_P_BONUS_VAL: i32 = 20;
-static ENDGAME_R_BONUS_VAL: i32 = 30;
+static ENDGAME_R_BONUS_VAL: i32 = 50;
 
-static KING_EXPOSED_PEN: i32 = -50;
-static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
+static KING_EXPOSED_PEN: i32 = -30;
+static KING_LOST_CAS_RIGHTS_PEN: i32 = -60;
+
 static KING_ATTACKER_PEN: i32 = -10;
 
-static MG_PASS_PAWN_VAL: [i32; 8] = [0, 0, 0, 10, 20, 40, 80, 0];
-static EG_PASS_PAWN_VAL: [i32; 8] = [0, 10, 10, 10, 50, 100, 200, 0];
+static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 80, 200, 0];
+static CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0, 0];
 
+static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -6;
+static CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -4;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
-
-static DUP_PAWN_PEN: i32 = -20;
-static ISOLATE_PAWN_PEN: i32 = -10;
-static BEHIND_PAWN_PEN: i32 = -10;
+static DOUBLED_PAWN_PEN: i32 = -10;
+static ISOLATED_PAWN_PEN: i32 = -20;
+static OPEN_BEHIND_PAWN_PEN: i32 = -5;
 
 static ROOK_OPEN_LINE_VAL: i32 = 30;
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
 
 static BISHOP_PAIR_VAL: i32 = 30;
 
-static N_DEFENSE_SCORE: i32 = 10;
-static B_DEFENSE_SCORE: i32 = 10;
-static R_DEFENSE_SCORE: i32 = 6;
+static HANGING_P_PEN: i32 = -10;
+static HANGING_N_PEN: i32 = -20;
+static HANGING_B_PEN: i32 = -20;
+static HANGING_R_PEN: i32 = -30;
+static HANGING_Q_PEN: i32 = -50;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
@@ -54,44 +58,44 @@ pub static ENDGAME_PHASE: i32 = 32;
 static TEMPO_VAL: i32 = 10;
 
 static N_MOB_SCORE: [i32; 9] = [-50, -30, -10, 0, 5, 10, 20, 25, 30];
-static B_MOB_SCORE: [i32; 15] = [-30, -20, -10, 0, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30];
+static B_MOB_SCORE: [i32; 15] = [-50, -30, -20, 0, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30];
 static R_MOB_SCORE: [i32; 15] = [-50, -20, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30, 30];
-static Q_MOB_SCORE: [i32; 29] = [-30, -20, -20, -10, -10, 0, 0, 0, 0, 0, 5, 5, 10, 10, 15, 15, 20, 20, 20, 20, 20, 30, 30, 30, 30, 30, 30, 30, 30];
+static Q_MOB_SCORE: [i32; 29] = [-30, -20, -20, -10, -10, 0, 0, 5, 5, 10, 10, 10, 10, 15, 15, 15, 15, 20, 20, 20, 20, 30, 30, 30, 30, 30, 30, 30, 30];
 
 static WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
 static BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
 
 static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
-     0,  0,  0,  0,  0,  0,  0,  0,
-    15, 30, 30, 30, 30, 30, 30, 15,
-    10, 20, 20, 30, 30, 20, 20, 10,
-     5,  5, 10, 25, 25, 10,  5,  5,
-     0,  0,  0, 20, 20,  0,  0,  0,
-     5, -5,-10,  0,  0,-10, -5,  5,
-     5, 10, 10,-20,-20, 10, 10,  5,
-     0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+     15, 30, 30, 30, 30, 30, 30, 15,
+     10, 20, 20, 30, 30, 20, 20, 10,
+      5,  5, 10, 25, 25, 10,  5,  5,
+      0,  0,  0, 20, 20,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
 static SQR_TABLE_BP_ENDGAME: [i32; def::BOARD_SIZE] = [
-     0,  0,  0,  0,  0,  0,  0,  0,
-    15, 30, 30, 30, 30, 30, 30, 15,
-    10, 20, 20, 20, 20, 20, 20, 10,
-     5, 15, 15, 15, 15, 15, 15,  5,
-     0, 10, 10, 10, 10, 10, 10,  0,
-     0,  0,  0,  0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+     15, 30, 30, 30, 30, 30, 30, 15,
+     10, 20, 20, 20, 20, 20, 20, 10,
+      5, 15, 15, 15, 15, 15, 15,  5,
+      0, 10, 10, 10, 10, 10, 10,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
 static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
-     0,  0,  0,  0,  0,  0,  0,  0,
-     5, 10, 10,-20,-20, 10, 10,  5,
-     5, -5,-10,  0,  0,-10, -5,  5,
-     0,  0,  0, 20, 20,  0,  0,  0,
-     5,  5, 10, 25, 25, 10,  5,  5,
-    10, 20, 20, 30, 30, 20, 20, 10,
-    15, 30, 30, 30, 30, 30, 30, 15,
-     0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, 20, 20,  0,  0,  0,
+      5,  5, 10, 25, 25, 10,  5,  5,
+     10, 20, 20, 30, 30, 20, 20, 10,
+     15, 30, 30, 30, 30, 30, 30, 15,
+      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
 static SQR_TABLE_WP_ENDGAME: [i32; def::BOARD_SIZE] = [
@@ -150,7 +154,7 @@ static SQR_TABLE_WB: [i32; def::BOARD_SIZE] = [
 ];
 
 static SQR_TABLE_BR: [i32; def::BOARD_SIZE] = [
-      5, 10, 20, 20, 20, 20, 10,  5,
+     10, 10, 20, 20, 20, 20, 10, 10,
      10, 20, 30, 30, 30, 30, 20, 10,
      -5,  0,  0,  0,  0,  0,  0, -5,
      -5,  0,  0,  0,  0,  0,  0, -5,
@@ -168,87 +172,92 @@ static SQR_TABLE_WR: [i32; def::BOARD_SIZE] = [
      -5,  0,  0,  0,  0,  0,  0, -5,
      -5,  0,  0,  0,  0,  0,  0, -5,
      10, 20, 30, 30, 30, 30, 20, 10,
-      5, 10, 20, 20, 20, 20, 10,  5,
+     10, 10, 20, 20, 20, 20, 10, 10,
 ];
 
 static SQR_TABLE_BQ: [i32; def::BOARD_SIZE] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5,  5,  5,  5,  0,-10,
-     -5,  0,  5,  5,  5,  5,  0, -5,
-      0,  0,  5,  5,  5,  5,  0, -5,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-    -10,  0,  5,  0,  0,  0,  0,-10,
+    -10,-10,  0,  0,  0,  0,-10,-10,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+    -10,-10,  0,  0,  0,  0,-10,-10,
     -20,-10,-10, -5, -5,-10,-10,-20,
 ];
 
 static SQR_TABLE_WQ: [i32; def::BOARD_SIZE] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
-    -10,  0,  5,  0,  0,  0,  0,-10,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-      0,  0,  5,  5,  5,  5,  0, -5,
-     -5,  0,  5,  5,  5,  5,  0, -5,
-    -10,  0,  5,  5,  5,  5,  0,-10,
-    -10,  0,  0,  0,  0,  0,  0,-10,
+    -10,-10,  0,  0,  0,  0,-10,-10,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+    -10,-10,  0,  0,  0,  0,-10,-10,
     -20,-10,-10, -5, -5,-10,-10,-20,
 ];
 
 static SQR_TABLE_BK: [i32; def::BOARD_SIZE] = [
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -10,-15,-15,-20,-20,-15,-15,-10,
-     -5,-10,-10,-10,-10,-10,-10, -5,
-     10, 10,  0,  0,  0,  0, 10, 10,
-     10, 15,  5,  0,  0,  5, 15, 10,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -60,-60,-60,-80,-80,-60,-60,-60,
+      0, 10,-10,-20,-20,-10, 10, 0,
+      0, 20,  0,-10,-10,  0, 20, 0,
 ];
 
 static SQR_TABLE_WK: [i32; def::BOARD_SIZE] = [
-     10, 15,  5,  0,  0,  5, 15, 10,
-     10, 10,  0,  0,  0,  0, 10, 10,
-     -5,-10,-10,-10,-10,-10,-10, -5,
-    -10,-15,-15,-20,-20,-15,-15,-10,
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -15,-20,-20,-30,-30,-20,-20,-15,
-    -15,-20,-20,-30,-30,-20,-20,-15,
+      0, 20,  0,-10,-10,  0, 20,  0,
+      0, 10,-10,-20,-20,-10, 10,  0,
+    -60,-60,-60,-80,-80,-60,-60,-60,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
+    -90,-90,-90,-90,-90,-90,-90,-90,
 ];
 
 static SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
     -50,-40,-30,-20,-20,-30,-40,-50,
-    -40,-30, -5,  0,  0, -5,-30,-40,
-    -30, -5, 10, 15, 15, 10, -5,-30,
-    -30, -5, 15, 20, 20, 15, -5,-30,
-    -30, -5, 15, 20, 20, 15, -5,-30,
-    -30, -5, 10, 15, 15, 10, -5,-30,
-    -30,-30,  0,  0,  0,  0,-30,-40,
+    -40,-30,-10,-10,-10,-10,-30,-40,
+    -30,-10, 10, 30, 30, 10,-10,-30,
+    -30,-10, 30, 50, 50, 30,-10,-30,
+    -30,-10, 30, 50, 50, 30,-10,-30,
+    -30,-10, 10, 30, 30, 10,-10,-30,
+    -30,-30,-10,-10,-10,-10,-30,-40,
     -50,-40,-30,-30,-30,-30,-40,-50,
 ];
-
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     midgame_sqr_point_count: i32,
     endgame_sqr_point_count: i32,
 
-    midgame_passed_pawn_point: i32,
-    endgame_passed_pawn_point: i32,
+    passed_pawn_point: i32,
+    candidate_passed_pawn_point: i32,
+    passed_pawn_king_distance: i32,
+    candidate_passed_pawn_king_distance: i32,
     unstoppable_passed_pawn_count: i32,
     controlled_passed_pawn_count: i32,
-
-    dup_pawn_count: i32,
-    isolate_pawn_count: i32,
-    behind_pawn_count: i32,
+    connected_pawn_count: i32,
+    doubled_pawn_count: i32,
+    isolated_pawn_count: i32,
+    open_behind_pawn_count: i32,
 
     open_rook_count: i32,
     open_queen_count: i32,
 
     mobility: i32,
 
-    defense_point: i32,
+    hanging_p_count: i32,
+    hanging_n_count: i32,
+    hanging_b_count: i32,
+    hanging_r_count: i32,
+    hanging_q_count: i32,
 
-    king_exposed: i32,
+    king_exposure_count: i32,
     king_lost_cas_rights: i32,
     king_attacker_count: i32,
 }
@@ -259,23 +268,29 @@ impl FeatureMap {
             midgame_sqr_point_count: 0,
             endgame_sqr_point_count: 0,
 
-            midgame_passed_pawn_point: 0,
-            endgame_passed_pawn_point: 0,
+            passed_pawn_point: 0,
+            candidate_passed_pawn_point: 0,
+            passed_pawn_king_distance: 0,
+            candidate_passed_pawn_king_distance: 0,
             unstoppable_passed_pawn_count: 0,
             controlled_passed_pawn_count: 0,
-
-            dup_pawn_count: 0,
-            isolate_pawn_count: 0,
-            behind_pawn_count: 0,
+            connected_pawn_count: 0,
+            doubled_pawn_count: 0,
+            isolated_pawn_count: 0,
+            open_behind_pawn_count: 0,
 
             open_rook_count: 0,
             open_queen_count: 0,
 
             mobility: 0,
 
-            defense_point: 0,
+            hanging_p_count: 0,
+            hanging_n_count: 0,
+            hanging_b_count: 0,
+            hanging_r_count: 0,
+            hanging_q_count: 0,
 
-            king_exposed: 0,
+            king_exposure_count: 0,
             king_lost_cas_rights: 0,
             king_attacker_count: 0,
         }
@@ -298,26 +313,6 @@ pub fn val_of(piece: u8) -> i32 {
         def::BB => B_VAL,
         def::BN => N_VAL,
         def::BP => P_VAL,
-
-        _ => 0,
-    }
-}
-
-pub fn get_square_val(moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
-    match moving_piece {
-        def::WP => SQR_TABLE_WP[to_index] - SQR_TABLE_WP[from_index],
-        def::WN => SQR_TABLE_WN[to_index] - SQR_TABLE_WN[from_index],
-        def::WB => SQR_TABLE_WB[to_index] - SQR_TABLE_WB[from_index],
-        def::WR => SQR_TABLE_WR[to_index] - SQR_TABLE_WR[from_index],
-        def::WQ => SQR_TABLE_WQ[to_index] - SQR_TABLE_WQ[from_index],
-        def::WK => SQR_TABLE_WK[to_index] - SQR_TABLE_WK[from_index],
-
-        def::BP => SQR_TABLE_BP[to_index] - SQR_TABLE_BP[from_index],
-        def::BN => SQR_TABLE_BN[to_index] - SQR_TABLE_BN[from_index],
-        def::BB => SQR_TABLE_BB[to_index] - SQR_TABLE_BB[from_index],
-        def::BR => SQR_TABLE_BR[to_index] - SQR_TABLE_BR[from_index],
-        def::BQ => SQR_TABLE_BQ[to_index] - SQR_TABLE_BQ[from_index],
-        def::BK => SQR_TABLE_BK[to_index] - SQR_TABLE_BK[from_index],
 
         _ => 0,
     }
@@ -374,6 +369,14 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     - bitboard.b_knight.count_ones() as i32 * N_VAL
     - bitboard.b_pawn.count_ones() as i32 * P_VAL;
 
+    if score > 0 && (bitboard.w_pawn | bitboard.w_rook | bitboard.w_queen) == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 && bitboard.b_pawn.count_ones() == 1 {
+        return (0, false)
+    }
+
+    if score < 0 && (bitboard.b_pawn | bitboard.b_rook | bitboard.b_queen) == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 && bitboard.w_pawn.count_ones() == 1 {
+        return (0, false)
+    }
+
     if is_endgame_with_different_colored_bishop {
         if score > 0  {
             score -= P_VAL;
@@ -428,42 +431,54 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let (w_features_map, b_features_map) = extract_features(state);
 
     let shared_positional_score =
-        w_features_map.king_attacker_count * w_features_map.king_attacker_count * KING_ATTACKER_PEN
+        w_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
+        + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
+        + w_features_map.passed_pawn_point
+        + w_features_map.candidate_passed_pawn_point        
         + w_features_map.mobility
-        - b_features_map.king_attacker_count * w_features_map.king_attacker_count * KING_ATTACKER_PEN
-        - b_features_map.mobility;
+        + w_features_map.hanging_p_count * HANGING_P_PEN
+        + w_features_map.hanging_n_count * HANGING_N_PEN
+        + w_features_map.hanging_b_count * HANGING_B_PEN
+        + w_features_map.hanging_r_count * HANGING_R_PEN
+        + w_features_map.hanging_q_count * HANGING_Q_PEN
+        - b_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
+        - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
+        - b_features_map.passed_pawn_point
+        - b_features_map.candidate_passed_pawn_point
+        - b_features_map.mobility
+        - b_features_map.hanging_p_count * HANGING_P_PEN
+        - b_features_map.hanging_n_count * HANGING_N_PEN
+        - b_features_map.hanging_b_count * HANGING_B_PEN
+        - b_features_map.hanging_r_count * HANGING_R_PEN
+        - b_features_map.hanging_q_count * HANGING_Q_PEN;
 
     let midgame_positional_score =
-        w_features_map.midgame_sqr_point_count
-        + w_features_map.defense_point
-        + w_features_map.midgame_passed_pawn_point
+        def::square(w_features_map.king_attacker_count) * KING_ATTACKER_PEN
+        + w_features_map.midgame_sqr_point_count
         + w_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         + w_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        + w_features_map.king_exposed * KING_EXPOSED_PEN
-        + w_features_map.behind_pawn_count * BEHIND_PAWN_PEN
+        + def::square(w_features_map.king_exposure_count) * KING_EXPOSED_PEN
         + w_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN
+        + w_features_map.open_behind_pawn_count * OPEN_BEHIND_PAWN_PEN
+        - def::square(b_features_map.king_attacker_count) * KING_ATTACKER_PEN
         - b_features_map.midgame_sqr_point_count
-        - b_features_map.defense_point
-        - b_features_map.midgame_passed_pawn_point
         - b_features_map.open_rook_count * ROOK_OPEN_LINE_VAL
         - b_features_map.open_queen_count * QUEEN_OPEN_LINE_VAL
-        - b_features_map.king_exposed * KING_EXPOSED_PEN
-        - b_features_map.behind_pawn_count * BEHIND_PAWN_PEN
-        - b_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN;
+        - def::square(b_features_map.king_exposure_count) * KING_EXPOSED_PEN
+        - b_features_map.king_lost_cas_rights * KING_LOST_CAS_RIGHTS_PEN
+        - b_features_map.open_behind_pawn_count * OPEN_BEHIND_PAWN_PEN;
 
     let endgame_positional_score =
         w_features_map.endgame_sqr_point_count
-        + w_features_map.endgame_passed_pawn_point
+        + w_features_map.passed_pawn_king_distance * PASSED_PAWN_KING_DISTANCE_BASE_PEN
+        + w_features_map.candidate_passed_pawn_king_distance * CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN
         + w_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
-        + w_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
-        + w_features_map.dup_pawn_count * DUP_PAWN_PEN
         - b_features_map.endgame_sqr_point_count
-        - b_features_map.endgame_passed_pawn_point
+        - b_features_map.passed_pawn_king_distance * PASSED_PAWN_KING_DISTANCE_BASE_PEN
+        - b_features_map.candidate_passed_pawn_king_distance * CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN
         - b_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
-        - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
-        - b_features_map.isolate_pawn_count * ISOLATE_PAWN_PEN
-        - b_features_map.dup_pawn_count * DUP_PAWN_PEN;
+        - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL;
 
     let phase = get_phase(state);
 
@@ -473,7 +488,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 }
 
 #[inline]
-fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
+pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
     let index_masks = state.bitmask.index_masks;
     let file_masks = state.bitmask.file_masks;
@@ -487,11 +502,13 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let mut wn_attack_mask = 0;
     let mut wb_attack_mask = 0;
     let mut wr_attack_mask = 0;
+    let mut wq_attack_mask = 0;
 
     let mut bp_attack_mask = 0;
     let mut bn_attack_mask = 0;
     let mut bb_attack_mask = 0;
     let mut br_attack_mask = 0;
+    let mut bq_attack_mask = 0;
 
     let mut mov_mask_map = [0; def::BOARD_SIZE];
 
@@ -519,21 +536,26 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
                 let forward_mask = bitmask.wp_forward_masks[index];
-                let behind_mask = bitmask.wp_behind_masks[index];
                 let rank = def::get_rank(def::PLAYER_W, index) as i32;
 
+                let is_connected = bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0;
+
                 if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
-                    w_feature_map.midgame_passed_pawn_point += MG_PASS_PAWN_VAL[rank as usize];
-                    w_feature_map.endgame_passed_pawn_point += EG_PASS_PAWN_VAL[rank as usize];
+                    w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+
+                    let king_distance = def::get_file_distance(index, state.wk_index);
+                    w_feature_map.passed_pawn_king_distance += king_distance;
+
+                    let opponent_king_distance = def::get_file_distance(index, state.bk_index);
+                    w_feature_map.passed_pawn_king_distance -= opponent_king_distance;
 
                     if piece_mask == 0 {
-                        let king_distance = def::get_file_distance(index, state.bk_index);
                         if state.player == def::PLAYER_W {
-                            if king_distance > 7 - rank {
+                            if opponent_king_distance > 7 - rank {
                                 w_feature_map.unstoppable_passed_pawn_count += 1;
                             }
                         } else {
-                            if king_distance - 1 > 7 - rank {
+                            if opponent_king_distance - 1 > 7 - rank {
                                 w_feature_map.unstoppable_passed_pawn_count += 1;
                             }
                         }
@@ -543,26 +565,28 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                             w_feature_map.controlled_passed_pawn_count += 1;
                         }
                     }
+                } else if is_connected && forward_mask & file_mask & (bitboard.w_pawn | bitboard.b_pawn) == 0 && (forward_mask & bitboard.b_pawn).count_ones() == 1 {
+                    w_feature_map.candidate_passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
+
+                    let king_distance = def::get_file_distance(index, state.wk_index);
+                    w_feature_map.candidate_passed_pawn_king_distance += king_distance;
+
+                    let opponent_king_distance = def::get_file_distance(index, state.bk_index);
+                    w_feature_map.candidate_passed_pawn_king_distance -= opponent_king_distance;
                 }
 
-                if behind_mask & bitboard.w_pawn == 0 {
-                    if forward_mask & bitmask.k_attack_masks[index] & !file_mask & bitboard.w_pawn == 0 {
-                        w_feature_map.isolate_pawn_count += 1;
-
-                        if forward_mask & file_mask & bitboard.b_pawn == 0 {
-                            w_feature_map.isolate_pawn_count += 1;
-                        }
-                    } else {
-                        w_feature_map.behind_pawn_count += 1;
-
-                        if forward_mask & file_mask & bitboard.b_pawn == 0 {
-                            w_feature_map.behind_pawn_count += 1;
-                        }
+                if is_connected {
+                    w_feature_map.connected_pawn_count += 1;
+                } else {
+                    if forward_mask & !file_mask & bitboard.w_pawn == 0 {
+                        w_feature_map.isolated_pawn_count += 1;
+                    } else if forward_mask & file_mask & bitboard.b_pawn == 0 {
+                        w_feature_map.open_behind_pawn_count += 1;
                     }
                 }
 
                 if (file_mask & bitboard.w_pawn).count_ones() > 1 {
-                    w_feature_map.dup_pawn_count += 1;
+                    w_feature_map.doubled_pawn_count += 1;
                 }
             },
             def::BP => {
@@ -573,21 +597,26 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
                 let forward_mask = bitmask.bp_forward_masks[index];
-                let behind_mask = bitmask.bp_behind_masks[index];
                 let rank = def::get_rank(def::PLAYER_B, index) as i32;
 
+                let is_connected = bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0;
+
                 if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
-                    b_feature_map.midgame_passed_pawn_point += MG_PASS_PAWN_VAL[rank as usize];
-                    b_feature_map.endgame_passed_pawn_point += EG_PASS_PAWN_VAL[rank as usize];
+                    b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+
+                    let king_distance = def::get_file_distance(index, state.bk_index);
+                    b_feature_map.passed_pawn_king_distance += king_distance;
+
+                    let opponent_king_distance = def::get_file_distance(index, state.wk_index);
+                    b_feature_map.passed_pawn_king_distance -= opponent_king_distance;
 
                     if piece_mask == 0 {
-                        let king_distance = def::get_file_distance(index, state.wk_index);
                         if state.player == def::PLAYER_B {
-                            if king_distance > 7 - rank {
+                            if opponent_king_distance > 7 - rank {
                                 b_feature_map.unstoppable_passed_pawn_count += 1;
                             }
                         } else {
-                            if king_distance - 1 > 7 - rank {
+                            if opponent_king_distance - 1 > 7 - rank {
                                 b_feature_map.unstoppable_passed_pawn_count += 1;
                             }
                         }
@@ -597,26 +626,28 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                             b_feature_map.controlled_passed_pawn_count += 1;
                         }
                     }
+                } else if is_connected && forward_mask & file_mask & (bitboard.b_pawn | bitboard.w_pawn) == 0 && (forward_mask & bitboard.w_pawn).count_ones() == 1 {
+                    b_feature_map.candidate_passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
+
+                    let king_distance = def::get_file_distance(index, state.bk_index);
+                    b_feature_map.candidate_passed_pawn_king_distance += king_distance;
+
+                    let opponent_king_distance = def::get_file_distance(index, state.wk_index);
+                    b_feature_map.candidate_passed_pawn_king_distance -= opponent_king_distance;
                 }
 
-                if behind_mask & bitboard.b_pawn == 0 {
-                    if forward_mask & bitmask.k_attack_masks[index] & !file_mask & bitboard.b_pawn == 0 {
-                        b_feature_map.isolate_pawn_count += 1;
-
-                        if forward_mask & file_mask & bitboard.w_pawn == 0 {
-                            b_feature_map.isolate_pawn_count += 1;
-                        }
-                    } else {
-                        b_feature_map.behind_pawn_count += 1;
-
-                        if forward_mask & file_mask & bitboard.w_pawn == 0 {
-                            b_feature_map.behind_pawn_count += 1;
-                        }
+                if is_connected {
+                    b_feature_map.connected_pawn_count += 1;
+                } else {
+                    if forward_mask & !file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.isolated_pawn_count += 1;
+                    } else if forward_mask & file_mask & bitboard.w_pawn == 0 {
+                        b_feature_map.open_behind_pawn_count += 1;
                     }
                 }
 
                 if (file_mask & bitboard.b_pawn).count_ones() > 1 {
-                    b_feature_map.dup_pawn_count += 1;
+                    b_feature_map.doubled_pawn_count += 1;
                 }
             },
 
@@ -861,6 +892,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
                 }
 
+                wq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
             },
             def::BQ => {
@@ -929,46 +961,45 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
                 }
 
+                bq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
             },
 
             def::WK => {
-                w_feature_map.midgame_sqr_point_count += SQR_TABLE_WK[index];
+                if bitboard.b_queen != 0 {
+                    w_feature_map.midgame_sqr_point_count += SQR_TABLE_WK[index];
+                }
+
                 w_feature_map.endgame_sqr_point_count += SQR_TABLE_K_ENDGAME[index];
 
                 let file_mask = file_masks[index];
 
-                if bitboard.b_rook | bitboard.b_queen != 0 {
+                if bitboard.b_queen != 0 {
                     if file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 {
-                        w_feature_map.king_exposed += 1;
-
-                        if file_mask & bitboard.w_pawn == 0 {
-                            w_feature_map.king_exposed += 1;
-                        }
+                        w_feature_map.king_exposure_count += 1;
                     }
 
-                    if bitboard.b_rook != 0 && file_mask & bitboard.b_pawn == 0 {
-                        w_feature_map.king_exposed += 1;
+                    if (bitmask.wk_attack_zone_masks[state.wk_index] & bitboard.w_pawn).count_ones() < 2 {
+                        w_feature_map.king_exposure_count += 1;
                     }
                 }
             },
             def::BK => {
-                b_feature_map.midgame_sqr_point_count += SQR_TABLE_BK[index];
+                if bitboard.w_queen != 0 {
+                    b_feature_map.midgame_sqr_point_count += SQR_TABLE_BK[index];
+                }
+
                 b_feature_map.endgame_sqr_point_count += SQR_TABLE_K_ENDGAME[index];
 
                 let file_mask = file_masks[index];
 
-                if bitboard.w_rook | bitboard.w_queen != 0 {
+                if bitboard.w_queen != 0 {
                     if file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 {
-                        b_feature_map.king_exposed += 1;
-
-                        if file_mask & bitboard.b_pawn == 0 {
-                            b_feature_map.king_exposed += 1;
-                        }
+                        b_feature_map.king_exposure_count += 1;
                     }
 
-                    if bitboard.w_rook != 0 && file_mask & bitboard.w_pawn == 0 {
-                        b_feature_map.king_exposed += 1;
+                    if (bitmask.bk_attack_zone_masks[state.bk_index] & bitboard.b_pawn).count_ones() < 2 {
+                        b_feature_map.king_exposure_count += 1;
                     }
                 }
             },
@@ -976,8 +1007,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         }
     }
 
-    let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
-    let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
+    let wk_ring_mask = bitmask.wk_attack_zone_masks[state.wk_index];
+    let bk_ring_mask = bitmask.bk_attack_zone_masks[state.bk_index];
 
     for index in start_index..end_index {
         let moving_piece = squares[index];
@@ -986,127 +1017,79 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             continue
         }
 
-        let index_mask = index_masks[index];
-
         match moving_piece {
             def::WN => {
                 let mov_mask = mov_mask_map[index];
                 w_feature_map.mobility += N_MOB_SCORE[(mov_mask & !bp_attack_mask & !bitboard.w_all).count_ones() as usize];
 
-                if mov_mask & bk_ring_mask & !bp_attack_mask != 0 {
-                    b_feature_map.king_attacker_count += 1;
-                }
-
-                if bp_attack_mask & index_mask == 0 && wp_attack_mask & index_mask != 0 {
-                    w_feature_map.defense_point += N_DEFENSE_SCORE;
-                } else if (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask == 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask != 0 {
-                    w_feature_map.defense_point += N_DEFENSE_SCORE;
-                } else if (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask == 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask != 0 {
-                    w_feature_map.defense_point += N_DEFENSE_SCORE;
-                }
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
             },
             def::WB => {
                 let mov_mask = mov_mask_map[index];
                 w_feature_map.mobility += B_MOB_SCORE[(mov_mask & !bp_attack_mask & !bitboard.w_all).count_ones() as usize];
 
-                if mov_mask & bk_ring_mask & !bp_attack_mask != 0 {
-                    b_feature_map.king_attacker_count += 1;
-                }
-
-                if bp_attack_mask & index_mask == 0 && wp_attack_mask & index_mask != 0 {
-                    w_feature_map.defense_point += B_DEFENSE_SCORE;
-                } else if (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask == 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask != 0 {
-                    w_feature_map.defense_point += B_DEFENSE_SCORE;
-                } else if (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask == 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask != 0 {
-                    w_feature_map.defense_point += B_DEFENSE_SCORE;
-                }
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
             },
             def::WR => {
                 let mov_mask = mov_mask_map[index];
                 w_feature_map.mobility += R_MOB_SCORE[(mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all).count_ones() as usize];
 
-                if mov_mask & bk_ring_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) != 0 {
-                    b_feature_map.king_attacker_count += 1;
-                }
-
-                if (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask == 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask != 0 {
-                    w_feature_map.defense_point += R_DEFENSE_SCORE;
-                } else if (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask == 0 && (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask != 0 {
-                    w_feature_map.defense_point += R_DEFENSE_SCORE;
-                }
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
             },
             def::WQ => {
                 let mov_mask = mov_mask_map[index];
                 w_feature_map.mobility += Q_MOB_SCORE[(mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all).count_ones() as usize];
 
-                if mov_mask & bk_ring_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) != 0 {
-                    b_feature_map.king_attacker_count += 1;
-                }
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
             },
-
             def::BN => {
                 let mov_mask = mov_mask_map[index];
                 b_feature_map.mobility += N_MOB_SCORE[(mov_mask & !wp_attack_mask & !bitboard.b_all).count_ones() as usize];
 
-                if mov_mask & wk_ring_mask & !wp_attack_mask != 0 {
-                    w_feature_map.king_attacker_count += 1;
-                }
-
-                if wp_attack_mask & index_mask == 0 && bp_attack_mask & index_mask != 0 {
-                    b_feature_map.defense_point += N_DEFENSE_SCORE;
-                } else if (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask == 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask != 0 {
-                    b_feature_map.defense_point += N_DEFENSE_SCORE;
-                } else if (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask == 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask != 0 {
-                    b_feature_map.defense_point += N_DEFENSE_SCORE;
-                }
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
             },
             def::BB => {
                 let mov_mask = mov_mask_map[index];
                 b_feature_map.mobility += B_MOB_SCORE[(mov_mask & !wp_attack_mask & !bitboard.b_all).count_ones() as usize];
 
-                if mov_mask & wk_ring_mask & !wp_attack_mask != 0 {
-                    w_feature_map.king_attacker_count += 1;
-                }
-
-                if wp_attack_mask & index_mask == 0 && bp_attack_mask & index_mask != 0 {
-                    b_feature_map.defense_point += B_DEFENSE_SCORE;
-                } else if (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask == 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask != 0 {
-                    b_feature_map.defense_point += B_DEFENSE_SCORE;
-                } else if (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask == 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask != 0 {
-                    b_feature_map.defense_point += B_DEFENSE_SCORE;
-                }
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
             },
             def::BR => {
                 let mov_mask = mov_mask_map[index];
                 b_feature_map.mobility += R_MOB_SCORE[(mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all).count_ones() as usize];
 
-                if mov_mask & wk_ring_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) != 0 {
-                    w_feature_map.king_attacker_count += 1;
-                }
-
-                if (wp_attack_mask | wn_attack_mask | wb_attack_mask) & index_mask == 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask) & index_mask != 0 {
-                    b_feature_map.defense_point += R_DEFENSE_SCORE;
-                } else if (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & index_mask == 0 && (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & index_mask != 0 {
-                    b_feature_map.defense_point += R_DEFENSE_SCORE;
-                }
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
             },
             def::BQ => {
                 let mov_mask = mov_mask_map[index];
                 b_feature_map.mobility += Q_MOB_SCORE[(mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all).count_ones() as usize];
 
-                if mov_mask & wk_ring_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) != 0 {
-                    w_feature_map.king_attacker_count += 1;
-                }
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
             },
             _ => {},
         }
     }
 
-    if (state.cas_rights | state.cas_history) & 0b1100 == 0 {
+    let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index];
+    let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
+
+    w_feature_map.hanging_p_count = (bitboard.w_pawn & !w_attack_mask & b_attack_mask).count_ones() as i32;
+    w_feature_map.hanging_n_count = ((bitboard.w_knight & bp_attack_mask) | (bitboard.w_knight & !w_attack_mask & b_attack_mask)).count_ones() as i32;
+    w_feature_map.hanging_b_count = ((bitboard.w_bishop & bp_attack_mask) | (bitboard.w_bishop & !w_attack_mask & b_attack_mask)).count_ones() as i32;
+    w_feature_map.hanging_r_count = ((bitboard.w_rook & (bp_attack_mask | bn_attack_mask | bb_attack_mask)) | (bitboard.w_rook & !w_attack_mask & b_attack_mask)).count_ones() as i32;
+    w_feature_map.hanging_q_count = ((bitboard.w_queen & (bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)) | (bitboard.b_queen & !w_attack_mask & b_attack_mask)).count_ones() as i32;
+
+    b_feature_map.hanging_p_count = (bitboard.b_pawn & !b_attack_mask & w_attack_mask).count_ones() as i32;
+    b_feature_map.hanging_n_count = ((bitboard.b_knight & wp_attack_mask) | (bitboard.b_knight & !b_attack_mask & w_attack_mask)).count_ones() as i32;
+    b_feature_map.hanging_b_count = ((bitboard.b_bishop & wp_attack_mask) | (bitboard.b_bishop & !b_attack_mask & w_attack_mask)).count_ones() as i32;
+    b_feature_map.hanging_r_count = ((bitboard.b_rook & (wp_attack_mask | wn_attack_mask | wb_attack_mask)) | (bitboard.b_rook & !b_attack_mask & w_attack_mask)).count_ones() as i32;
+    b_feature_map.hanging_q_count = ((bitboard.b_queen & (wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)) | (bitboard.b_queen & !b_attack_mask & w_attack_mask)).count_ones() as i32;
+
+    if bitboard.b_queen != 0 && (state.cas_rights | state.cas_history) & 0b1100 == 0 {
         w_feature_map.king_lost_cas_rights = 1;
     }
 
-    if (state.cas_rights | state.cas_history) & 0b0011 == 0 {
+    if bitboard.w_queen != 0 && (state.cas_rights | state.cas_history) & 0b0011 == 0 {
         b_feature_map.king_lost_cas_rights = 1;
     }
 

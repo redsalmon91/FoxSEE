@@ -17,18 +17,14 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const MAX_HISTORY_SCORE: i32 = 100000;
 const MAX_NON_CAP_SCORE: i32 = 200000;
-const PRIMARY_KILLER_SCORE: i32 = -100;
+const PRIMARY_KILLER_SCORE: i32 = 1;
 const SECONDARY_KILLER_SCORE: i32 = -1000;
 
-const WINDOW_SIZE: i32 = 30;
+const WINDOW_SIZE: i32 = 50;
+const EXTENDED_WINDOW_SIZE: i32 = 200;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
-
-const MULTICUT_DEPTH: u8 = 6;
-const MULTICUT_R: u8 = 2;
-const MULTICUT_MOV_COUNT: u8 = 3;
-const MULTICUT_CUT_COUNT: u8 = 2;
 
 const MAX_DEPTH: u8 = 128;
 
@@ -37,12 +33,10 @@ const FP_DEPTH: u8 = 6;
 const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
 
-const DELTA_MARGIN: i32 = 99;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 400, 400, 600, 600, 800, 800];
+const DELTA_MARGIN: i32 = 200;
+const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020];
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
-
-const THREAT_SCORE_DIFF: i32 = 200;
 
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
@@ -133,6 +127,8 @@ impl SearchEngine {
             ABORT_SEARCH = false;
         }
 
+        let in_check = mov_table::is_in_check(state, state.player);
+
         let mut alpha = -eval::MATE_VAL;
         let mut beta = eval::MATE_VAL;
 
@@ -140,6 +136,7 @@ impl SearchEngine {
         let mut best_mov = 0;
         let mut accumulated_time_taken = 0;
         let mut extra_time_used = false;
+        let mut window_extended = false;
 
         loop {
             unsafe {
@@ -147,7 +144,7 @@ impl SearchEngine {
                 SEL_DEPTH = 0;
             }
 
-            let (score, mov) = self.root_search(state, alpha, beta, depth, 0);
+            let score = self.ab_search(state, in_check, false, alpha, beta, depth, 0);
 
             unsafe {
                 if ABORT_SEARCH {
@@ -156,7 +153,12 @@ impl SearchEngine {
             }
 
             if score <= alpha {
-                alpha = -eval::MATE_VAL;
+                if !window_extended {
+                    alpha = score - EXTENDED_WINDOW_SIZE;
+                    window_extended = true;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
 
                 if !extra_time_used && score < alpha && self.time_tracker.elapsed().as_millis() > self.max_time_millis / 2 {
                     self.max_time_millis += time_capacity.extra_time_millis;
@@ -167,7 +169,12 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                beta = eval::MATE_VAL;
+               if !window_extended {
+                   beta = score + EXTENDED_WINDOW_SIZE;
+                   window_extended = true;
+               } else {
+                   beta = eval::MATE_VAL;
+               }
 
                 continue
             }
@@ -185,24 +192,29 @@ impl SearchEngine {
                     let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
 
                     if checkmate {
-                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", (eval::MATE_VAL - score.abs() + 1) / 2, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                        let mate_score = if score > 0 {
+                            (eval::MATE_VAL - score + 1) / 2
+                        } else {
+                            (-eval::MATE_VAL - score - 1) / 2
+                        };
+
+                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
                     } else {
                         println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
                     }
                 }
             }
 
-            let pv_changed = best_mov != mov;
-            best_mov = mov;
+            if pv_table[0] != 0 {
+                best_mov = pv_table[0];
+            }
 
             if checkmate {
                 break
             }
 
-            if !pv_changed {
-                if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
-                    break
-                }
+            if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
+                break
             }
 
             depth += 1;
@@ -214,140 +226,13 @@ impl SearchEngine {
 
             alpha = score - WINDOW_SIZE;
             beta = score + WINDOW_SIZE;
+            window_extended = false;
         }
 
         best_mov
     }
 
-    fn root_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, depth: u8, ply: u8) -> (i32, u32) {
-        let original_alpha = alpha;
-
-        let mut pv_found = false;
-        let mut best_mov = 0;
-        let mut pv_mov = 0;
-
-        match self.get_hash(state, depth) {
-            Match(_flag, _score, mov) => {
-                pv_mov = mov;
-            },
-            MovOnly(mov) => {
-                pv_mov = mov;
-            },
-            _ => (),
-        }
-
-        if pv_mov != 0 {
-            let (from, to, tp, promo) = util::decode_u32_mov(pv_mov);
-
-            state.do_mov(from, to, tp, promo);
-
-            let gives_check = mov_table::is_in_check(state, state.player);
-
-            let score = -self.ab_search(state, gives_check, false, false, -beta, -alpha, depth - 1, ply + 1);
-
-            state.undo_mov(from, to, tp);
-
-            unsafe {
-                if ABORT_SEARCH {
-                    return (alpha, pv_mov)
-                }
-            }
-
-            if score >= beta {
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
-
-                return (score, pv_mov)
-            }
-
-            if score > alpha {
-                alpha = score;
-                pv_found = true;
-                best_mov = pv_mov;
-            }
-        }
-
-        let mut mov_list = [0; def::MAX_MOV_COUNT];
-
-        mov_table::gen_reg_mov_list(state, &mut mov_list);
-
-        let mut scored_mov_list = Vec::new();
-
-        for mov_index in 0..def::MAX_CAP_COUNT {
-            let mov = mov_list[mov_index];
-
-            if mov == 0 {
-                break
-            }
-
-            let (from, to, tp, promo) = util::decode_u32_mov(mov);
-
-            if state.squares[to] != 0 {
-                scored_mov_list.push((see(state, from, to, tp, promo), mov));
-            } else {
-                scored_mov_list.push((-eval::val_of(state.squares[from]), mov));
-            }
-        }
-
-        scored_mov_list.sort_by(|(score_a, _), (score_b, _)| {
-            score_b.partial_cmp(&score_a).unwrap()
-        });
-
-        for (_score, mov) in scored_mov_list {
-            unsafe {
-                if ABORT_SEARCH {
-                    break
-                }
-            }
-
-            let (from, to, tp, promo) = util::decode_u32_mov(mov);
-
-            state.do_mov(from, to, tp, promo);
-
-            let gives_check = mov_table::is_in_check(state, state.player);
-
-            let score = if !pv_found  {
-                -self.ab_search(state, gives_check, false, false, -beta, -alpha, depth - 1, ply + 1)
-            } else {
-                let score = -self.ab_search(state, gives_check, false, false, -alpha - 1, -alpha, depth - 1, ply + 1);
-
-                if score > alpha && score < beta {
-                    -self.ab_search(state, gives_check, false, false, -beta, -alpha, depth - 1, ply + 1)
-                } else {
-                    score
-                }
-            };
-
-            state.undo_mov(from, to, tp);
-
-            unsafe {
-                if ABORT_SEARCH {
-                    break
-                }
-            }
-
-            if score >= beta {
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
-
-                return (score, mov)
-            }
-
-            if score > alpha {
-                alpha = score;
-                pv_found = true;
-                best_mov = mov;
-            }
-        }
-
-        if alpha > original_alpha {
-            self.set_hash(state, depth, HASH_TYPE_EXACT, alpha, best_mov);
-        } else {
-            self.set_hash(state, depth, HASH_TYPE_ALPHA, alpha, best_mov);
-        }
-
-        (alpha, best_mov)
-    }
-
-    fn ab_search(&mut self, state: &mut State, in_check: bool, on_cut: bool, on_extend: bool, mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
+    fn ab_search(&mut self, state: &mut State, in_check: bool, on_extend: bool, mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
         unsafe {
             if ABORT_SEARCH {
                 return alpha
@@ -367,7 +252,7 @@ impl SearchEngine {
             return eval::MATE_VAL - ply as i32
         }
 
-        if state.is_draw(ply) {
+        if ply > 0 && state.is_draw() {
             return 0
         }
 
@@ -392,50 +277,36 @@ impl SearchEngine {
         let original_alpha = alpha;
 
         let mut pv_mov = 0;
-        let mut has_potential_cut = false;
-        let mut is_singular_mov = false;
 
         match self.get_hash(state, depth) {
             Match(flag, score, mov) => {
-                let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
+                pv_mov = mov;
 
-                if mov_table::is_mov_valid(state, from, to) {
-                    pv_mov = mov;
-
-                    if ply > 1 || (score > -eval::TERM_VAL && score < eval::TERM_VAL) {
-                        match flag {
-                            HASH_TYPE_EXACT => {
-                                return score
-                            },
-                            HASH_TYPE_ALPHA => {
-                                if score <= alpha {
-                                    return alpha
-                                } else if score < beta {
-                                    beta = score;
-                                }
-                            },
-                            HASH_TYPE_BETA => {
-                                if score >= beta {
-                                    return beta
-                                }
-        
-                                if score > alpha {
-                                    alpha = score;
-                                    has_potential_cut = true;
-                                    is_singular_mov = true;
-                                }
-                            },
-                            _ => (),
+                match flag {
+                    HASH_TYPE_EXACT => {
+                        return score
+                    },
+                    HASH_TYPE_ALPHA => {
+                        if score <= alpha {
+                            return alpha
+                        } else if score < beta {
+                            beta = score;
                         }
-                    }
+                    },
+                    HASH_TYPE_BETA => {
+                        if score >= beta {
+                            return beta
+                        }
+
+                        if score > alpha {
+                            alpha = score;
+                        }
+                    },
+                    _ => (),
                 }
             },
             MovOnly(mov) => {
-                let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
-
-                if mov_table::is_mov_valid(state, from, to) {
-                    pv_mov = mov;
-                }
+                pv_mov = mov;
             },
             _ => (),
         }
@@ -444,15 +315,27 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply);
         }
 
-        let mut under_threat = false;
-
         let in_endgame = in_endgame(state);
 
         let on_pv = beta - alpha > 1;
 
-        is_singular_mov = is_singular_mov && on_pv;
+        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH && !in_endgame {
+            let (score, is_draw) = eval::eval_materials(state);
 
-        if !on_pv && !on_cut && !on_extend && !in_check && !in_endgame && depth >= NM_DEPTH {
+            if is_draw {
+                return 0
+            }
+
+            if score - FUTILITY_MARGIN[depth as usize] > beta {
+                let score = eval::eval_state(state, score);
+
+                if score - FUTILITY_MARGIN[depth as usize] > beta {
+                    return beta
+                }
+            }
+        }
+
+        if ply > 0 && !on_extend && !in_check && !in_endgame && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -460,7 +343,7 @@ impl SearchEngine {
             };
 
             state.do_null_mov();
-            let scout_score = -self.ab_search(state, false, true, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
+            let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
             state.undo_null_mov();
 
             unsafe {
@@ -471,25 +354,11 @@ impl SearchEngine {
 
             if scout_score >= beta {
                 return beta
-            } else if scout_score + THREAT_SCORE_DIFF <= alpha {
-                under_threat = true;
-            }
-        }
-
-        if !on_pv && !on_extend && !in_check && !under_threat && depth <= FP_DEPTH && !in_endgame {
-            let (score, is_draw) = eval::eval_materials(state);
-
-            if is_draw {
-                return 0
-            }
-
-            if score - FUTILITY_MARGIN[depth as usize] > beta {
-                return beta
             }
         }
 
         if on_pv && pv_mov == 0 && depth >= IID_DEPTH {
-            self.ab_search(state, in_check, false, on_extend, alpha, beta, depth - IID_R, ply);
+            self.ab_search(state, in_check, on_extend, alpha, beta, depth - IID_R, ply);
 
             unsafe {
                 if ABORT_SEARCH {
@@ -505,14 +374,6 @@ impl SearchEngine {
             }
         }
 
-        if pv_mov != 0 {
-            let (from, to, _tp, _promo) = util::decode_u32_mov(pv_mov);
-
-            if !mov_table::is_mov_valid(state, from, to) {
-                pv_mov = 0;
-            }
-        }
-
         let mut mov_count = 0;
         let mut best_score = -eval::MATE_VAL;
         let mut best_mov = pv_mov;
@@ -523,6 +384,8 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(pv_mov);
 
+            let is_capture = state.squares[to] != 0;
+
             state.do_mov(from, to, tp, promo);
 
             let gives_check = mov_table::is_in_check(state, state.player);
@@ -532,12 +395,12 @@ impl SearchEngine {
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_check || under_threat || is_singular_mov || is_promoting_pawn {
+            if gives_check || is_promoting_pawn {
                 depth += 1;
                 extended = true;
             }
 
-            let score = -self.ab_search(state, gives_check, false, extended, -beta, -alpha, depth - 1, ply + 1);
+            let score = -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1);
 
             state.undo_mov(from, to, tp);
 
@@ -548,7 +411,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if state.squares[to] == 0 {
+                if !is_capture && promo == 0 {
                     self.update_history_table(depth, from, to);
                     self.update_killer_table(score, ply, pv_mov);
                 }
@@ -558,9 +421,13 @@ impl SearchEngine {
                 return score
             }
 
+            if score > best_score {
+                best_score = score;
+                best_mov = pv_mov;
+            }
+
             if score > alpha {
                 alpha = score;
-                best_mov = pv_mov;
                 pv_found = true;
             }
         }
@@ -588,26 +455,20 @@ impl SearchEngine {
 
             if state.squares[to] != 0 {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + see(state, from, to, tp, promo), mov));
-            } else if def::is_q(promo) {
+            } else if promo != 0 {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + eval::val_of(promo), mov));
             } else if mov == primary_killer {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + PRIMARY_KILLER_SCORE, mov));
             } else if mov == secondary_killer {
                 ordered_mov_list.push((MAX_NON_CAP_SCORE + SECONDARY_KILLER_SCORE, mov));
             } else {
-                ordered_mov_list.push((self.index_history_table[from][to] + eval::get_square_val(state.squares[from], from, to), mov));
+                ordered_mov_list.push((self.index_history_table[from][to], mov));
             }
         }
 
         ordered_mov_list.sort_by(|(score_a, _), (score_b, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
-
-        if !on_pv && (pv_mov == 0 || has_potential_cut) && !on_cut && !on_extend && !in_check && !in_endgame && depth >= MULTICUT_DEPTH {
-            if self.multicut_search(state, &ordered_mov_list, beta, depth, ply) {
-                return beta
-            }
-        }
 
         unsafe {
             if ABORT_SEARCH {
@@ -621,51 +482,50 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
-            let is_gain_capture = is_capture && score >= MAX_NON_CAP_SCORE;
+            let is_good_capture = is_capture && score >= MAX_NON_CAP_SCORE;
 
             state.do_mov(from, to, tp, promo);
 
             let gives_check = mov_table::is_in_check(state, state.player);
-            let gives_gain_check = gives_check && (is_gain_capture || !is_capture);
 
             let is_promoting_pawn = def::is_p(state.squares[to]) && def::get_rank(state.player, to) == 1;
 
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_gain_check || under_threat || is_promoting_pawn {
+            if gives_check || is_promoting_pawn {
                 depth += 1;
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !in_check && !gives_check && !under_threat && !is_capture && !is_promoting_pawn {
-                let score = -self.ab_search(state, gives_check, false, extended, -alpha - 1, -alpha, depth - (1 + (depth as f64).sqrt() as u8).min(depth), ply + 1);
+            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_good_capture && !is_promoting_pawn {
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((((depth + mov_count) / 2) as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
-                        let score = -self.ab_search(state, gives_check, false, extended, -alpha-1, -alpha, depth - 1, ply + 1);
+                        let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
                         if score > alpha && score < beta {
-                            -self.ab_search(state, gives_check, false, extended, -beta, -alpha, depth - 1, ply + 1)
+                            -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                         } else {
                             score
                         }
                     } else {
-                        -self.ab_search(state, gives_check, false, extended, -beta, -alpha, depth - 1, ply + 1)
+                        -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                     }
                 } else {
                     score
                 }
             } else {
                 if pv_found {
-                    let score = -self.ab_search(state, gives_check, false, extended, -alpha-1, -alpha, depth - 1, ply + 1);
+                    let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
                     if score > alpha && score < beta {
-                        -self.ab_search(state, gives_check, false, extended, -beta, -alpha, depth - 1, ply + 1)
+                        -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                     } else {
                         score
                     }
                 } else {
-                    -self.ab_search(state, gives_check, false, extended, -beta, -alpha, depth - 1, ply + 1)
+                    -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                 }
             };
 
@@ -678,7 +538,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture {
+                if !is_capture && promo == 0 {
                     self.update_history_table(depth, from, to);
                     self.update_killer_table(score, ply, mov);
                 }
@@ -690,11 +550,11 @@ impl SearchEngine {
 
             if score > best_score {
                 best_score = score;
+                best_mov = mov;
             }
 
             if score > alpha {
                 alpha = score;
-                best_mov = mov;
                 pv_found = true;
             }
         }
@@ -702,58 +562,17 @@ impl SearchEngine {
         if alpha > original_alpha {
             self.set_hash(state, depth, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
-            self.set_hash(state, depth, HASH_TYPE_ALPHA, alpha, best_mov);
+            self.set_hash(state, depth, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 
         if best_score < -eval::TERM_VAL {
             if !in_check && self.in_stale_mate(state) {
+                self.set_hash(state, MAX_DEPTH, HASH_TYPE_EXACT, 0, 0);
                 return 0
             }
         }
 
         alpha
-    }
-
-    fn multicut_search(&mut self, state: &mut State, mov_list: &Vec<(i32, u32)>, beta: i32, depth: u8, ply: u8) -> bool {
-        let mut mov_count = 0;
-        let mut cut_count = 0;
-
-        let depth_reduction = if depth > MULTICUT_DEPTH {
-            MULTICUT_R + 1
-        } else {
-            MULTICUT_R
-        };
-
-        for (_score, mov) in mov_list {
-            mov_count += 1;
-
-            if mov_count > MULTICUT_MOV_COUNT {
-                break
-            }
-
-            let mov = *mov;
-            let (from, to, tp, promo) = util::decode_u32_mov(mov);
-
-            state.do_mov(from, to, tp, promo);
-            let scout_score = -self.ab_search(state, false, true, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
-            state.undo_mov(from, to, tp);
-
-            unsafe {
-                if ABORT_SEARCH {
-                    return false
-                }
-            }
-
-            if scout_score >= beta {
-                cut_count += 1;
-
-                if cut_count >= MULTICUT_CUT_COUNT {
-                    return true
-                }
-            }
-        }
-
-        false
     }
 
     fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8) -> i32 {
@@ -772,7 +591,7 @@ impl SearchEngine {
         }
 
         if mov_table::is_in_check(state, state.player) {
-            return self.ab_search(state, true, false, false, alpha, beta, 1, ply)
+            return self.ab_search(state, true, true, alpha, beta, 1, ply)
         }
 
         unsafe {
@@ -873,6 +692,9 @@ impl SearchEngine {
         let mut mov = 0;
 
         match self.get_hash(state, MAX_DEPTH) {
+            Match(_flag, _score, hash_mov) => {
+                mov = hash_mov;
+            },
             MovOnly(hash_mov) => {
                 mov = hash_mov;
             },
@@ -1306,8 +1128,8 @@ mod tests {
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 5500,
-            extra_time_millis: 5500,
+            main_time_millis: 15500,
+            extra_time_millis: 15500,
         };
 
         let best_mov = search_engine.search(&mut state, time_capacity, 64);
@@ -1378,19 +1200,19 @@ mod tests {
     fn test_search_x7() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("8/1k6/8/2R5/3K4/8/8/8 w - - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r2q1rk1/p3bppp/b1n1p3/2Nn4/8/5NP1/PPQBPPBP/R3K2R b KQ - 0 12", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 5500,
+            main_time_millis: 15500,
             extra_time_millis: 5500,
         };
 
         let best_mov = search_engine.search(&mut state, time_capacity, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("d4"));
-        assert_eq!(to, util::map_sqr_notation_to_index("d5"));
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("b4"));
     }
 
     #[test]
@@ -1467,6 +1289,25 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c4"));
         assert_eq!(to, util::map_sqr_notation_to_index("b5"));
+    }
+
+    #[test]
+    fn test_search_xx2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("4r2k/1q3pp1/5n1p/1pr2P2/p2R3P/P2B4/1P2QP2/4R1K1 w - - 2 51", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 15500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("e2"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e8"));
     }
 
     #[test]
