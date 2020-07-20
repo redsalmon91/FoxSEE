@@ -28,13 +28,13 @@ const NM_R: u8 = 2;
 
 const MAX_DEPTH: u8 = 128;
 
-const FP_DEPTH: u8 = 6;
+const FP_DEPTH: u8 = 7;
 
 const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020];
+const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
@@ -186,7 +186,9 @@ impl SearchEngine {
 
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
-            if !pv_table.is_empty() && pv_table[0] != 0 {
+            if pv_table[0] != 0 {
+                best_mov = pv_table[0];
+
                 unsafe {
                     let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
                     let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
@@ -203,18 +205,14 @@ impl SearchEngine {
                         println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
                     }
                 }
-            }
 
-            if pv_table[0] != 0 {
-                best_mov = pv_table[0];
-            }
-
-            if checkmate {
-                break
-            }
-
-            if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
-                break
+                if checkmate {
+                    break
+                }
+    
+                if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
+                    break
+                }
             }
 
             depth += 1;
@@ -256,22 +254,26 @@ impl SearchEngine {
             return 0
         }
 
-        let mating_val = eval::MATE_VAL - ply as i32;
-        if mating_val < beta {
-            if alpha >= mating_val {
-                return mating_val;
+        let on_pv = beta - alpha > 1;
+
+        if ply > 0 {
+            let mating_val = eval::MATE_VAL - ply as i32;
+            if mating_val < beta {
+                if alpha >= mating_val {
+                    return mating_val;
+                }
+
+                beta = mating_val;
             }
 
-            beta = mating_val;
-        }
+            let mated_val = -eval::MATE_VAL + ply as i32;
+            if mated_val > alpha {
+                if beta <= mated_val {
+                    return mated_val;
+                }
 
-        let mated_val = -eval::MATE_VAL + ply as i32;
-        if mated_val > alpha {
-            if beta <= mated_val {
-                return mated_val;
+                alpha = mated_val;
             }
-
-            alpha = mated_val;
         }
 
         let original_alpha = alpha;
@@ -282,27 +284,31 @@ impl SearchEngine {
             Match(flag, score, mov) => {
                 pv_mov = mov;
 
-                match flag {
-                    HASH_TYPE_EXACT => {
-                        return score
-                    },
-                    HASH_TYPE_ALPHA => {
-                        if score <= alpha {
-                            return alpha
-                        } else if score < beta {
-                            beta = score;
-                        }
-                    },
-                    HASH_TYPE_BETA => {
-                        if score >= beta {
-                            return beta
-                        }
-
-                        if score > alpha {
-                            alpha = score;
-                        }
-                    },
-                    _ => (),
+                if ply > 1 {
+                    match flag {
+                        HASH_TYPE_EXACT => {
+                            return score
+                        },
+                        HASH_TYPE_ALPHA => {
+                            if score <= alpha {
+                                return alpha
+                            }
+    
+                            if score < beta {
+                                beta = score;
+                            }
+                        },
+                        HASH_TYPE_BETA => {
+                            if score >= beta {
+                                return beta
+                            }
+    
+                            if score > alpha {
+                                alpha = score;
+                            }
+                        },
+                        _ => (),
+                    }
                 }
             },
             MovOnly(mov) => {
@@ -312,12 +318,10 @@ impl SearchEngine {
         }
 
         if depth == 0 {
-            return self.q_search(state, alpha, beta, ply);
+            return self.q_search(state, alpha, beta, ply)
         }
 
         let in_endgame = in_endgame(state);
-
-        let on_pv = beta - alpha > 1;
 
         if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH && !in_endgame {
             let (score, is_draw) = eval::eval_materials(state);
@@ -390,12 +394,12 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let is_promoting_pawn = def::is_p(state.squares[to]) && def::get_rank(state.player, to) == 1;
+            let is_passer = is_passed_pawn(state, state.squares[to], to);
 
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_check || is_promoting_pawn {
+            if gives_check || is_passer {
                 depth += 1;
                 extended = true;
             }
@@ -488,17 +492,17 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let is_promoting_pawn = def::is_p(state.squares[to]) && def::get_rank(state.player, to) == 1;
+            let is_passer = is_passed_pawn(state, state.squares[to], to);
 
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_check || is_promoting_pawn {
+            if gives_check || is_passer {
                 depth += 1;
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_good_capture && !is_promoting_pawn {
+            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_good_capture && !is_passer {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((((depth + mov_count) / 2) as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
@@ -832,6 +836,23 @@ fn in_endgame(state: &State) -> bool {
     eval::get_phase(state) <= eval::ENDGAME_PHASE
     || state.bitboard.w_pawn == 0
     || state.bitboard.b_pawn == 0
+}
+
+#[inline]
+fn is_passed_pawn(state: &State, moving_piece: u8, to_index: usize) -> bool {
+    match moving_piece {
+        def::WP => {
+            state.bitmask.wp_forward_masks[to_index] & state.bitboard.b_pawn == 0
+            && state.bitmask.file_masks[to_index] & state.bitboard.b_all == 0
+            && def::get_rank(state.player, to_index) < 5
+        },
+        def::BP => {
+            state.bitmask.bp_forward_masks[to_index] & state.bitboard.w_pawn == 0
+            && state.bitmask.file_masks[to_index] & state.bitboard.w_all == 0
+            && def::get_rank(state.player, to_index) < 5
+        },
+        _ => false
+    }
 }
 
 fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {

@@ -25,8 +25,8 @@ A master-level UCI chess engine written in Rust!
 - Piece-Square Tables
 - Null-Move Pruning
 - Mate Distance Pruning
-- Delta Pruning
 - Reversed Futility Pruning
+- Delta Pruning
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/learn/get-started)
