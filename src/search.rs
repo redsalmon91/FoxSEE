@@ -122,6 +122,7 @@ impl SearchEngine {
         self.primary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.index_history_table = [[0; def::BOARD_SIZE]; def::BOARD_SIZE];
+        self.depth_preferred_hash_table.clear();
 
         unsafe {
             ABORT_SEARCH = false;
@@ -256,24 +257,22 @@ impl SearchEngine {
 
         let on_pv = beta - alpha > 1;
 
-        if ply > 0 {
-            let mating_val = eval::MATE_VAL - ply as i32;
-            if mating_val < beta {
-                if alpha >= mating_val {
-                    return mating_val;
-                }
-
-                beta = mating_val;
+        let mating_val = eval::MATE_VAL - ply as i32;
+        if mating_val < beta {
+            if alpha >= mating_val {
+                return mating_val;
             }
 
-            let mated_val = -eval::MATE_VAL + ply as i32;
-            if mated_val > alpha {
-                if beta <= mated_val {
-                    return mated_val;
-                }
+            beta = mating_val;
+        }
 
-                alpha = mated_val;
+        let mated_val = -eval::MATE_VAL + ply as i32;
+        if mated_val > alpha {
+            if beta <= mated_val {
+                return mated_val;
             }
+
+            alpha = mated_val;
         }
 
         let original_alpha = alpha;
@@ -480,13 +479,12 @@ impl SearchEngine {
             }
         }
 
-        for (score, mov) in ordered_mov_list {
+        for (_score, mov) in ordered_mov_list {
             mov_count += 1;
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
-            let is_good_capture = is_capture && score >= MAX_NON_CAP_SCORE;
 
             state.do_mov(from, to, tp, promo);
 
@@ -502,8 +500,8 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_good_capture && !is_passer {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((((depth + mov_count) / 2) as f64).sqrt() as u8).min(depth), ply + 1);
+            let score = if depth > 2 && mov_count > 1 && !gives_check && !in_check {
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 2, ply + 1);
                 if score > alpha {
                     if pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);

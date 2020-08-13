@@ -14,11 +14,12 @@ pub static TERM_VAL: i32 = 10000;
 static Q_VAL: i32 = 1200;
 static R_VAL: i32 = 600;
 static B_VAL: i32 = 400;
-static N_VAL: i32 = 400;
+static N_VAL: i32 = 380;
 static P_VAL: i32 = 100;
 
 static ENDGAME_P_BONUS_VAL: i32 = 20;
 static ENDGAME_R_BONUS_VAL: i32 = 50;
+static ENDGAME_PAWN_ESSENTIAL_VAL: i32 = 50;
 
 static KING_EXPOSED_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -30;
@@ -32,7 +33,7 @@ static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -6;
 static CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -4;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
-static DOUBLED_PAWN_PEN: i32 = -10;
+static DOUBLED_PAWN_PEN: i32 = -20;
 static ISOLATED_PAWN_PEN: i32 = -20;
 static OPEN_BEHIND_PAWN_PEN: i32 = -5;
 
@@ -57,10 +58,10 @@ pub static ENDGAME_PHASE: i32 = 32;
 
 static TEMPO_VAL: i32 = 10;
 
-static N_MOB_SCORE: [i32; 9] = [-50, -30, -10, 0, 5, 10, 20, 25, 30];
-static B_MOB_SCORE: [i32; 15] = [-50, -30, -20, 0, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30];
-static R_MOB_SCORE: [i32; 15] = [-50, -20, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30, 30];
-static Q_MOB_SCORE: [i32; 29] = [-30, -20, -20, -10, -10, 0, 0, 5, 5, 10, 10, 10, 10, 15, 15, 15, 15, 20, 20, 20, 20, 30, 30, 30, 30, 30, 30, 30, 30];
+static N_MOB_SCORE: [i32; 9] = [-30,-20,-5, 0, 0, 5, 10, 15, 20];
+static B_MOB_SCORE: [i32; 14] = [-20,-10, 5, 10, 20, 25, 25, 30, 30, 35, 40, 40, 45, 50];
+static R_MOB_SCORE: [i32; 15] = [-30,-10, 0, 0, 0, 5, 10, 15, 20, 20, 20, 25, 30, 30, 30];
+static Q_MOB_SCORE: [i32; 28] = [-15,-10,-5,-5,10,10,10,15,20,25,30,30,30,30,30,30,35,35,40,40,45,50,50,50,55,55,60,60];
 
 static WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
 static BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
@@ -69,7 +70,7 @@ static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
      15, 30, 30, 30, 30, 30, 30, 15,
      10, 20, 20, 30, 30, 20, 20, 10,
-      5,  5, 10, 25, 25, 10,  5,  5,
+      0,  0,  0, 25, 25,  0,  0,  0,
       0,  0,  0, 20, 20,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,-10,-10,  0,  0,  0,
@@ -92,7 +93,7 @@ static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,-10,-10,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, 20, 20,  0,  0,  0,
-      5,  5, 10, 25, 25, 10,  5,  5,
+      0,  0,  5, 25, 25,  0,  0,  0,
      10, 20, 20, 30, 30, 20, 20, 10,
      15, 30, 30, 30, 30, 30, 30, 15,
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -393,12 +394,20 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     endgame_material_score -= bitboard.b_pawn.count_ones() as i32 * ENDGAME_P_BONUS_VAL;
     endgame_material_score -= bitboard.b_rook.count_ones() as i32 * ENDGAME_R_BONUS_VAL;
 
-    if state.bitboard.w_bishop.count_ones() > 1 {
+    if bitboard.w_bishop.count_ones() > 1 {
         endgame_material_score += BISHOP_PAIR_VAL;
     }
 
-    if state.bitboard.b_bishop.count_ones() > 1 {
+    if bitboard.b_bishop.count_ones() > 1 {
         endgame_material_score -= BISHOP_PAIR_VAL;
+    }
+
+    if bitboard.w_pawn == 0 {
+        endgame_material_score -= ENDGAME_PAWN_ESSENTIAL_VAL;
+    }
+
+    if bitboard.b_pawn == 0 {
+        endgame_material_score += ENDGAME_PAWN_ESSENTIAL_VAL;
     }
 
     let phase = get_phase(state);
@@ -431,9 +440,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let (w_features_map, b_features_map) = extract_features(state);
 
     let shared_positional_score =
-        w_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
-        + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
-        + w_features_map.passed_pawn_point
+        w_features_map.passed_pawn_point
         + w_features_map.candidate_passed_pawn_point        
         + w_features_map.mobility
         + w_features_map.hanging_p_count * HANGING_P_PEN
@@ -441,8 +448,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.hanging_b_count * HANGING_B_PEN
         + w_features_map.hanging_r_count * HANGING_R_PEN
         + w_features_map.hanging_q_count * HANGING_Q_PEN
-        - b_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
-        - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         - b_features_map.passed_pawn_point
         - b_features_map.candidate_passed_pawn_point
         - b_features_map.mobility
@@ -469,11 +474,15 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.open_behind_pawn_count * OPEN_BEHIND_PAWN_PEN;
 
     let endgame_positional_score =
-        w_features_map.endgame_sqr_point_count
+        w_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
+        + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
+        + w_features_map.endgame_sqr_point_count
         + w_features_map.passed_pawn_king_distance * PASSED_PAWN_KING_DISTANCE_BASE_PEN
         + w_features_map.candidate_passed_pawn_king_distance * CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN
         + w_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
+        - b_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
+        - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         - b_features_map.endgame_sqr_point_count
         - b_features_map.passed_pawn_king_distance * PASSED_PAWN_KING_DISTANCE_BASE_PEN
         - b_features_map.candidate_passed_pawn_king_distance * CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN
