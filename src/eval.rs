@@ -11,15 +11,20 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
-static Q_VAL: i32 = 1200;
-static R_VAL: i32 = 600;
-static B_VAL: i32 = 400;
-static N_VAL: i32 = 380;
-static P_VAL: i32 = 100;
+static MG_Q_VAL: i32 = 1000;
+static MG_R_VAL: i32 = 550;
+static MG_B_VAL: i32 = 350;
+static MG_N_VAL: i32 = 350;
+static MG_P_VAL: i32 = 80;
 
-static ENDGAME_P_BONUS_VAL: i32 = 20;
-static ENDGAME_R_BONUS_VAL: i32 = 50;
+static EG_Q_VAL: i32 = 1200;
+static EG_R_VAL: i32 = 600;
+static EG_B_VAL: i32 = 350;
+static EG_N_VAL: i32 = 350;
+static EG_P_VAL: i32 = 100;
+
 static ENDGAME_PAWN_ESSENTIAL_VAL: i32 = 50;
+static ENDGAME_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 
 static KING_EXPOSED_PEN: i32 = -30;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -30;
@@ -302,18 +307,18 @@ pub fn val_of(piece: u8) -> i32 {
     match piece {
         0 => 0,
         def::WK => MATE_VAL,
-        def::WQ => Q_VAL,
-        def::WR => R_VAL,
-        def::WB => B_VAL,
-        def::WN => N_VAL,
-        def::WP => P_VAL,
+        def::WQ => MG_Q_VAL,
+        def::WR => MG_R_VAL,
+        def::WB => MG_B_VAL,
+        def::WN => MG_N_VAL,
+        def::WP => MG_P_VAL,
 
         def::BK => MATE_VAL,
-        def::BQ => Q_VAL,
-        def::BR => R_VAL,
-        def::BB => B_VAL,
-        def::BN => N_VAL,
-        def::BP => P_VAL,
+        def::BQ => MG_Q_VAL,
+        def::BR => MG_R_VAL,
+        def::BB => MG_B_VAL,
+        def::BN => MG_N_VAL,
+        def::BP => MG_P_VAL,
 
         _ => 0,
     }
@@ -359,56 +364,75 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
         }
     }
 
-    let mut score = bitboard.w_queen.count_ones() as i32 * Q_VAL
-    + bitboard.w_rook.count_ones() as i32 * R_VAL
-    + bitboard.w_bishop.count_ones() as i32 * B_VAL
-    + bitboard.w_knight.count_ones() as i32 * N_VAL
-    + bitboard.w_pawn.count_ones() as i32 * P_VAL
-    - bitboard.b_queen.count_ones() as i32 * Q_VAL
-    - bitboard.b_rook.count_ones() as i32 * R_VAL
-    - bitboard.b_bishop.count_ones() as i32 * B_VAL
-    - bitboard.b_knight.count_ones() as i32 * N_VAL
-    - bitboard.b_pawn.count_ones() as i32 * P_VAL;
+    let w_queen_count = bitboard.w_queen.count_ones() as i32;
+    let w_rook_count = bitboard.w_rook.count_ones() as i32;
+    let w_bishop_count = bitboard.w_bishop.count_ones() as i32;
+    let w_knight_count = bitboard.w_knight.count_ones() as i32;
+    let w_pawn_count = bitboard.w_pawn.count_ones() as i32;
 
-    if score > 0 && (bitboard.w_pawn | bitboard.w_rook | bitboard.w_queen) == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 && bitboard.b_pawn.count_ones() == 1 {
+    let b_queen_count = bitboard.b_queen.count_ones() as i32;
+    let b_rook_count = bitboard.b_rook.count_ones() as i32;
+    let b_bishop_count = bitboard.b_bishop.count_ones() as i32;
+    let b_knight_count = bitboard.b_knight.count_ones() as i32;
+    let b_pawn_count = bitboard.b_pawn.count_ones() as i32;
+
+    let mg_score = w_queen_count * MG_Q_VAL
+    + w_rook_count * MG_R_VAL
+    + w_bishop_count * MG_B_VAL
+    + w_knight_count * MG_N_VAL
+    + w_pawn_count * MG_P_VAL
+    - b_queen_count * MG_Q_VAL
+    - b_rook_count * MG_R_VAL
+    - b_bishop_count * MG_B_VAL
+    - b_knight_count * MG_N_VAL
+    - b_pawn_count * MG_P_VAL;
+
+    if mg_score > 0 && (bitboard.w_pawn | bitboard.w_rook | bitboard.w_queen) == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 && bitboard.b_pawn.count_ones() == 1 {
         return (0, false)
     }
 
-    if score < 0 && (bitboard.b_pawn | bitboard.b_rook | bitboard.b_queen) == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 && bitboard.w_pawn.count_ones() == 1 {
+    if mg_score < 0 && (bitboard.b_pawn | bitboard.b_rook | bitboard.b_queen) == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 && bitboard.w_pawn.count_ones() == 1 {
         return (0, false)
     }
 
-    if is_endgame_with_different_colored_bishop {
-        if score > 0  {
-            score -= P_VAL;
-        } else if score < 0 {
-            score += P_VAL;
-        }
-    }
-
-    let mut endgame_material_score = 0;
-
-    endgame_material_score += bitboard.w_pawn.count_ones() as i32 * ENDGAME_P_BONUS_VAL;
-    endgame_material_score += bitboard.w_rook.count_ones() as i32 * ENDGAME_R_BONUS_VAL;
-
-    endgame_material_score -= bitboard.b_pawn.count_ones() as i32 * ENDGAME_P_BONUS_VAL;
-    endgame_material_score -= bitboard.b_rook.count_ones() as i32 * ENDGAME_R_BONUS_VAL;
+    let mut eg_score = w_queen_count * EG_Q_VAL
+    + w_rook_count * EG_R_VAL
+    + w_bishop_count * EG_B_VAL
+    + w_knight_count * EG_N_VAL
+    + w_pawn_count * EG_P_VAL
+    - b_queen_count * EG_Q_VAL
+    - b_rook_count * EG_R_VAL
+    - b_bishop_count * EG_B_VAL
+    - b_knight_count * EG_N_VAL
+    - b_pawn_count * EG_P_VAL;
 
     if bitboard.w_bishop.count_ones() > 1 {
-        endgame_material_score += BISHOP_PAIR_VAL;
+        eg_score += BISHOP_PAIR_VAL;
     }
 
     if bitboard.b_bishop.count_ones() > 1 {
-        endgame_material_score -= BISHOP_PAIR_VAL;
+        eg_score -= BISHOP_PAIR_VAL;
     }
 
     if bitboard.w_pawn == 0 {
-        endgame_material_score -= ENDGAME_PAWN_ESSENTIAL_VAL;
+        eg_score -= ENDGAME_PAWN_ESSENTIAL_VAL;
     }
 
     if bitboard.b_pawn == 0 {
-        endgame_material_score += ENDGAME_PAWN_ESSENTIAL_VAL;
+        eg_score += ENDGAME_PAWN_ESSENTIAL_VAL;
     }
+
+    let extra_score = if is_endgame_with_different_colored_bishop {
+        if eg_score > 0  {
+            -ENDGAME_DIFFERENT_COLORED_BISHOP_VAL
+        } else if eg_score < 0 {
+            ENDGAME_DIFFERENT_COLORED_BISHOP_VAL
+        } else {
+            0
+        }
+    } else {
+        0
+    };
 
     let phase = get_phase(state);
 
@@ -418,7 +442,7 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
         -1
     };
 
-    ((score + endgame_material_score * (TOTAL_PHASE - phase) / TOTAL_PHASE) * score_sign, false)
+    ((((mg_score * phase + eg_score * (TOTAL_PHASE - phase)) / TOTAL_PHASE) + extra_score) * score_sign, false)
 }
 
 pub fn get_phase(state: &State) -> i32 {
