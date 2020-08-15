@@ -186,6 +186,19 @@ pub fn get_highest_index(mask: u64) -> usize {
     63 - mask.leading_zeros() as usize
 }
 
+#[inline]
+pub fn square_root(value: u8) -> u8 {
+    let mut n = 1u8;
+
+    loop {
+        if n * n > value {
+            return n - 1
+        }
+
+        n += 1
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,6 +206,17 @@ mod tests {
         def,
         util,
     };
+
+    #[test]
+    fn test_square_root() {
+        assert_eq!(1, square_root(1));
+        assert_eq!(0, square_root(0));
+        assert_eq!(1, square_root(2));
+        assert_eq!(2, square_root(4));
+        assert_eq!(2, square_root(8));
+        assert_eq!(4, square_root(16));
+        assert_eq!(5, square_root(32));
+    }
 
     #[test]
     fn test_map_sqr_notation_to_index() {
