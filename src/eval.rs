@@ -17,7 +17,7 @@ static MG_B_VAL: i32 = 350;
 static MG_N_VAL: i32 = 350;
 static MG_P_VAL: i32 = 80;
 
-static EG_Q_VAL: i32 = 1200;
+static EG_Q_VAL: i32 = 1050;
 static EG_R_VAL: i32 = 600;
 static EG_B_VAL: i32 = 350;
 static EG_N_VAL: i32 = 350;
@@ -31,16 +31,16 @@ static KING_LOST_CAS_RIGHTS_PEN: i32 = -30;
 
 static KING_ATTACKER_PEN: i32 = -10;
 
-static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 80, 200, 0];
+static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 80, 100, 0];
 static CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0, 0];
 
 static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -6;
 static CANDIDATE_PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -4;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
-static DOUBLED_PAWN_PEN: i32 = -20;
+static DOUBLED_PAWN_PEN: i32 = -10;
 static ISOLATED_PAWN_PEN: i32 = -20;
-static OPEN_BEHIND_PAWN_PEN: i32 = -5;
+static OPEN_BEHIND_PAWN_PEN: i32 = -10;
 
 static ROOK_OPEN_LINE_VAL: i32 = 30;
 static QUEEN_OPEN_LINE_VAL: i32 = 20;
@@ -58,8 +58,6 @@ static Q_PHASE_WEIGHT: i32 = 16;
 static R_PHASE_WEIGHT: i32 = 8;
 static B_PHASE_WEIGHT: i32 = 4;
 static N_PHASE_WEIGHT: i32 = 4;
-
-pub static ENDGAME_PHASE: i32 = 32;
 
 static TEMPO_VAL: i32 = 10;
 

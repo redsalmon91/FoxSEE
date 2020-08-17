@@ -15,10 +15,11 @@ use crate::{
 const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 
-const MAX_HISTORY_SCORE: i32 = 100000;
-const MAX_NON_CAP_SCORE: i32 = 200000;
-const PRIMARY_KILLER_SCORE: i32 = 1;
-const SECONDARY_KILLER_SCORE: i32 = -1000;
+const SORTING_MAX_HISTORY_SCORE: i32 = 100000;
+const SORTING_MAX_NON_CAP_SCORE: i32 = 200000;
+const SORTING_PRIMARY_KILLER_SCORE: i32 = 50;
+const SORTING_SECONDARY_KILLER_SCORE: i32 = -50;
+const SORTING_HALF_PAWN_SCORE: i32 = 50;
 
 const WINDOW_SIZE: i32 = 50;
 const EXTENDED_WINDOW_SIZE: i32 = 200;
@@ -320,9 +321,7 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply)
         }
 
-        let in_endgame = in_endgame(state);
-
-        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH && !in_endgame {
+        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
             let (score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -332,13 +331,13 @@ impl SearchEngine {
             if score - FUTILITY_MARGIN[depth as usize] > beta {
                 let score = eval::eval_state(state, score);
 
-                if score - FUTILITY_MARGIN[depth as usize] > beta {
+                if score != 0 && score - FUTILITY_MARGIN[depth as usize] > beta {
                     return beta
                 }
             }
         }
 
-        if ply > 0 && !on_extend && !in_check && !in_endgame && depth >= NM_DEPTH {
+        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -355,8 +354,10 @@ impl SearchEngine {
                 }
             }
 
-            if scout_score >= beta {
-                return beta
+            if scout_score != 0 && scout_score >= beta {
+                if !self.in_stale_mate(state) {
+                    return beta
+                }
             }
         }
 
@@ -456,20 +457,36 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
+            state.do_mov(from, to, tp, promo);
+            let gives_check = mov_table::is_in_check(state, state.player);
+            state.undo_mov(from, to, tp);
+
+            let is_passer = is_passed_pawn(state, state.squares[to], to);
+
             if state.squares[to] != 0 {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE + see(state, from, to, tp, promo), mov));
+                let sort_score = if gives_check {
+                    SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE + see(state, from, to, tp, promo)
+                } else {
+                    SORTING_MAX_NON_CAP_SCORE + see(state, from, to, tp, promo)
+                };
+
+                ordered_mov_list.push((sort_score, gives_check, is_passer, mov));
             } else if promo != 0 {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE + eval::val_of(promo), mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + eval::val_of(promo), gives_check, is_passer, mov));
             } else if mov == primary_killer {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE + PRIMARY_KILLER_SCORE, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_PRIMARY_KILLER_SCORE, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((MAX_NON_CAP_SCORE + SECONDARY_KILLER_SCORE, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_SECONDARY_KILLER_SCORE, gives_check, is_passer, mov));
+            } else if gives_check {
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE, true, is_passer, mov));
+            } else if is_passer {
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE, false, true, mov));
             } else {
-                ordered_mov_list.push((self.index_history_table[from][to], mov));
+                ordered_mov_list.push((self.index_history_table[from][to], false, false, mov));
             }
         }
 
-        ordered_mov_list.sort_by(|(score_a, _), (score_b, _)| {
+        ordered_mov_list.sort_by(|(score_a, _, _, _), (score_b, _, _, _)| {
             score_b.partial_cmp(&score_a).unwrap()
         });
 
@@ -479,7 +496,7 @@ impl SearchEngine {
             }
         }
 
-        for (_score, mov) in ordered_mov_list {
+        for (_sort_score, gives_check, is_passer, mov) in ordered_mov_list {
             mov_count += 1;
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
@@ -487,10 +504,6 @@ impl SearchEngine {
             let is_capture = state.squares[to] != 0;
 
             state.do_mov(from, to, tp, promo);
-
-            let gives_check = mov_table::is_in_check(state, state.player);
-
-            let is_passer = is_passed_pawn(state, state.squares[to], to);
 
             let mut depth = depth;
             let mut extended = false;
@@ -500,7 +513,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !in_check {
+            let score = if depth > 1 && mov_count > 1 {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - (util::square_root(mov_count)).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
@@ -590,10 +603,6 @@ impl SearchEngine {
 
         if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
             return eval::MATE_VAL - ply as i32
-        }
-
-        if mov_table::is_in_check(state, state.player) {
-            return self.ab_search(state, true, true, alpha, beta, 1, ply)
         }
 
         unsafe {
@@ -794,7 +803,7 @@ impl SearchEngine {
         let history_score_increment = depth as i32 * depth as i32;
 
         let current_index_history_score = self.index_history_table[from][to];
-        if current_index_history_score < MAX_HISTORY_SCORE - history_score_increment {
+        if current_index_history_score < SORTING_MAX_HISTORY_SCORE - history_score_increment {
             self.index_history_table[from][to] = current_index_history_score + history_score_increment;
         }
     }
@@ -830,24 +839,15 @@ impl SearchEngine {
 }
 
 #[inline]
-fn in_endgame(state: &State) -> bool {
-    eval::get_phase(state) <= eval::ENDGAME_PHASE
-    || state.bitboard.w_pawn == 0
-    || state.bitboard.b_pawn == 0
-}
-
-#[inline]
 fn is_passed_pawn(state: &State, moving_piece: u8, to_index: usize) -> bool {
     match moving_piece {
         def::WP => {
             state.bitmask.wp_forward_masks[to_index] & state.bitboard.b_pawn == 0
             && state.bitmask.file_masks[to_index] & state.bitboard.b_all == 0
-            && def::get_rank(state.player, to_index) < 5
         },
         def::BP => {
             state.bitmask.bp_forward_masks[to_index] & state.bitboard.w_pawn == 0
             && state.bitmask.file_masks[to_index] & state.bitboard.w_all == 0
-            && def::get_rank(state.player, to_index) < 5
         },
         _ => false
     }
@@ -1147,7 +1147,7 @@ mod tests {
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 15500,
+            main_time_millis: 25500,
             extra_time_millis: 15500,
         };
 
@@ -1204,7 +1204,7 @@ mod tests {
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
-            main_time_millis: 15500,
+            main_time_millis: 25500,
             extra_time_millis: 5500,
         };
 
