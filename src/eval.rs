@@ -26,7 +26,7 @@ static EG_P_VAL: i32 = 100;
 static ENDGAME_PAWN_ESSENTIAL_VAL: i32 = 50;
 static ENDGAME_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 
-static KING_EXPOSED_PEN: i32 = -30;
+static KING_EXPOSED_PEN: i32 = -20;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -30;
 
 static KING_ATTACKER_PEN: i32 = -10;
@@ -68,6 +68,9 @@ static Q_MOB_SCORE: [i32; 28] = [-15,-10,-5,-5,10,10,10,15,20,25,30,30,30,30,30,
 
 static WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
 static BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
+
+static A_FILE_MASK: u64 = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001;
+static H_FILE_MASK: u64 = 0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
 
 static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -1007,6 +1010,10 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if bitboard.b_queen != 0 {
                     if file_mask & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 {
+                        w_feature_map.king_exposure_count += 2;
+                    } else if file_mask != A_FILE_MASK && (file_masks[index - 1] & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0) {
+                        w_feature_map.king_exposure_count += 1;
+                    } else if file_mask != H_FILE_MASK && (file_masks[index + 1] & bitboard.w_pawn & WK_PAWN_COVER_MASK == 0) {
                         w_feature_map.king_exposure_count += 1;
                     }
 
@@ -1026,6 +1033,10 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if bitboard.w_queen != 0 {
                     if file_mask & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 {
+                        b_feature_map.king_exposure_count += 2;
+                    } else if file_mask != A_FILE_MASK && (file_masks[index - 1] & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0) {
+                        b_feature_map.king_exposure_count += 1;
+                    } else if file_mask != H_FILE_MASK && (file_masks[index + 1] & bitboard.b_pawn & BK_PAWN_COVER_MASK == 0) {
                         b_feature_map.king_exposure_count += 1;
                     }
 
