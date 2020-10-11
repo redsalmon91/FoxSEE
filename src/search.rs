@@ -866,19 +866,31 @@ fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
 }
 
 fn see_exchange(state: &mut State, to: usize, last_attacker: u8) -> i32 {
-    let (attacker, tp, promo, attack_from) = mov_table::get_smallest_attacker_index(state, to);
+    let mut attacker_list = mov_table::get_attackers(state, to);
 
-    if attacker == 0 {
+    if attacker_list.is_empty() {
         return 0
     }
 
-    state.do_mov(attack_from, to, tp, promo);
+    attacker_list.sort_by(|(piece_a, _, _, _), (piece_b, _, _, _)| {
+        eval::val_of(*piece_a).partial_cmp(&eval::val_of(*piece_b)).unwrap()
+    });
 
-    let score = (eval::val_of(last_attacker) + eval::val_of(promo) - see_exchange(state, to, attacker)).max(0);
+    for (attacker, tp, promo, attack_from) in attacker_list {
+        state.do_mov(attack_from, to, tp, promo);
 
-    state.undo_mov(attack_from, to, tp);
+        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
+            state.undo_mov(attack_from, to, tp);
+            continue
+        }
 
-    score
+        let score = (eval::val_of(last_attacker) + eval::val_of(promo) - see_exchange(state, to, attacker)).max(0);
+        state.undo_mov(attack_from, to, tp);
+
+        return score
+    }
+
+    0
 }
 
 #[cfg(test)]
