@@ -355,9 +355,7 @@ impl SearchEngine {
             }
 
             if scout_score != 0 && scout_score >= beta {
-                if !self.in_stale_mate(state) {
-                    return beta
-                }
+                return beta
             }
         }
 
@@ -513,7 +511,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 {
+            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_passer {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - (util::square_root(mov_count)).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {

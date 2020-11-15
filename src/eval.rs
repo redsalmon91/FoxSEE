@@ -31,7 +31,7 @@ static KING_LOST_CAS_RIGHTS_PEN: i32 = -30;
 
 static KING_ATTACKER_PEN: i32 = -10;
 
-static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 80, 100, 0];
+static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 80, 0];
 static CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0, 0];
 
 static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -6;
