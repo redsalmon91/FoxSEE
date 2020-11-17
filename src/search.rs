@@ -276,6 +276,10 @@ impl SearchEngine {
             alpha = mated_val;
         }
 
+        if depth == 0 {
+            return self.q_search(state, alpha, beta, ply)
+        }
+
         let original_alpha = alpha;
 
         let mut pv_mov = 0;
@@ -284,41 +288,27 @@ impl SearchEngine {
             Match(flag, score, mov) => {
                 pv_mov = mov;
 
-                if ply > 1 {
-                    match flag {
-                        HASH_TYPE_EXACT => {
-                            return score
-                        },
-                        HASH_TYPE_ALPHA => {
-                            if score <= alpha {
-                                return alpha
-                            }
-    
-                            if score < beta {
-                                beta = score;
-                            }
-                        },
-                        HASH_TYPE_BETA => {
-                            if score >= beta {
-                                return beta
-                            }
-    
-                            if score > alpha {
-                                alpha = score;
-                            }
-                        },
-                        _ => (),
-                    }
+                match flag {
+                    HASH_TYPE_EXACT => {
+                        return score
+                    },
+                    HASH_TYPE_ALPHA => {
+                        if score <= alpha {
+                            return alpha
+                        }
+                    },
+                    HASH_TYPE_BETA => {
+                        if score >= beta {
+                            return beta
+                        }
+                    },
+                    _ => (),
                 }
             },
             MovOnly(mov) => {
                 pv_mov = mov;
             },
             _ => (),
-        }
-
-        if depth == 0 {
-            return self.q_search(state, alpha, beta, ply)
         }
 
         if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
