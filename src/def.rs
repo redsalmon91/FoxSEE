@@ -3,7 +3,7 @@
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "5.3";
+pub static VERSION: &str = "5.5";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 64;
@@ -107,11 +107,6 @@ pub const fn is_n(piece_code: u8) -> bool {
 #[inline]
 pub const fn is_p(piece_code: u8) -> bool {
     piece_code & P != 0
-}
-
-#[inline]
-pub const fn square(value: i32) -> i32 {
-    value * value
 }
 
 #[cfg(test)]

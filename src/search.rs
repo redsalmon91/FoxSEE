@@ -17,12 +17,10 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_MAX_HISTORY_SCORE: i32 = 100000;
 const SORTING_MAX_NON_CAP_SCORE: i32 = 200000;
-const SORTING_PRIMARY_KILLER_SCORE: i32 = 50;
-const SORTING_SECONDARY_KILLER_SCORE: i32 = -50;
 const SORTING_HALF_PAWN_SCORE: i32 = 50;
 
-const WINDOW_SIZE: i32 = 50;
-const EXTENDED_WINDOW_SIZE: i32 = 200;
+const WINDOW_SIZE: i32 = 20;
+const EXTENDED_WINDOW_SIZE: i32 = 100;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -321,7 +319,7 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply)
         }
 
-        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
+        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
             let (score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -337,7 +335,7 @@ impl SearchEngine {
             }
         }
 
-        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
+        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -472,13 +470,13 @@ impl SearchEngine {
             } else if promo != 0 {
                 ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + eval::val_of(promo), gives_check, is_passer, mov));
             } else if mov == primary_killer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_PRIMARY_KILLER_SCORE, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_SECONDARY_KILLER_SCORE, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_SCORE, gives_check, is_passer, mov));
             } else if gives_check {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE, true, is_passer, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_SCORE, true, is_passer, mov));
             } else if is_passer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE, false, true, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_SCORE, false, true, mov));
             } else {
                 ordered_mov_list.push((self.index_history_table[from][to], false, false, mov));
             }
