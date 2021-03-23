@@ -51,54 +51,8 @@ static B_ZONE_MASK: u64 = 0b11111111_11111111_11111111_00000000_00000000_0000000
 
 static CENTER_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
 
-static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-     10, 10,  0,  0,  0,  0, 10, 10,
-     10, 10,  0,  0,  0,  0, 10, 10,
-      0,  0,  0,  0,  0,  0,  0,  0,
-];
-
-static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
-      0,  0,  0,  0,  0,  0,  0,  0,
-     10, 10,  0,  0,  0,  0, 10, 10,
-     10, 10,  0,  0,  0,  0, 10, 10,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-];
-
-static SQR_TABLE_BK: [i32; def::BOARD_SIZE] = [
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -60,-60,-60,-60,-60,-60,-60,-60,
-      0, 10,-10,-30,-30,-10, 10, 0,
-      0, 20,  0,-20,-20,  0, 20, 0,
-];
-
-static SQR_TABLE_WK: [i32; def::BOARD_SIZE] = [
-      0, 20,  0,-20,-20,  0, 20,  0,
-      0, 10,-10,-30,-30,-10, 10,  0,
-    -60,-60,-60,-60,-60,-60,-60,-60,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-    -90,-90,-90,-90,-90,-90,-90,-90,
-];
-
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
-    midgame_sqr_point: i32,
-
     passed_pawn_point: i32,
     passed_pawn_king_distance: i32,
     unstoppable_passed_pawn_count: i32,
@@ -116,8 +70,6 @@ pub struct FeatureMap {
 impl FeatureMap {
     pub fn empty() -> Self {
         FeatureMap {
-            midgame_sqr_point: 0,
-
             passed_pawn_point: 0,
             passed_pawn_king_distance: 0,
             unstoppable_passed_pawn_count: 0,
@@ -282,11 +234,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let (w_features_map, b_features_map) = extract_features(state);
 
     let midgame_positional_score =
-        w_features_map.midgame_sqr_point
-        + w_features_map.mobility
+        w_features_map.mobility
         + w_features_map.weak_sqrs_count * WEAK_SQR_PEN
         + w_features_map.center_count * CENTER_SQR_VAL
-        - b_features_map.midgame_sqr_point
         - b_features_map.mobility
         - b_features_map.weak_sqrs_count * WEAK_SQR_PEN
         - b_features_map.center_count * CENTER_SQR_VAL;
@@ -355,8 +305,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
  
         match moving_piece {
             def::WP => {
-                w_feature_map.midgame_sqr_point += SQR_TABLE_WP[index];
-
                 wp_attack_mask |= bitmask.wp_attack_masks[index];
 
                 let file_mask = file_masks[index];
@@ -407,8 +355,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 }
             },
             def::BP => {
-                b_feature_map.midgame_sqr_point += SQR_TABLE_BP[index];
-
                 bp_attack_mask |= bitmask.bp_attack_masks[index];
 
                 let file_mask = file_masks[index];
@@ -731,13 +677,6 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 bq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
-            },
-
-            def::WK => {
-                w_feature_map.midgame_sqr_point += SQR_TABLE_WK[index];
-            },
-            def::BK => {
-                b_feature_map.midgame_sqr_point += SQR_TABLE_BK[index];
             },
             _ => {}
         }

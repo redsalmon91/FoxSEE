@@ -6,6 +6,7 @@ mod bitboard;
 mod def;
 mod eval;
 mod hashtable;
+mod mov_ordering;
 mod mov_table;
 mod prng;
 mod search;

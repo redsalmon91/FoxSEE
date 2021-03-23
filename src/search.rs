@@ -6,6 +6,7 @@ use crate::{
     def,
     eval,
     hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
+    mov_ordering,
     mov_table,
     state::State,
     time_control::TimeCapacity,
@@ -478,7 +479,13 @@ impl SearchEngine {
             } else if is_passer {
                 ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_SCORE, false, true, mov));
             } else {
-                ordered_mov_list.push((self.index_history_table[from][to], false, false, mov));
+                let history_score = self.index_history_table[from][to];
+
+                if history_score != 0 {
+                    ordered_mov_list.push((history_score, false, false, mov));
+                } else {
+                    ordered_mov_list.push((mov_ordering::get_square_ordering_val(state.squares[from], from, to), false, false, mov));
+                }
             }
         }
 
