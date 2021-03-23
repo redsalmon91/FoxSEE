@@ -20,7 +20,8 @@ static P_VAL: i32 = 100;
 static ENDGAME_PAWN_ESSENTIAL_VAL: i32 = 50;
 static ENDGAME_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 
-static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 60, 70, 80, 90, 0];
+static MG_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 30, 60, 70, 0];
+static EG_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 60, 70, 80, 90, 0];
 
 static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -10;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
@@ -28,6 +29,8 @@ static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
 static DOUBLED_PAWN_PEN: i32 = -20;
 static ISOLATED_PAWN_PEN: i32 = -20;
 static BEHIND_PAWN_PEN: i32 = -10;
+
+static KING_CASTLE_BONUS: i32 = 50;
 
 static WEAK_SQR_PEN:i32 = -10;
 static CENTER_SQR_VAL: i32 = 20;
@@ -50,14 +53,15 @@ static N_MOB_SCORE: [i32; 9] = [-30,-20,-5, 0, 0, 5, 10, 15, 20];
 static B_MOB_SCORE: [i32; 14] = [-20,-10, 5, 10, 20, 25, 25, 30, 30, 35, 40, 40, 45, 50];
 static R_MOB_SCORE: [i32; 15] = [-30,-10, 0, 0, 0, 5, 10, 15, 20, 20, 20, 25, 30, 30, 30];
 
-static W_ZONE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_11111111;
-static B_ZONE_MASK: u64 = 0b11111111_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
+static W_ZONE_MASK: u64 = 0b00000000_00000000_00000000_00000000_01111110_11111111_11111111_11111111;
+static B_ZONE_MASK: u64 = 0b11111111_11111111_11111111_01111110_00000000_00000000_00000000_00000000;
 
 static CENTER_MASK: u64 = 0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000;
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
-    passed_pawn_point: i32,
+    mg_passed_pawn_point: i32,
+    eg_passed_pawn_point: i32,
     passed_pawn_king_distance: i32,
     unstoppable_passed_pawn_count: i32,
     controlled_passed_pawn_count: i32,
@@ -75,7 +79,8 @@ pub struct FeatureMap {
 impl FeatureMap {
     pub fn empty() -> Self {
         FeatureMap {
-            passed_pawn_point: 0,
+            mg_passed_pawn_point: 0,
+            eg_passed_pawn_point: 0,
             passed_pawn_king_distance: 0,
             unstoppable_passed_pawn_count: 0,
             controlled_passed_pawn_count: 0,
@@ -239,22 +244,32 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 
     let (w_features_map, b_features_map) = extract_features(state);
 
-    let midgame_positional_score =
+    let mut midgame_positional_score =
         w_features_map.mobility
         + w_features_map.trapped_piece_point
         + w_features_map.weak_sqrs_count * WEAK_SQR_PEN
         + w_features_map.center_count * CENTER_SQR_VAL
+        + w_features_map.mg_passed_pawn_point
         - b_features_map.mobility
         - b_features_map.trapped_piece_point
         - b_features_map.weak_sqrs_count * WEAK_SQR_PEN
-        - b_features_map.center_count * CENTER_SQR_VAL;
+        - b_features_map.center_count * CENTER_SQR_VAL
+        - b_features_map.mg_passed_pawn_point;
+
+    if state.cas_history & 0b1100 != 0 {
+        midgame_positional_score += KING_CASTLE_BONUS;
+    }
+
+    if state.cas_history & 0b0011 != 0 {
+        midgame_positional_score -= KING_CASTLE_BONUS;
+    }
 
     let endgame_positional_score =
-        w_features_map.passed_pawn_point
+        w_features_map.eg_passed_pawn_point
         + w_features_map.passed_pawn_king_distance * PASSED_PAWN_KING_DISTANCE_BASE_PEN
         + w_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
-        - b_features_map.passed_pawn_point
+        - b_features_map.eg_passed_pawn_point
         - b_features_map.passed_pawn_king_distance * PASSED_PAWN_KING_DISTANCE_BASE_PEN
         - b_features_map.unstoppable_passed_pawn_count * UNSTOPPABLE_PASS_PAWN_VAL
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL;
@@ -322,7 +337,8 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let is_connected = bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0;
 
                 if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
-                    w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    w_feature_map.mg_passed_pawn_point += MG_PASS_PAWN_VAL[rank as usize];
+                    w_feature_map.eg_passed_pawn_point += EG_PASS_PAWN_VAL[rank as usize];
 
                     let king_distance = def::get_file_distance(index, state.wk_index);
                     w_feature_map.passed_pawn_king_distance += king_distance;
@@ -372,7 +388,8 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let is_connected = bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0;
 
                 if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
-                    b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    b_feature_map.mg_passed_pawn_point += MG_PASS_PAWN_VAL[rank as usize];
+                    b_feature_map.eg_passed_pawn_point += EG_PASS_PAWN_VAL[rank as usize];
 
                     let king_distance = def::get_file_distance(index, state.bk_index);
                     b_feature_map.passed_pawn_king_distance += king_distance;
@@ -697,11 +714,13 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let b_defense_mask = b_attack_mask | bitmask.k_attack_masks[state.bk_index];
 
     w_feature_map.weak_sqrs_count += (W_ZONE_MASK & !w_defense_mask).count_ones() as i32;
+    w_feature_map.weak_sqrs_count += (W_ZONE_MASK & bp_attack_mask).count_ones() as i32;
     w_feature_map.weak_sqrs_count += (W_ZONE_MASK & (b_attack_mask | bitboard.b_all) & !w_defense_mask).count_ones() as i32;
     w_feature_map.weak_sqrs_count += (bitmask.k_attack_masks[state.wk_index] & b_attack_mask).count_ones() as i32;
     w_feature_map.weak_sqrs_count += (bitmask.k_attack_masks[state.wk_index] & b_attack_mask & !w_attack_mask).count_ones() as i32;
 
     b_feature_map.weak_sqrs_count += (B_ZONE_MASK & !b_defense_mask).count_ones() as i32;
+    b_feature_map.weak_sqrs_count += (B_ZONE_MASK & wp_attack_mask).count_ones() as i32;
     b_feature_map.weak_sqrs_count += (B_ZONE_MASK & (w_attack_mask | bitboard.w_all) & !b_defense_mask).count_ones() as i32;
     b_feature_map.weak_sqrs_count += (bitmask.b_attack_masks[state.bk_index] & w_attack_mask).count_ones() as i32;
     b_feature_map.weak_sqrs_count += (bitmask.b_attack_masks[state.bk_index] & w_attack_mask & !b_attack_mask).count_ones() as i32;
