@@ -19,7 +19,7 @@ const PV_PRINT_LENGTH: usize = 16;
 const SORTING_MAX_NON_CAP_SCORE: i32 = 200000;
 const SORTING_HALF_PAWN_SCORE: i32 = 50;
 
-const WINDOW_SIZE: i32 = 20;
+const WINDOW_SIZE: i32 = 10;
 const EXTENDED_WINDOW_SIZE: i32 = 100;
 
 const NM_DEPTH: u8 = 6;
@@ -48,8 +48,8 @@ use LookupResult::*;
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
-    primary_killer_table: [(i32, u8, u32); PV_TRACK_LENGTH],
-    secondary_killer_table: [(i32, u8, u32); PV_TRACK_LENGTH],
+    primary_killer_table: [u32; PV_TRACK_LENGTH],
+    secondary_killer_table: [u32; PV_TRACK_LENGTH],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     time_tracker: Instant,
     max_time_millis: u128,
@@ -60,8 +60,8 @@ impl SearchEngine {
         SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
-            primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
-            secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
+            primary_killer_table: [0; PV_TRACK_LENGTH],
+            secondary_killer_table: [0; PV_TRACK_LENGTH],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             time_tracker: Instant::now(),
             max_time_millis: 0,
@@ -118,8 +118,8 @@ impl SearchEngine {
         self.time_tracker = Instant::now();
         self.max_time_millis = time_capacity.main_time_millis;
 
-        self.primary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
-        self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
+        self.primary_killer_table = [0; PV_TRACK_LENGTH];
+        self.secondary_killer_table = [0; PV_TRACK_LENGTH];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.depth_preferred_hash_table.clear();
 
@@ -413,7 +413,7 @@ impl SearchEngine {
             if score >= beta {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(score, depth, ply, pv_mov);
+                    self.update_killer_table(ply, pv_mov);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
@@ -467,8 +467,6 @@ impl SearchEngine {
                 };
 
                 ordered_mov_list.push((sort_score, gives_check, is_passer, mov));
-            } else if promo != 0 {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + eval::val_of(promo), gives_check, is_passer, mov));
             } else if mov == primary_killer {
                 ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
@@ -557,7 +555,7 @@ impl SearchEngine {
             if score >= beta {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(score, depth, ply, mov);
+                    self.update_killer_table(ply, mov);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
@@ -753,22 +751,19 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn update_killer_table(&mut self, score: i32, depth: u8, ply: u8, mov: u32) {
+    fn update_killer_table(&mut self, ply: u8, mov: u32) {
         let ply_index = ply as usize;
 
         if ply_index >= PV_TRACK_LENGTH {
             return
         }
 
-        let (primary_killer_score, primary_killer_depth, primary_killer_mov) = self.primary_killer_table[ply_index];
-        if (score > primary_killer_score && depth >= primary_killer_depth) || primary_killer_mov == 0 {
-            self.primary_killer_table[ply_index] = (score, depth, mov);
-            self.secondary_killer_table[ply_index] = (primary_killer_score, primary_killer_depth, primary_killer_mov);
+        let primary_killer_mov = self.primary_killer_table[ply_index];
+        if primary_killer_mov != 0 {
+            self.primary_killer_table[ply_index] = mov;
+            self.secondary_killer_table[ply_index] = primary_killer_mov;
         } else {
-            let (killer_score, killer_depth, killer_mov) = self.secondary_killer_table[ply_index];
-            if (score > killer_score && depth >= killer_depth) || killer_mov == 0 {
-                self.secondary_killer_table[ply_index] = (score, depth, mov);
-            }
+            self.secondary_killer_table[ply_index] = mov;
         }
     }
 
@@ -780,19 +775,19 @@ impl SearchEngine {
             return (0, 0)
         }
 
-        let (_score, _depth, primary_killer) = self.primary_killer_table[ply_index];
+        let primary_killer = self.primary_killer_table[ply_index];
 
         if primary_killer == 0 && ply > 2 {
-            let (_score, _depth, primary_killer) = self.primary_killer_table[ply_index - 2];
-            let (_score, _depth, secondary_killer) = self.secondary_killer_table[ply_index - 2];
+            let primary_killer = self.primary_killer_table[ply_index - 2];
+            let secondary_killer = self.secondary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }
 
-        let (_score, _depth, secondary_killer) = self.secondary_killer_table[ply_index];
+        let secondary_killer = self.secondary_killer_table[ply_index];
 
         if secondary_killer == 0 && ply > 2 {
-            let (_score, _depth, secondary_killer) = self.primary_killer_table[ply_index - 2];
+            let secondary_killer = self.primary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }

@@ -32,6 +32,10 @@ static BEHIND_PAWN_PEN: i32 = -10;
 static WEAK_SQR_PEN:i32 = -10;
 static CENTER_SQR_VAL: i32 = 20;
 
+static TRAPPED_N_PEN: i32 = -50;
+static TRAPPED_B_PEN: i32 = -50;
+static TRAPPED_R_PEN: i32 = -50;
+
 static BISHOP_PAIR_VAL: i32 = 30;
 
 static TOTAL_PHASE: i32 = 96;
@@ -65,6 +69,7 @@ pub struct FeatureMap {
     mobility: i32,
     weak_sqrs_count: i32,
     center_count: i32,
+    trapped_piece_point: i32,
 }
 
 impl FeatureMap {
@@ -82,6 +87,7 @@ impl FeatureMap {
             mobility: 0,
             weak_sqrs_count: 0,
             center_count: 0,
+            trapped_piece_point: 0,
         }
     }
 }
@@ -235,9 +241,11 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 
     let midgame_positional_score =
         w_features_map.mobility
+        + w_features_map.trapped_piece_point
         + w_features_map.weak_sqrs_count * WEAK_SQR_PEN
         + w_features_map.center_count * CENTER_SQR_VAL
         - b_features_map.mobility
+        - b_features_map.trapped_piece_point
         - b_features_map.weak_sqrs_count * WEAK_SQR_PEN
         - b_features_map.center_count * CENTER_SQR_VAL;
 
@@ -710,28 +718,52 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
         match piece {
             def::WN => {
-                let mov_mask = mov_mask_map[index];
-                w_feature_map.mobility += N_MOB_SCORE[(mov_mask & !bp_attack_mask & !bitboard.w_all).count_ones() as usize];
+                let mobility_mask = mov_mask_map[index] & !bp_attack_mask & !(b_defense_mask & !w_defense_mask) & !bitboard.w_all;
+                if mobility_mask == 0 {
+                    w_feature_map.trapped_piece_point += TRAPPED_N_PEN;
+                } else {
+                    w_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
+                }
             },
             def::WB => {
-                let mov_mask = mov_mask_map[index];
-                w_feature_map.mobility += B_MOB_SCORE[(mov_mask & !bp_attack_mask & !bitboard.w_all).count_ones() as usize];
+                let mobility_mask = mov_mask_map[index] & !bp_attack_mask & !(b_defense_mask & !w_defense_mask) & !bitboard.w_all;
+                if mobility_mask == 0 {
+                    w_feature_map.trapped_piece_point += TRAPPED_B_PEN;
+                } else {
+                    w_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
+                }
             },
             def::WR => {
-                let mov_mask = mov_mask_map[index];
-                w_feature_map.mobility += R_MOB_SCORE[(mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all).count_ones() as usize];
+                let mobility_mask = mov_mask_map[index] & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !(b_defense_mask & !w_defense_mask) & !bitboard.w_all;
+                if mobility_mask == 0 {
+                    w_feature_map.trapped_piece_point += TRAPPED_R_PEN;
+                } else {
+                    w_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
+                }
             },
             def::BN => {
-                let mov_mask = mov_mask_map[index];
-                b_feature_map.mobility += N_MOB_SCORE[(mov_mask & !wp_attack_mask & !bitboard.b_all).count_ones() as usize];
+                let mobility_mask = mov_mask_map[index] & !wp_attack_mask & !(w_defense_mask & !b_defense_mask) & !bitboard.b_all;
+                if mobility_mask == 0 {
+                    b_feature_map.trapped_piece_point += TRAPPED_N_PEN;
+                } else {
+                    b_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
+                }
             },
             def::BB => {
-                let mov_mask = mov_mask_map[index];
-                b_feature_map.mobility += B_MOB_SCORE[(mov_mask & !wp_attack_mask & !bitboard.b_all).count_ones() as usize];
+                let mobility_mask = mov_mask_map[index] & !wp_attack_mask & !(w_defense_mask & !b_defense_mask) & !bitboard.b_all;
+                if mobility_mask == 0 {
+                    b_feature_map.trapped_piece_point += TRAPPED_B_PEN;
+                } else {
+                    b_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
+                }
             },
             def::BR => {
-                let mov_mask = mov_mask_map[index];
-                b_feature_map.mobility += R_MOB_SCORE[(mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all).count_ones() as usize];
+                let mobility_mask = mov_mask_map[index] & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !(w_defense_mask & !b_defense_mask) & !bitboard.b_all;
+                if mobility_mask == 0 {
+                    b_feature_map.trapped_piece_point += TRAPPED_R_PEN;
+                } else {
+                    b_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
+                }
             },
             _ => {},
         }
