@@ -828,14 +828,12 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
     false
 }
 
-pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
+pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, usize) {
     let bitmask = state.bitmask;
     let bitboard = state.bitboard;
     let player = state.player;
 
     let all_mask = bitboard.w_all | bitboard.b_all;
-
-    let mut attacker_list = Vec::new();
 
     if player == def::PLAYER_W {
         let mut attack_mask = bitmask.bp_attack_masks[index] & bitboard.w_pawn;
@@ -843,9 +841,9 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
                 if index > 55 {
-                    attacker_list.push((def::WP, def::MOV_PROMO, def::WQ, attack_index));
+                    return (def::WP, def::MOV_PROMO, def::WQ, attack_index)
                 } else {
-                    attacker_list.push((def::WP, def::MOV_REG, 0, attack_index));
+                    return (def::WP, def::MOV_REG, 0, attack_index)
                 }
             }
 
@@ -859,7 +857,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::WN, def::MOV_REG, 0, attack_index));
+                return (def::WN, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -913,7 +911,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::WB, def::MOV_REG, 0, attack_index));
+                return (def::WB, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -967,7 +965,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::WR, def::MOV_REG, 0, attack_index));
+                return (def::WR, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -978,7 +976,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::WQ, def::MOV_REG, 0, attack_index));
+                return (def::WQ, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -988,7 +986,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let k_attack_mask = bitmask.k_attack_masks[index];
 
         if k_attack_mask & bitmask.index_masks[state.wk_index] != 0 {
-            attacker_list.push((def::WK, def::MOV_REG, 0, state.wk_index));
+            return (def::WK, def::MOV_REG, 0, state.wk_index)
         }
     } else {
         let mut attack_mask = bitmask.wp_attack_masks[index] & bitboard.b_pawn;
@@ -996,9 +994,9 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
                 if index < 8 {
-                    attacker_list.push((def::BP, def::MOV_PROMO, def::BQ, attack_index));
+                    return (def::BP, def::MOV_PROMO, def::BQ, attack_index)
                 } else {
-                    attacker_list.push((def::BP, def::MOV_REG, 0, attack_index));
+                    return (def::BP, def::MOV_REG, 0, attack_index)
                 }
             }
 
@@ -1012,7 +1010,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::BN, def::MOV_REG, 0, attack_index));
+                return (def::BN, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -1066,7 +1064,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::BB, def::MOV_REG, 0, attack_index));
+                return (def::BB, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -1120,7 +1118,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::BR, def::MOV_REG, 0, attack_index));
+                return (def::BR, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -1131,7 +1129,7 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                attacker_list.push((def::BQ, def::MOV_REG, 0, attack_index));
+                return (def::BQ, def::MOV_REG, 0, attack_index)
             }
 
             attack_mask >>= 1;
@@ -1141,11 +1139,11 @@ pub fn get_attackers(state: &State, index: usize) -> Vec<(u8, u8, u8, usize)> {
         let k_attack_mask = bitmask.k_attack_masks[index];
 
         if k_attack_mask & bitmask.index_masks[state.bk_index] != 0 {
-            attacker_list.push((def::BK, def::MOV_REG, 0, state.bk_index));
+            return (def::BK, def::MOV_REG, 0, state.bk_index)
         }
     }
 
-    attacker_list
+    (0, 0, 0, 0)
 }
 
 #[cfg(test)]

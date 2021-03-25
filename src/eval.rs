@@ -14,7 +14,7 @@ pub static TERM_VAL: i32 = 10000;
 static Q_VAL: i32 = 1000;
 static R_VAL: i32 = 550;
 static B_VAL: i32 = 350;
-static N_VAL: i32 = 340;
+static N_VAL: i32 = 350;
 static P_VAL: i32 = 90;
 
 static EG_PAWN_ESSENTIAL_VAL: i32 = 50;
@@ -48,9 +48,9 @@ static N_PHASE_WEIGHT: i32 = 4;
 static TEMPO_VAL: i32 = 10;
 
 static N_MOB_SCORE: [i32; 9] = [-30, -20, -5, 0, 0, 5, 10, 15, 20];
-static B_MOB_SCORE: [i32; 14] = [-20, -10, 5, 10, 20, 25, 25, 30, 30, 35, 40, 40, 45, 50];
+static B_MOB_SCORE: [i32; 14] = [-30, -10, 5, 10, 20, 25, 25, 30, 30, 35, 40, 40, 45, 50];
 static R_MOB_SCORE: [i32; 15] = [-30, -10, 0, 0, 0, 5, 10, 15, 20, 20, 20, 25, 30, 30, 30];
-static Q_MOB_SCORE: [i32; 29] = [-15, -10, 0, 0, 0, 0, 5, 5, 5, 5, 10, 10, 10, 10, 15, 15, 20, 20, 20, 20, 20, 30, 30, 30, 30, 30, 30, 30, 30];
+static Q_MOB_SCORE: [i32; 29] = [-30, -10, 0, 0, 0, 0, 5, 5, 5, 5, 10, 10, 10, 10, 15, 15, 20, 20, 20, 20, 20, 30, 30, 30, 30, 30, 30, 30, 30];
 
 static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -854,13 +854,8 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
     let b_defense_mask = b_attack_mask | bk_ring_mask;
 
-    w_feature_map.weak_sqrs_count += (W_ZONE_MASK & !w_defense_mask).count_ones() as i32;
-    w_feature_map.weak_sqrs_count += (W_ZONE_MASK & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop)).count_ones() as i32;
-    w_feature_map.weak_sqrs_count += (W_ZONE_MASK & b_attack_mask & !w_attack_mask).count_ones() as i32;
-    
-    b_feature_map.weak_sqrs_count += (B_ZONE_MASK & !b_defense_mask).count_ones() as i32;
-    b_feature_map.weak_sqrs_count += (B_ZONE_MASK & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop)).count_ones() as i32;
-    b_feature_map.weak_sqrs_count += (B_ZONE_MASK & w_attack_mask & !b_attack_mask).count_ones() as i32;
+    w_feature_map.weak_sqrs_count += (W_ZONE_MASK & b_attack_mask & !w_defense_mask).count_ones() as i32;
+    b_feature_map.weak_sqrs_count += (B_ZONE_MASK & w_attack_mask & !b_defense_mask).count_ones() as i32;
 
     for index in start_index..end_index {
         let piece = squares[index];

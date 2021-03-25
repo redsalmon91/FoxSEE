@@ -13,6 +13,7 @@ UCI chess engine written in Rust!
 - Quiescence Search
 - Iterative Deepening
 - Internal Iterative Deepening
+- Aspiration Windows
 - Bitboards
 - Zobrist Hashing
 - Transposition Table
@@ -20,7 +21,7 @@ UCI chess engine written in Rust!
 - Check Extensions
 - Passed-Pawn Extensions
 - Late-Move Reductions
-- Butterfly History Heuristic
+- Relative History Heuristic
 - Killer Heuristic
 - Tapered Evaluation
 - Piece-Square Tables

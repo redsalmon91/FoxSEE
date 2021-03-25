@@ -6,7 +6,6 @@ use crate::{
     def,
     eval,
     hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
-    mov_ordering,
     mov_table,
     state::State,
     time_control::TimeCapacity,
@@ -16,12 +15,12 @@ use crate::{
 const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 
-const SORTING_MAX_NON_CAP_SCORE: i32 = 10000000;
+const SORTING_CAP_BASE_VAL: i32 = 10000000;
 const SORTING_HALF_PAWN_VAL: i32 = 50;
 const SORTING_Q_VAL: i32 = 1000;
 
-const WINDOW_SIZE: i32 = 20;
-const EXTENDED_WINDOW_SIZE: i32 = 100;
+const WINDOW_SIZE: i32 = 10;
+const EXTENDED_WINDOW_SIZE: i32 = 50;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -32,9 +31,6 @@ const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
-
-const FP_DEPTH: u8 = 7;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
@@ -51,7 +47,8 @@ pub struct SearchEngine {
     always_replace_hash_table: AlwaysReplaceHashTable,
     primary_killer_table: [u32; PV_TRACK_LENGTH],
     secondary_killer_table: [u32; PV_TRACK_LENGTH],
-    history_table: [[[(i32, i32); def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     time_tracker: Instant,
     max_time_millis: u128,
 }
@@ -63,7 +60,8 @@ impl SearchEngine {
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
             primary_killer_table: [0; PV_TRACK_LENGTH],
             secondary_killer_table: [0; PV_TRACK_LENGTH],
-            history_table: [[[(0, 0); def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             time_tracker: Instant::now(),
             max_time_millis: 0,
         }
@@ -121,7 +119,8 @@ impl SearchEngine {
 
         self.primary_killer_table = [0; PV_TRACK_LENGTH];
         self.secondary_killer_table = [0; PV_TRACK_LENGTH];
-        self.history_table = [[[(0, 0); def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
+        self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
+        self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.depth_preferred_hash_table.clear();
 
         unsafe {
@@ -324,22 +323,6 @@ impl SearchEngine {
             return score
         }
 
-        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
-            let (score, is_draw) = eval::eval_materials(state);
-
-            if is_draw {
-                return 0
-            }
-
-            if score - FUTILITY_MARGIN[depth as usize] > beta {
-                let score = eval::eval_state(state, score);
-
-                if score != 0 && score - FUTILITY_MARGIN[depth as usize] > beta {
-                    return beta
-                }
-            }
-        }
-
         if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
@@ -424,6 +407,10 @@ impl SearchEngine {
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
 
                 return score
+            } else {
+                if !is_capture {
+                    self.update_butterfly_table(state.player, from, to);
+                }
             }
 
             if score > best_score {
@@ -460,30 +447,19 @@ impl SearchEngine {
 
             state.do_mov(from, to, tp, promo);
             let gives_check = mov_table::is_in_check(state, state.player);
+            let is_passer = is_passed_pawn(state, state.squares[to], to);
             state.undo_mov(from, to, tp);
 
-            let is_passer = is_passed_pawn(state, state.squares[to], to);
-
             if state.squares[to] != 0 {
-                let sort_score = if gives_check {
-                    SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_VAL + see(state, from, to, tp, promo)
-                } else {
-                    SORTING_MAX_NON_CAP_SCORE + see(state, from, to, tp, promo)
-                };
-
-                ordered_mov_list.push((sort_score, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL + see(state, from, to, tp, promo), gives_check, is_passer, mov));
             } else if mov == primary_killer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_Q_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_Q_VAL, gives_check, is_passer, mov));
             } else {
-                let (history_score, _hit_count) = self.history_table[state.player as usize - 1][from][to];
-
-                if history_score != 0 {
-                    ordered_mov_list.push((history_score, gives_check, is_passer, mov));
-                } else {
-                    ordered_mov_list.push((mov_ordering::get_square_ordering_val(state.squares[from], from, to), gives_check, is_passer, mov));
-                }
+                let history_score = self.history_table[state.player as usize - 1][from][to];
+                let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
+                ordered_mov_list.push((history_score / butterfly_score, gives_check, is_passer, mov));
             }
         }
 
@@ -503,7 +479,6 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
-            let is_pawn_mov = def::is_p(state.squares[from]);
 
             state.do_mov(from, to, tp, promo);
 
@@ -515,8 +490,8 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_pawn_mov {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - util::square_root(mov_count).min(depth), ply + 1);
+            let score = if depth > 2 && mov_count > 1 && !gives_check && !is_passer {
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 2, ply + 1);
                 if score > alpha {
                     if pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
@@ -563,6 +538,10 @@ impl SearchEngine {
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
 
                 return score
+            } else {
+                if !is_capture {
+                    self.update_butterfly_table(state.player, from, to);
+                }
             }
 
             if score > best_score {
@@ -799,10 +778,14 @@ impl SearchEngine {
 
     #[inline]
     fn update_history_table(&mut self, player: u8, depth: u8, from: usize, to: usize) {
-        let (history_score, hit_count) = self.history_table[player as usize - 1][from][to];
-        let increment = depth as i32 * depth as i32;
+        let history_score = self.history_table[player as usize - 1][from][to];
+        self.history_table[player as usize - 1][from][to] = history_score + depth as i32 * depth as i32;
+    }
 
-        self.history_table[player as usize - 1][from][to] = ((history_score * hit_count + increment) / (hit_count + 1), hit_count + 1);
+    #[inline]
+    fn update_butterfly_table(&mut self, player: u8, from: usize, to: usize) {
+        let history_score = self.butterfly_table[player as usize - 1][from][to];
+        self.butterfly_table[player as usize - 1][from][to] = history_score + 1;
     }
 
     #[inline]
@@ -863,31 +846,19 @@ fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
 }
 
 fn see_exchange(state: &mut State, to: usize, last_attacker: u8) -> i32 {
-    let mut attacker_list = mov_table::get_attackers(state, to);
+    let (attacker, tp, promo, attack_from) = mov_table::get_smallest_attacker_index(state, to);
 
-    if attacker_list.is_empty() {
+    if attacker == 0 {
         return 0
     }
 
-    attacker_list.sort_by(|(piece_a, _, _, _), (piece_b, _, _, _)| {
-        eval::val_of(*piece_a).partial_cmp(&eval::val_of(*piece_b)).unwrap()
-    });
+    state.do_mov(attack_from, to, tp, promo);
 
-    for (attacker, tp, promo, attack_from) in attacker_list {
-        state.do_mov(attack_from, to, tp, promo);
+    let score = (eval::val_of(last_attacker) + eval::val_of(promo) - see_exchange(state, to, attacker)).max(0);
 
-        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
-            state.undo_mov(attack_from, to, tp);
-            continue
-        }
+    state.undo_mov(attack_from, to, tp);
 
-        let score = (eval::val_of(last_attacker) + eval::val_of(promo) - see_exchange(state, to, attacker)).max(0);
-        state.undo_mov(attack_from, to, tp);
-
-        return score
-    }
-
-    0
+    score
 }
 
 #[cfg(test)]
