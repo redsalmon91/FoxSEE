@@ -2,6 +2,28 @@ use crate::{
     def
 };
 
+static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0,  0,  0,  0,
+      3,  6,  6,  6,  6,  6,  6,  3,
+      2,  4,  4,  6,  6,  4,  4,  2,
+      0,  0,  0,  5,  5,  0,  0,  0,
+      0,  0,  0,  4,  4,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -2, -2,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+];
+
+static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -2, -2,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  4,  4,  0,  0,  0,
+      0,  0,  5,  5,  5,  0,  0,  0,
+      2,  4,  4,  6,  6,  4,  4,  2,
+      3,  6,  6,  6,  6,  6,  6,  3,
+      0,  0,  0,  0,  0,  0,  0,  0,
+];
+
 static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
   -8, -4, -4, -4, -4, -4, -4, -8,
   -6, -6,  4,  2,  2,  4, -6, -6,
@@ -93,11 +115,13 @@ static SQR_TABLE_WQ: [i32; def::BOARD_SIZE] = [
 
 pub fn get_square_ordering_val(moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
     match moving_piece {
+        def::WP => SQR_TABLE_WP[to_index] - SQR_TABLE_WP[from_index],
         def::WN => SQR_TABLE_WN[to_index] - SQR_TABLE_WN[from_index],
         def::WB => SQR_TABLE_WB[to_index] - SQR_TABLE_WB[from_index],
         def::WR => SQR_TABLE_WR[to_index] - SQR_TABLE_WR[from_index],
         def::WQ => SQR_TABLE_WQ[to_index] - SQR_TABLE_WQ[from_index],
 
+        def::BP => SQR_TABLE_BP[to_index] - SQR_TABLE_BP[from_index],
         def::BN => SQR_TABLE_BN[to_index] - SQR_TABLE_BN[from_index],
         def::BB => SQR_TABLE_BB[to_index] - SQR_TABLE_BB[from_index],
         def::BR => SQR_TABLE_BR[to_index] - SQR_TABLE_BR[from_index],

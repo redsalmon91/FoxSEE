@@ -17,20 +17,24 @@ const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_MAX_NON_CAP_SCORE: i32 = 10000000;
-const SORTING_HALF_PAWN_SCORE: i32 = 50;
+const SORTING_HALF_PAWN_VAL: i32 = 50;
+const SORTING_Q_VAL: i32 = 1000;
+
+const WINDOW_SIZE: i32 = 20;
+const EXTENDED_WINDOW_SIZE: i32 = 100;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
 const MAX_DEPTH: u8 = 128;
 
-const FP_DEPTH: u8 = 7;
-
 const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 220, 420, 620, 820, 1020, 1220, 1420];
+
+const FP_DEPTH: u8 = 7;
+const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
@@ -126,12 +130,13 @@ impl SearchEngine {
 
         let in_check = mov_table::is_in_check(state, state.player);
 
-        let alpha = -eval::MATE_VAL;
-        let beta = eval::MATE_VAL;
+        let mut alpha = -eval::MATE_VAL;
+        let mut beta = eval::MATE_VAL;
 
         let mut depth = 1;
         let mut best_mov = 0;
         let mut accumulated_time_taken = 0;
+        let mut window_extended = false;
 
         loop {
             unsafe {
@@ -145,6 +150,28 @@ impl SearchEngine {
                 if ABORT_SEARCH {
                     break
                 }
+            }
+
+            if score <= alpha {
+                if !window_extended {
+                    alpha = score - EXTENDED_WINDOW_SIZE;
+                    window_extended = true;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
+
+                continue
+            }
+
+            if score >= beta {
+               if !window_extended {
+                   beta = score + EXTENDED_WINDOW_SIZE;
+                   window_extended = true;
+               } else {
+                   beta = eval::MATE_VAL;
+               }
+
+                continue
             }
 
             let mut pv_table = [0; PV_TRACK_LENGTH];
@@ -189,6 +216,10 @@ impl SearchEngine {
             if depth > max_depth {
                 break
             }
+
+            alpha = score - WINDOW_SIZE;
+            beta = score + WINDOW_SIZE;
+            window_extended = false;
         }
 
         best_mov
@@ -280,10 +311,20 @@ impl SearchEngine {
         }
 
         if depth == 0 {
-            return self.q_search(state, alpha, beta, ply);
+            let score = self.q_search(state, alpha, beta, ply);
+
+            if score >= beta {
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, 0);
+            } else if score > alpha {
+                self.set_hash(state, depth, HASH_TYPE_EXACT, score, 0);
+            } else {
+                self.set_hash(state, depth, HASH_TYPE_ALPHA, score, 0);
+            }
+
+            return score
         }
 
-        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
+        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
             let (score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -293,13 +334,13 @@ impl SearchEngine {
             if score - FUTILITY_MARGIN[depth as usize] > beta {
                 let score = eval::eval_state(state, score);
 
-                if score - FUTILITY_MARGIN[depth as usize] > beta {
+                if score != 0 && score - FUTILITY_MARGIN[depth as usize] > beta {
                     return beta
                 }
             }
         }
 
-        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
+        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -425,16 +466,16 @@ impl SearchEngine {
 
             if state.squares[to] != 0 {
                 let sort_score = if gives_check {
-                    SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE + see(state, from, to, tp, promo)
+                    SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_VAL + see(state, from, to, tp, promo)
                 } else {
                     SORTING_MAX_NON_CAP_SCORE + see(state, from, to, tp, promo)
                 };
 
                 ordered_mov_list.push((sort_score, gives_check, is_passer, mov));
             } else if mov == primary_killer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE + SORTING_HALF_PAWN_SCORE, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_HALF_PAWN_SCORE, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_MAX_NON_CAP_SCORE - SORTING_Q_VAL, gives_check, is_passer, mov));
             } else {
                 let (history_score, _hit_count) = self.history_table[state.player as usize - 1][from][to];
 
@@ -462,6 +503,7 @@ impl SearchEngine {
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
+            let is_pawn_mov = def::is_p(state.squares[from]);
 
             state.do_mov(from, to, tp, promo);
 
@@ -473,8 +515,8 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_passer {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 2, ply + 1);
+            let score = if depth > 1 && mov_count > 1 && !gives_check && !is_pawn_mov {
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - util::square_root(mov_count).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
