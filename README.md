@@ -26,6 +26,7 @@ UCI chess engine written in Rust!
 - Tapered Evaluation
 - Piece-Square Tables
 - Null-Move Pruning
+- Reversed Futility Pruning
 - Mate Distance Pruning
 - Delta Pruning
 

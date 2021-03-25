@@ -415,10 +415,10 @@ impl SearchEngine {
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
 
                 return score
-            } else {
-                if !is_capture {
-                    self.update_butterfly_table(state.player, from, to);
-                }
+            }
+
+            if !is_capture {
+                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > best_score {
@@ -550,10 +550,10 @@ impl SearchEngine {
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
 
                 return score
-            } else {
-                if !is_capture {
-                    self.update_butterfly_table(state.player, from, to);
-                }
+            }
+
+            if !is_capture {
+                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > best_score {
@@ -963,7 +963,7 @@ mod tests {
     }
 
     #[test]
-    fn test_search() {
+    fn test_search_1() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
         let mut state = State::new("4r2k/1q3pp1/5n1p/1pr2P2/p2R3P/P2B4/1P2QP2/4R1K1 w - - 2 51", &zob_keys, &bitmask);
@@ -979,5 +979,100 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("e2"));
         assert_eq!(to, util::map_sqr_notation_to_index("e8"));
+    }
+
+    #[test]
+    fn test_search_2() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("6k1/p3q2p/1nr3pB/8/3Q1P2/6P1/PP5P/3R2K1 b - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 25500,
+            extra_time_millis: 15500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d6"));
+    }
+
+    #[test]
+    fn test_search_3() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 15500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("h5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("h2"));
+    }
+
+    #[test]
+    fn test_search_4() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e5"));
+    }
+
+    #[test]
+    fn test_search_5() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("q4rk1/1n1Qbppp/2p5/1p2p3/1P2P3/2P4P/6P1/2B1NRK1 b - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 25500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("a8"));
+        assert_eq!(to, util::map_sqr_notation_to_index("c8"));
+    }
+
+    #[test]
+    fn test_search_6() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("r2q1rk1/p3bppp/b1n1p3/2Nn4/8/5NP1/PPQBPPBP/R3K2R b KQ - 0 12", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("b4"));
     }
 }
