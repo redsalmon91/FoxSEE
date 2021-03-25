@@ -21,14 +21,14 @@ static EG_PAWN_ESSENTIAL_VAL: i32 = 50;
 static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 static EG_PAWN_BONUS: i32 = 20;
 
-static MG_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 30, 50, 60, 0];
-static EG_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 60, 70, 80, 90, 0];
+static MG_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 30, 40, 60, 0];
+static EG_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 20, 20, 30, 50, 60, 80, 0];
 
 static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -10;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
 static DOUBLED_PAWN_PEN: i32 = -20;
-static DISCONNECTED_PAWN_PEN: i32 = -10;
+static DISCONNECTED_PAWN_PEN: i32 = -5;
 
 static KING_SAFETY_PEN: i32 = -30;
 static KING_ATTACKER_PEN:i32 = -20;
@@ -879,8 +879,8 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !bp_attack_mask & !(b_defense_mask & !w_defense_mask) & !bitboard.w_all;
                 w_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !bp_attack_mask).count_ones() as i32;
-                b_feature_map.king_attacker_count += (bitmask.n_attack_masks[state.bk_index] & mov_mask & !bp_attack_mask).count_ones() as i32;
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+                b_feature_map.king_attacker_count += (bitmask.n_attack_masks[state.bk_index] & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
             },
             def::WB => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
@@ -888,7 +888,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !bp_attack_mask & !(b_defense_mask & !w_defense_mask) & !bitboard.w_all;
                 w_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !bp_attack_mask).count_ones() as i32;
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
             },
             def::WR => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
@@ -896,7 +896,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !(b_defense_mask & !w_defense_mask) & !bitboard.w_all;
                 w_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
             },
             def::WQ => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
@@ -904,7 +904,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all;
                 w_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+                b_feature_map.king_attacker_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
             },
             def::BP => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
@@ -918,7 +918,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !wp_attack_mask & !(w_defense_mask & !b_defense_mask) & !bitboard.b_all;
                 b_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !wp_attack_mask).count_ones() as i32;
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
                 w_feature_map.king_attacker_count += (bitmask.n_attack_masks[state.wk_index] & mov_mask & !wp_attack_mask).count_ones() as i32;
             },
             def::BB => {
@@ -927,7 +927,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !wp_attack_mask & !(w_defense_mask & !b_defense_mask) & !bitboard.b_all;
                 b_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !wp_attack_mask).count_ones() as i32;
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
             },
             def::BR => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
@@ -935,7 +935,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !(w_defense_mask & !b_defense_mask) & !bitboard.b_all;
                 b_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
             },
             def::BQ => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
@@ -943,7 +943,7 @@ pub fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all;
                 b_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
 
-                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+                w_feature_map.king_attacker_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
             },
             _ => {},
         }

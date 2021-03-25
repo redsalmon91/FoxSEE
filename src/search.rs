@@ -17,10 +17,9 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_CAP_BASE_VAL: i32 = 10000000;
 const SORTING_HALF_PAWN_VAL: i32 = 50;
-const SORTING_Q_VAL: i32 = 1000;
 
 const WINDOW_SIZE: i32 = 10;
-const EXTENDED_WINDOW_SIZE: i32 = 50;
+const EXTENDED_WINDOW_SIZE: i32 = 100;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -29,6 +28,9 @@ const MAX_DEPTH: u8 = 128;
 
 const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
+
+const FP_DEPTH: u8 = 7;
+const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
 const DELTA_MARGIN: i32 = 200;
 
@@ -310,17 +312,23 @@ impl SearchEngine {
         }
 
         if depth == 0 {
-            let score = self.q_search(state, alpha, beta, ply);
+            return self.q_search(state, alpha, beta, ply);
+        }
 
-            if score >= beta {
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, 0);
-            } else if score > alpha {
-                self.set_hash(state, depth, HASH_TYPE_EXACT, score, 0);
-            } else {
-                self.set_hash(state, depth, HASH_TYPE_ALPHA, score, 0);
+        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
+            let (score, is_draw) = eval::eval_materials(state);
+
+            if is_draw {
+                return 0
             }
 
-            return score
+            if score - FUTILITY_MARGIN[depth as usize] > beta {
+                let score = eval::eval_state(state, score);
+
+                if score != 0 && score - FUTILITY_MARGIN[depth as usize] > beta {
+                    return beta
+                }
+            }
         }
 
         if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
@@ -451,11 +459,15 @@ impl SearchEngine {
             state.undo_mov(from, to, tp);
 
             if state.squares[to] != 0 {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL + see(state, from, to, tp, promo), gives_check, is_passer, mov));
+                if gives_check {
+                    ordered_mov_list.push((SORTING_CAP_BASE_VAL + SORTING_HALF_PAWN_VAL + see(state, from, to, tp, promo), gives_check, is_passer, mov));
+                } else {
+                    ordered_mov_list.push((SORTING_CAP_BASE_VAL + see(state, from, to, tp, promo), gives_check, is_passer, mov));
+                }
             } else if mov == primary_killer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL + SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_Q_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
                 let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
@@ -490,7 +502,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 2 && mov_count > 1 && !gives_check && !is_passer {
+            let score = if depth > 1 && mov_count > 1 && !gives_check {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 2, ply + 1);
                 if score > alpha {
                     if pv_found {
