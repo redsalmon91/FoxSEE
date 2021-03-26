@@ -13,13 +13,14 @@ UCI chess engine written in Rust!
 - Quiescence Search
 - Iterative Deepening
 - Internal Iterative Deepening
-- Aspiration Windows
 - Bitboards
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
 - Check Extensions
 - Passed-Pawn Extensions
+- Singular Extensions
+- Deep-Search Extensions
 - Late-Move Reductions
 - Relative History Heuristic
 - Killer Heuristic
