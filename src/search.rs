@@ -17,13 +17,12 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_CAP_BASE_VAL: i32 = 10000000;
 const SORTING_HALF_PAWN_VAL: i32 = 50;
+const SORTING_Q_VAL: i32 = 1000;
 
 const WD_SIZE: i32 = 10;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
-
-const DSE_DEPTH: u8 = 3;
 
 const MAX_DEPTH: u8 = 128;
 
@@ -33,14 +32,14 @@ const IID_R: u8 = 2;
 const FP_DEPTH: u8 = 7;
 const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
-const THREAT_SCORE_DIFF: i32 = 90;
-
 const DELTA_MARGIN: i32 = 200;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
+
+static mut IN_CUT: bool = false;
 
 pub static mut ABORT_SEARCH: bool = false;
 
@@ -50,8 +49,8 @@ use LookupResult::*;
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
-    primary_killer_table: [u32; PV_TRACK_LENGTH],
-    secondary_killer_table: [u32; PV_TRACK_LENGTH],
+    primary_killer_table: [(u32, i32); PV_TRACK_LENGTH],
+    secondary_killer_table: [(u32, i32); PV_TRACK_LENGTH],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     time_tracker: Instant,
@@ -63,8 +62,8 @@ impl SearchEngine {
         SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
-            primary_killer_table: [0; PV_TRACK_LENGTH],
-            secondary_killer_table: [0; PV_TRACK_LENGTH],
+            primary_killer_table: [(0, 0); PV_TRACK_LENGTH],
+            secondary_killer_table: [(0, 0); PV_TRACK_LENGTH],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             time_tracker: Instant::now(),
@@ -122,8 +121,8 @@ impl SearchEngine {
         self.time_tracker = Instant::now();
         self.max_time_millis = time_capacity.main_time_millis;
 
-        self.primary_killer_table = [0; PV_TRACK_LENGTH];
-        self.secondary_killer_table = [0; PV_TRACK_LENGTH];
+        self.primary_killer_table = [(0, 0); PV_TRACK_LENGTH];
+        self.secondary_killer_table = [(0, 0); PV_TRACK_LENGTH];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.depth_preferred_hash_table.clear();
@@ -239,8 +238,6 @@ impl SearchEngine {
             return 0
         }
 
-        let on_pv = beta - alpha > 1;
-
         let mating_val = eval::MATE_VAL - ply as i32;
         if mating_val < beta {
             if alpha >= mating_val {
@@ -291,7 +288,7 @@ impl SearchEngine {
                         if score > alpha {
                             alpha = score;
 
-                            if on_pv {
+                            if beta - alpha > 1 {
                                 is_singular_mov = true;
                             }
                         }
@@ -308,41 +305,10 @@ impl SearchEngine {
         if depth == 0 {
             return self.q_search(state, alpha, beta, ply);
         }
+
+        let on_pv = beta - alpha > 1;
  
-        let mut under_threat = false;
-        
-        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
-            let depth_reduction = if depth > NM_DEPTH {
-                NM_R + 1
-            } else {
-                NM_R
-            };
-
-            state.do_null_mov();
-            let scout_score = -self.ab_search(state, false, false, -beta, -alpha, depth - depth_reduction - 1, ply + 1);
-            state.undo_null_mov();
-
-            unsafe {
-                if ABORT_SEARCH {
-                    return alpha
-                }
-            }
-
-            if scout_score >= beta {
-                if !on_pv && scout_score != 0 {
-                    return beta
-                }
-            } else if depth <= DSE_DEPTH && scout_score + THREAT_SCORE_DIFF <= alpha {
-                let (score, _is_draw) = eval::eval_materials(state);
-                let score = eval::eval_state(state, score);
-
-                if score >= alpha {
-                    under_threat = true;
-                }
-            }
-        }
-
-        if !on_pv && !on_extend && !in_check && !under_threat && depth <= FP_DEPTH {
+        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
             let (score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -355,6 +321,46 @@ impl SearchEngine {
                 if score - FUTILITY_MARGIN[depth as usize] > beta {
                     return beta
                 }
+            }
+        }
+
+        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
+            let depth_reduction = if depth > NM_DEPTH {
+                NM_R + 1
+            } else {
+                NM_R
+            };
+
+            state.do_null_mov();
+
+            let mut already_in_cut = false;
+
+            unsafe {
+                if IN_CUT {
+                    already_in_cut = true;
+                } else {
+                    IN_CUT = true;
+                }
+            }
+
+            let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
+
+            unsafe {
+                if !already_in_cut {
+                    IN_CUT = false;
+                }
+            }
+
+            state.undo_null_mov();
+
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
+            }
+
+            if scout_score >= beta && scout_score != 0 {
+                    return beta
             }
         }
 
@@ -396,7 +402,7 @@ impl SearchEngine {
 
             let mut depth = depth;
 
-            if gives_check || is_passer || under_threat {
+            if gives_check || is_passer {
                 depth += 1;
                 pv_extended = true;
             }
@@ -412,9 +418,9 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture && promo == 0 {
+                if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(ply, pv_mov);
+                    self.update_killer_table(ply, pv_mov, score);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
@@ -422,8 +428,8 @@ impl SearchEngine {
                 return score
             }
 
-            if !is_capture && promo == 0 {
-                self.update_butterfly_table(state.player, depth, from, to);
+            if !is_capture {
+                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > best_score {
@@ -471,20 +477,13 @@ impl SearchEngine {
                 } else {
                     ordered_mov_list.push((SORTING_CAP_BASE_VAL + see(state, from, to, tp, promo), gives_check, is_passer, mov));
                 }
-            } else if promo != 0 {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL + eval::val_of(promo), gives_check, is_passer, mov));
             } else if mov == primary_killer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL + SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
-            } else if gives_check {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
-            } else if is_passer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_Q_VAL, gives_check, is_passer, mov));
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
-                let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                ordered_mov_list.push((history_score / butterfly_score, gives_check, is_passer, mov));
+                ordered_mov_list.push((history_score, gives_check, is_passer, mov));
             }
         }
 
@@ -510,13 +509,13 @@ impl SearchEngine {
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_check || is_passer || under_threat {
+            if gives_check || is_passer {
                 depth += 1;
                 extended = true;
             }
 
             let score = if depth > 1 && mov_count > 1 && !extended {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - (depth as f64).sqrt() as u8, ply + 1);
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 2, ply + 1);
                 if score > alpha {
                     if pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
@@ -555,9 +554,9 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture && promo == 0 {
+                if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(ply, mov);
+                    self.update_killer_table(ply, mov, score);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
@@ -565,8 +564,8 @@ impl SearchEngine {
                 return score
             }
 
-            if !is_capture && promo == 0 {
-                self.update_butterfly_table(state.player, depth, from, to);
+            if !is_capture {
+                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > best_score {
@@ -601,9 +600,9 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture && promo == 0 {
+                if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(ply, pv_mov);
+                    self.update_killer_table(ply, pv_mov, score);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
@@ -611,8 +610,8 @@ impl SearchEngine {
                 return score
             }
 
-            if !is_capture && promo == 0 {
-                self.update_butterfly_table(state.player, depth, from, to);
+            if !is_capture {
+                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > best_score {
@@ -800,19 +799,29 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn update_killer_table(&mut self, ply: u8, mov: u32) {
+    fn update_killer_table(&mut self, ply: u8, mov: u32, score: i32) {
+        unsafe {
+            if IN_CUT {
+                return
+            }
+        }
+
         let ply_index = ply as usize;
 
         if ply_index >= PV_TRACK_LENGTH {
             return
         }
 
-        let primary_killer_mov = self.primary_killer_table[ply_index];
+        let (primary_killer_mov, killer_score) = self.primary_killer_table[ply_index];
         if primary_killer_mov != 0 {
-            self.primary_killer_table[ply_index] = mov;
-            self.secondary_killer_table[ply_index] = primary_killer_mov;
+            if score >= killer_score {
+                self.primary_killer_table[ply_index] = (mov, score);
+                self.secondary_killer_table[ply_index] = (primary_killer_mov, killer_score);
+            } else {
+                self.secondary_killer_table[ply_index] = (mov, score);
+            }
         } else {
-            self.secondary_killer_table[ply_index] = mov;
+            self.secondary_killer_table[ply_index] = (mov, score);
         }
     }
 
@@ -824,19 +833,19 @@ impl SearchEngine {
             return (0, 0)
         }
 
-        let primary_killer = self.primary_killer_table[ply_index];
+        let (primary_killer, _score) = self.primary_killer_table[ply_index];
 
         if primary_killer == 0 && ply > 2 {
-            let primary_killer = self.primary_killer_table[ply_index - 2];
-            let secondary_killer = self.secondary_killer_table[ply_index - 2];
+            let (primary_killer, _score) = self.primary_killer_table[ply_index - 2];
+            let (secondary_killer, _score) = self.secondary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }
 
-        let secondary_killer = self.secondary_killer_table[ply_index];
+        let (secondary_killer, _score) = self.secondary_killer_table[ply_index];
 
         if secondary_killer == 0 && ply > 2 {
-            let secondary_killer = self.primary_killer_table[ply_index - 2];
+            let (secondary_killer, _score) = self.primary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }
@@ -848,13 +857,13 @@ impl SearchEngine {
     fn update_history_table(&mut self, player: u8, depth: u8, from: usize, to: usize) {
         let history_score = self.history_table[player as usize - 1][from][to];
         let increment = depth as i32;
-        self.history_table[player as usize - 1][from][to] = history_score + increment * increment * increment;
+        self.history_table[player as usize - 1][from][to] = history_score + increment * increment;
     }
 
     #[inline]
-    fn update_butterfly_table(&mut self, player: u8, depth: u8, from: usize, to: usize) {
+    fn update_butterfly_table(&mut self, player: u8, from: usize, to: usize) {
         let butterfly_score = self.butterfly_table[player as usize - 1][from][to];
-        self.butterfly_table[player as usize - 1][from][to] = butterfly_score + depth as i32;
+        self.butterfly_table[player as usize - 1][from][to] = butterfly_score + 1;
     }
 
     #[inline]
@@ -1130,6 +1139,44 @@ mod tests {
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("b4"));
+    }
+
+    #[test]
+    fn test_search_7() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("e1"));
+        assert_eq!(to, util::map_sqr_notation_to_index("f1"));
+    }
+
+    #[test]
+    fn test_search_8() {
+        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        let bitmask = BitMask::new();
+        let mut state = State::new("8/4p3/p2p4/2pP4/2P1P3/1P4k1/1P1K4/8 w - - 0 1", &zob_keys, &bitmask);
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("b3"));
         assert_eq!(to, util::map_sqr_notation_to_index("b4"));
     }
 }

@@ -33,7 +33,7 @@ static DISCONNECTED_PAWN_PEN: i32 = -10;
 static KING_ATTACK_VAL: i32 = 10;
 static KING_CAS_VAL: i32 = 50;
 
-static ROOK_OPEN_VAL: i32 = 20;
+static ROOK_OPEN_VAL: i32 = 30;
 
 static BISHOP_PAIR_VAL: i32 = 30;
 
