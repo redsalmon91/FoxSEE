@@ -17,9 +17,9 @@ const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_CAP_BASE_VAL: i32 = 10000000;
 const SORTING_HALF_PAWN_VAL: i32 = 50;
-const SORTING_Q_VAL: i32 = 1000;
 
 const WD_SIZE: i32 = 10;
+const MAX_WD_EXTENSION_COUNT: i32 = 10;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -30,7 +30,7 @@ const IID_DEPTH: u8 = 7;
 const IID_R: u8 = 2;
 
 const FP_DEPTH: u8 = 7;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
+const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 220, 320, 420, 520, 620, 720, 820];
 
 const DELTA_MARGIN: i32 = 200;
 
@@ -49,8 +49,8 @@ use LookupResult::*;
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     always_replace_hash_table: AlwaysReplaceHashTable,
-    primary_killer_table: [(u32, i32); PV_TRACK_LENGTH],
-    secondary_killer_table: [(u32, i32); PV_TRACK_LENGTH],
+    primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
+    secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     time_tracker: Instant,
@@ -62,8 +62,8 @@ impl SearchEngine {
         SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
-            primary_killer_table: [(0, 0); PV_TRACK_LENGTH],
-            secondary_killer_table: [(0, 0); PV_TRACK_LENGTH],
+            primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
+            secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             time_tracker: Instant::now(),
@@ -121,8 +121,8 @@ impl SearchEngine {
         self.time_tracker = Instant::now();
         self.max_time_millis = time_capacity.main_time_millis;
 
-        self.primary_killer_table = [(0, 0); PV_TRACK_LENGTH];
-        self.secondary_killer_table = [(0, 0); PV_TRACK_LENGTH];
+        self.primary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
+        self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.depth_preferred_hash_table.clear();
@@ -138,6 +138,7 @@ impl SearchEngine {
 
         let mut depth = 1;
         let mut best_mov = 0;
+        let mut window_extended_count = 0;
         let mut accumulated_time_taken = 0;
 
         loop {
@@ -152,16 +153,6 @@ impl SearchEngine {
                 if ABORT_SEARCH {
                     break
                 }
-            }
-
-            if score <= alpha {
-                alpha = -eval::MATE_VAL;
-                continue;
-            }
-
-            if score >= beta {
-                beta = eval::MATE_VAL;
-                continue;
             }
 
             let mut pv_table = [0; PV_TRACK_LENGTH];
@@ -200,6 +191,28 @@ impl SearchEngine {
                 }
             }
 
+            if score <= alpha {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
+            if score >= beta {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    beta = eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
             depth += 1;
             accumulated_time_taken = total_time_taken;
 
@@ -209,6 +222,7 @@ impl SearchEngine {
 
             alpha = score - WD_SIZE;
             beta = score + WD_SIZE;
+            window_extended_count = 0;
         }
 
         best_mov
@@ -235,6 +249,11 @@ impl SearchEngine {
         }
 
         if ply > 0 && state.is_draw() {
+            return 0
+        }
+
+        if !in_check && self.in_stale_mate(state) {
+            self.set_hash(state, MAX_DEPTH, HASH_TYPE_EXACT, 0, 0);
             return 0
         }
 
@@ -267,9 +286,7 @@ impl SearchEngine {
 
                 match flag {
                     HASH_TYPE_EXACT => {
-                        if score.abs() < eval::TERM_VAL {
-                            return score;
-                        }
+                        return score;
                     },
                     HASH_TYPE_ALPHA => {
                         if score <= alpha {
@@ -308,7 +325,7 @@ impl SearchEngine {
 
         let on_pv = beta - alpha > 1;
  
-        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH {
+        if ply > 0 && !on_extend && !in_check && depth <= FP_DEPTH && !eval::is_in_endgame(state) {
             let (score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -324,7 +341,7 @@ impl SearchEngine {
             }
         }
 
-        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH {
+        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -360,7 +377,7 @@ impl SearchEngine {
             }
 
             if scout_score >= beta && scout_score != 0 {
-                    return beta
+                return beta
             }
         }
 
@@ -420,16 +437,12 @@ impl SearchEngine {
             if score >= beta {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(ply, pv_mov, score);
+                    self.update_killer_table(ply, pv_mov, score, depth);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
 
                 return score
-            }
-
-            if !is_capture {
-                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > best_score {
@@ -440,6 +453,8 @@ impl SearchEngine {
             if score > alpha {
                 alpha = score;
                 pv_found = true;
+            } else {
+                is_singular_mov = false;
             }
         }
 
@@ -478,12 +493,13 @@ impl SearchEngine {
                     ordered_mov_list.push((SORTING_CAP_BASE_VAL + see(state, from, to, tp, promo), gives_check, is_passer, mov));
                 }
             } else if mov == primary_killer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL + SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else if mov == secondary_killer {
-                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_Q_VAL, gives_check, is_passer, mov));
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_HALF_PAWN_VAL, gives_check, is_passer, mov));
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
-                ordered_mov_list.push((history_score, gives_check, is_passer, mov));
+                let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
+                ordered_mov_list.push((history_score / butterfly_score, gives_check, is_passer, mov));
             }
         }
 
@@ -497,10 +513,10 @@ impl SearchEngine {
             }
         }
 
-        for (_sort_score, gives_check, is_passer, mov) in ordered_mov_list {
+        for (_sort_score, gives_check, is_passer, mov) in &ordered_mov_list {
             mov_count += 1;
 
-            let (from, to, tp, promo) = util::decode_u32_mov(mov);
+            let (from, to, tp, promo) = util::decode_u32_mov(*mov);
 
             let is_capture = state.squares[to] != 0;
 
@@ -509,39 +525,39 @@ impl SearchEngine {
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_check || is_passer {
+            if *gives_check || *is_passer {
                 depth += 1;
                 extended = true;
             }
 
             let score = if depth > 1 && mov_count > 1 && !extended {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 2, ply + 1);
+                let score = -self.ab_search(state, *gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
-                        let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
+                        let score = -self.ab_search(state, *gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
                         if score > alpha && score < beta {
-                            -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                            -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                         } else {
                             score
                         }
                     } else {
-                        -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                        -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                     }
                 } else {
                     score
                 }
             } else {
                 if pv_found {
-                    let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
+                    let score = -self.ab_search(state, *gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
                     if score > alpha && score < beta {
-                        -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                        -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                     } else {
                         score
                     }
                 } else {
-                    -self.ab_search(state, gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                    -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
                 }
             };
 
@@ -556,21 +572,49 @@ impl SearchEngine {
             if score >= beta {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(ply, mov, score);
+                    self.update_killer_table(ply, *mov, score, depth);
+
+                    if pv_mov != 0 {
+                        let (from, to, _tp, _promo) = util::decode_u32_mov(pv_mov);
+
+                        let is_capture = state.squares[to] != 0;
+
+                        if !is_capture {
+                            self.update_butterfly_table(state.player, from, to);
+                        }
+
+                        for index in 0..mov_count-1 {
+                            let (_score, _gives_check, _is_passer, mov) = ordered_mov_list[index];
+                            let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
+
+                            let is_capture = state.squares[to] != 0;
+    
+                            if !is_capture {
+                                self.update_butterfly_table(state.player, from, to);
+                            }
+                        }
+                    } else {
+                        for index in 0..mov_count {
+                            let (_score, _gives_check, _is_passer, mov) = ordered_mov_list[index];
+                            let (from, to, _tp, _promo) = util::decode_u32_mov(mov);
+
+                            let is_capture = state.squares[to] != 0;
+    
+                            if !is_capture {
+                                self.update_butterfly_table(state.player, from, to);
+                            }
+                        }
+                    }
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, *mov);
 
                 return score
             }
 
-            if !is_capture {
-                self.update_butterfly_table(state.player, from, to);
-            }
-
             if score > best_score {
                 best_score = score;
-                best_mov = mov;
+                best_mov = *mov;
             }
 
             if score > alpha {
@@ -589,7 +633,7 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let score = -self.ab_search(state, gives_check, pv_extended, -beta, -alpha, depth, ply + 1);
+            let score = -self.ab_search(state, gives_check, true, -beta, -alpha, depth, ply + 1);
 
             state.undo_mov(from, to, tp);
 
@@ -602,7 +646,7 @@ impl SearchEngine {
             if score >= beta {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
-                    self.update_killer_table(ply, pv_mov, score);
+                    self.update_killer_table(ply, pv_mov, score, depth);
                 }
 
                 self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
@@ -628,13 +672,6 @@ impl SearchEngine {
             self.set_hash(state, depth, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
             self.set_hash(state, depth, HASH_TYPE_ALPHA, best_score, best_mov);
-        }
-
-        if best_score < -eval::TERM_VAL {
-            if !in_check && self.in_stale_mate(state) {
-                self.set_hash(state, MAX_DEPTH, HASH_TYPE_EXACT, 0, 0);
-                return 0
-            }
         }
 
         alpha
@@ -799,7 +836,7 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn update_killer_table(&mut self, ply: u8, mov: u32, score: i32) {
+    fn update_killer_table(&mut self, ply: u8, mov: u32, score: i32, depth: u8) {
         unsafe {
             if IN_CUT {
                 return
@@ -812,16 +849,16 @@ impl SearchEngine {
             return
         }
 
-        let (primary_killer_mov, killer_score) = self.primary_killer_table[ply_index];
+        let (primary_killer_mov, killer_score, killer_depth) = self.primary_killer_table[ply_index];
         if primary_killer_mov != 0 {
-            if score >= killer_score {
-                self.primary_killer_table[ply_index] = (mov, score);
-                self.secondary_killer_table[ply_index] = (primary_killer_mov, killer_score);
+            if score >= killer_score && depth >= killer_depth {
+                self.primary_killer_table[ply_index] = (mov, score, depth);
+                self.secondary_killer_table[ply_index] = (primary_killer_mov, killer_score, killer_depth);
             } else {
-                self.secondary_killer_table[ply_index] = (mov, score);
+                self.secondary_killer_table[ply_index] = (mov, score, depth);
             }
         } else {
-            self.secondary_killer_table[ply_index] = (mov, score);
+            self.secondary_killer_table[ply_index] = (mov, score, depth);
         }
     }
 
@@ -833,19 +870,19 @@ impl SearchEngine {
             return (0, 0)
         }
 
-        let (primary_killer, _score) = self.primary_killer_table[ply_index];
+        let (primary_killer, _score, _depth) = self.primary_killer_table[ply_index];
 
         if primary_killer == 0 && ply > 2 {
-            let (primary_killer, _score) = self.primary_killer_table[ply_index - 2];
-            let (secondary_killer, _score) = self.secondary_killer_table[ply_index - 2];
+            let (primary_killer, _score, _depth) = self.primary_killer_table[ply_index - 2];
+            let (secondary_killer, _score, _depth) = self.secondary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }
 
-        let (secondary_killer, _score) = self.secondary_killer_table[ply_index];
+        let (secondary_killer, _score, _depth) = self.secondary_killer_table[ply_index];
 
         if secondary_killer == 0 && ply > 2 {
-            let (secondary_killer, _score) = self.primary_killer_table[ply_index - 2];
+            let (secondary_killer, _score, _depth) = self.primary_killer_table[ply_index - 2];
 
             return (primary_killer, secondary_killer)
         }
@@ -857,7 +894,7 @@ impl SearchEngine {
     fn update_history_table(&mut self, player: u8, depth: u8, from: usize, to: usize) {
         let history_score = self.history_table[player as usize - 1][from][to];
         let increment = depth as i32;
-        self.history_table[player as usize - 1][from][to] = history_score + increment * increment;
+        self.history_table[player as usize - 1][from][to] = history_score + increment * increment * increment;
     }
 
     #[inline]
@@ -1127,7 +1164,7 @@ mod tests {
     fn test_search_6() {
         let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new("r2q1rk1/p3bppp/b1n1p3/2Nn4/8/5NP1/PPQBPPBP/R3K2R b KQ - 0 12", &zob_keys, &bitmask);
+        let mut state = State::new("4r1k1/1bq2ppp/8/r4p1Q/pPpP1P2/N3p1PP/PP3P2/3RR1K1 b - - 0 30", &zob_keys, &bitmask);
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1138,8 +1175,8 @@ mod tests {
         let best_mov = search_engine.search(&mut state, time_capacity, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
-        assert_eq!(to, util::map_sqr_notation_to_index("b4"));
+        assert_eq!(from, util::map_sqr_notation_to_index("c7"));
+        assert_eq!(to, util::map_sqr_notation_to_index("c6"));
     }
 
     #[test]
