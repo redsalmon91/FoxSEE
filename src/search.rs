@@ -341,7 +341,7 @@ impl SearchEngine {
             }
         }
 
-        if ply > 0 && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
+        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
