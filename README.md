@@ -13,7 +13,6 @@ UCI chess engine written in Rust!
 - Quiescence Search
 - Iterative Deepening
 - Aspiration Window
-- Internal Iterative Deepening
 - Bitboards
 - Zobrist Hashing
 - Transposition Table
@@ -28,7 +27,6 @@ UCI chess engine written in Rust!
 - Piece-Square Tables
 - Null-Move Pruning
 - Delta Pruning
-- Reversed Futility Pruning
 - Mate Distance Pruning
 
 ## How to build

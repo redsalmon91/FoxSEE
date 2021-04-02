@@ -11,15 +11,14 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
-static Q_VAL: i32 = 1000;
-static R_VAL: i32 = 525;
-static B_VAL: i32 = 350;
-static N_VAL: i32 = 350;
+static Q_VAL: i32 = 1200;
+static R_VAL: i32 = 600;
+static B_VAL: i32 = 400;
+static N_VAL: i32 = 380;
 static P_VAL: i32 = 100;
 
 static EG_PAWN_ESSENTIAL_VAL: i32 = 50;
 static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
-static EG_PAWN_EXTRA_VAL: i32 = 10;
 
 static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 50, 70, 90, 0];
 
@@ -356,9 +355,6 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     }
 
     let mut eg_score = 0;
-
-    eg_score += w_pawn_count * EG_PAWN_EXTRA_VAL;
-    eg_score -= b_pawn_count * EG_PAWN_EXTRA_VAL;
 
     if bitboard.w_bishop.count_ones() > 1 {
         eg_score += BISHOP_PAIR_VAL;
