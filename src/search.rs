@@ -30,6 +30,9 @@ const MAX_DEPTH: u8 = 128;
 
 const DELTA_MARGIN: i32 = 200;
 
+const FP_DEPTH: u8 = 7;
+const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
+
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
 static mut NODE_COUNT: u64 = 0;
@@ -318,6 +321,22 @@ impl SearchEngine {
         let on_pv = beta - alpha > 1;
 
         let in_endgame = eval::is_in_endgame(state);
+
+        if !on_pv && !on_extend && !in_check && !in_endgame && depth <= FP_DEPTH {
+            let (score, is_draw) = eval::eval_materials(state);
+
+            if is_draw {
+                return 0
+            }
+
+            if score - FUTILITY_MARGIN[depth as usize] >= beta {
+                let score = eval::eval_state(state, score);
+
+                if score - FUTILITY_MARGIN[depth as usize] >= beta {
+                    return beta
+                }
+            }
+        }
 
         if !on_pv && !on_extend && !in_check && !in_endgame && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
