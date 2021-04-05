@@ -3,6 +3,7 @@
  */
 
 use crate::{
+    bitmask,
     def,
     state::State,
     util::{self, get_lowest_index, get_highest_index},
@@ -29,7 +30,7 @@ static ENP_SQRS_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_11111
 pub fn gen_reg_mov_list(state: &State, mov_list: &mut [u32; def::MAX_MOV_COUNT]) {
     let player = state.player;
     let bitboard = state.bitboard;
-    let bitmask = state.bitmask;
+    let bitmask = bitmask::get_bitmask();
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
     let empty_mask = !occupy_mask;
@@ -409,7 +410,7 @@ pub fn gen_reg_mov_list(state: &State, mov_list: &mut [u32; def::MAX_MOV_COUNT])
 pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT]) {
     let player = state.player;
     let bitboard = state.bitboard;
-    let bitmask = state.bitmask;
+    let bitmask = bitmask::get_bitmask();
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
 
@@ -715,7 +716,7 @@ pub fn is_in_check(state: &State, player: u8) -> bool {
 
 pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
     let bitboard = state.bitboard;
-    let bitmask = state.bitmask;
+    let bitmask = bitmask::get_bitmask();
 
     let opponent_n_mask = if player == def::PLAYER_W {
         bitboard.b_knight
@@ -829,7 +830,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
 }
 
 pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, usize) {
-    let bitmask = state.bitmask;
+    let bitmask = bitmask::get_bitmask();
     let bitboard = state.bitboard;
     let player = state.player;
 
@@ -1151,7 +1152,6 @@ mod tests {
     use super::*;
     use crate::{
         def,
-        bitboard::BitMask,
         state::State,
         util,
         zob_keys,
@@ -1159,8 +1159,9 @@ mod tests {
 
     fn gen_reg_movs_test_helper(fen: &str, expected_mov_list: Vec<&str>, debug: bool) {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new(fen, &bitmask);
+        bitmask::init();
+
+        let state = State::new(fen);
 
         let mut mov_list = [0; def::MAX_MOV_COUNT];
 
@@ -1299,8 +1300,9 @@ mod tests {
     #[test]
     fn test_attack_check_1() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("3rr3/2pq2pk/p2p1pnp/8/2QBPP2/1P6/P5PP/4RRK1 b - - 0 1");
 
         assert!(is_under_attack(&state, util::map_sqr_notation_to_index("f6"), def::PLAYER_B));
         assert!(is_under_attack(&state, util::map_sqr_notation_to_index("c7"), def::PLAYER_B));
@@ -1312,8 +1314,9 @@ mod tests {
     #[test]
     fn test_attack_check_2() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("8/8/1k6/8/1R6/3K4/8/8 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("8/8/1k6/8/1R6/3K4/8/8 w - - 0 1");
 
         assert!(is_under_attack(&state, util::map_sqr_notation_to_index("b6"), def::PLAYER_B));
         assert!(is_under_attack(&state, util::map_sqr_notation_to_index("c7"), def::PLAYER_W));
@@ -1322,8 +1325,9 @@ mod tests {
     #[test]
     fn test_king_check_1() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("3rr1k1/2pq2p1/p2p1pnp/8/2BBPP2/1PQ5/P5PP/4RRK1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("3rr1k1/2pq2p1/p2p1pnp/8/2BBPP2/1PQ5/P5PP/4RRK1 b - - 0 1");
 
         assert!(is_in_check(&state, def::PLAYER_B));
     }
@@ -1331,8 +1335,9 @@ mod tests {
     #[test]
     fn test_king_check_2() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("3rr1k1/2pq2p1/p2pNpnp/8/2QBPP2/1P1B4/P5PP/4RRK1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("3rr1k1/2pq2p1/p2pNpnp/8/2QBPP2/1P1B4/P5PP/4RRK1 b - - 0 1");
 
         assert!(!is_in_check(&state, def::PLAYER_B));
     }
@@ -1340,8 +1345,9 @@ mod tests {
     #[test]
     fn test_king_check_3() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("r2qnkn1/p2b2br/1p1p1pp1/2pPpp2/1PP1P2K/PRNBB3/3QNPPP/5R2 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("r2qnkn1/p2b2br/1p1p1pp1/2pPpp2/1PP1P2K/PRNBB3/3QNPPP/5R2 w - - 0 1");
 
         assert!(is_in_check(&state, def::PLAYER_W));
         assert!(!is_in_check(&state, def::PLAYER_B));
@@ -1350,8 +1356,9 @@ mod tests {
     #[test]
     fn test_king_check_4() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("r2q1kn1/p2b1rb1/1p1p1pp1/2pPpn2/1PP1P3/PRNBB1K1/3QNPPP/5R2 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("r2q1kn1/p2b1rb1/1p1p1pp1/2pPpn2/1PP1P3/PRNBB1K1/3QNPPP/5R2 w - - 0 1");
 
         assert!(is_in_check(&state, def::PLAYER_W));
         assert!(!is_in_check(&state, def::PLAYER_B));
@@ -1360,8 +1367,9 @@ mod tests {
     #[test]
     fn test_king_check_5() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("r2q1k2/p2bPrbR/1p1p1ppn/2pPpn2/1PP1P3/P1NBB3/3QNPPP/5RK1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("r2q1k2/p2bPrbR/1p1p1ppn/2pPpn2/1PP1P3/P1NBB3/3QNPPP/5RK1 b - - 0 1");
 
         assert!(is_in_check(&state, def::PLAYER_B));
         assert!(!is_in_check(&state, def::PLAYER_W));
@@ -1370,8 +1378,9 @@ mod tests {
     #[test]
     fn test_king_check_6() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("r1bqkbnr/pppppppp/3n1n2/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("r1bqkbnr/pppppppp/3n1n2/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
         assert!(!is_in_check(&state, def::PLAYER_W));
         assert!(!is_in_check(&state, def::PLAYER_B));
@@ -1380,8 +1389,9 @@ mod tests {
     #[test]
     fn test_king_check_7() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let state = State::new("8/1B6/8/3k3p/8/6K1/8/4b3 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let state = State::new("8/1B6/8/3k3p/8/6K1/8/4b3 w - - 0 1");
 
         assert!(is_in_check(&state, def::PLAYER_W));
         assert!(is_in_check(&state, def::PLAYER_B));

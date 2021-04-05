@@ -929,7 +929,7 @@ fn see_exchange(state: &mut State, to: usize, last_attacker: u8) -> i32 {
 mod tests {
     use super::*;
     use crate::{
-        bitboard::BitMask,
+        bitmask,
         state::State,
         zob_keys,
     };
@@ -937,8 +937,9 @@ mod tests {
     #[test]
     fn test_perft_1() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let search_engine = SearchEngine::new(131072);
 
         assert_eq!(20, search_engine.perft(&mut state, 1));
@@ -949,8 +950,9 @@ mod tests {
     #[test]
     fn test_perft_2() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
         let search_engine = SearchEngine::new(131072);
 
         assert_eq!(14, search_engine.perft(&mut state, 1));
@@ -965,8 +967,9 @@ mod tests {
     #[test]
     fn test_perft_3() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
         let search_engine = SearchEngine::new(131072);
 
         assert_eq!(44, search_engine.perft(&mut state, 1));
@@ -979,8 +982,9 @@ mod tests {
     #[test]
     fn test_perft_4() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         let search_engine = SearchEngine::new(131072);
 
         assert_eq!(46, search_engine.perft(&mut state, 1));
@@ -993,8 +997,9 @@ mod tests {
     #[test]
     fn test_perft_5() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1");
         let search_engine = SearchEngine::new(131072);
 
         assert_eq!(6, search_engine.perft(&mut state, 1));
@@ -1007,8 +1012,9 @@ mod tests {
     #[test]
     fn test_perft_6() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("8/P1k5/K7/8/8/8/8/8 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("8/P1k5/K7/8/8/8/8/8 w - - 0 1");
         let search_engine = SearchEngine::new(131072);
 
         assert_eq!(92683, search_engine.perft(&mut state, 6));
@@ -1017,8 +1023,9 @@ mod tests {
     #[test]
     fn test_search_1() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("4r2k/1q3pp1/5n1p/1pr2P2/p2R3P/P2B4/1P2QP2/4R1K1 w - - 2 51", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("4r2k/1q3pp1/5n1p/1pr2P2/p2R3P/P2B4/1P2QP2/4R1K1 w - - 2 51");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1036,8 +1043,9 @@ mod tests {
     #[test]
     fn test_search_2() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("6k1/p3q2p/1nr3pB/8/3Q1P2/6P1/PP5P/3R2K1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("6k1/p3q2p/1nr3pB/8/3Q1P2/6P1/PP5P/3R2K1 b - - 0 1");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1055,8 +1063,9 @@ mod tests {
     #[test]
     fn test_search_3() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("5nk1/nbb2pr1/p3p1p1/1p1r3q/2P5/PP1PP1P1/N3RP1P/BQN1RBK1 b - - 0 1");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1074,8 +1083,9 @@ mod tests {
     #[test]
     fn test_search_4() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1093,8 +1103,9 @@ mod tests {
     #[test]
     fn test_search_5() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("q4rk1/1n1Qbppp/2p5/1p2p3/1P2P3/2P4P/6P1/2B1NRK1 b - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("q4rk1/1n1Qbppp/2p5/1p2p3/1P2P3/2P4P/6P1/2B1NRK1 b - - 0 1");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1112,8 +1123,9 @@ mod tests {
     #[test]
     fn test_search_6() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("4r1k1/1bq2ppp/8/r4p1Q/pPpP1P2/N3p1PP/PP3P2/3RR1K1 b - - 0 30", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("4r1k1/1bq2ppp/8/r4p1Q/pPpP1P2/N3p1PP/PP3P2/3RR1K1 b - - 0 30");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1131,8 +1143,9 @@ mod tests {
     #[test]
     fn test_search_7() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1150,8 +1163,9 @@ mod tests {
     #[test]
     fn test_search_8() {
         zob_keys::init();
-        let bitmask = BitMask::new();
-        let mut state = State::new("8/4p3/p2p4/2pP4/2P1P3/1P4k1/1P1K4/8 w - - 0 1", &bitmask);
+        bitmask::init();
+
+        let mut state = State::new("8/4p3/p2p4/2pP4/2P1P3/1P4k1/1P1K4/8 w - - 0 1");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {

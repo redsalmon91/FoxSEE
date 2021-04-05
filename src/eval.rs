@@ -3,6 +3,7 @@
  */
 
 use crate::{
+    bitmask,
     def,
     state::State,
     util::{get_lowest_index, get_highest_index}
@@ -285,6 +286,7 @@ pub fn is_in_endgame(state: &State) -> bool {
 
 pub fn eval_materials(state: &State) -> (i32, bool) {
     let bitboard = state.bitboard;
+    let bitmask = bitmask::get_bitmask();
 
     let mut is_endgame_with_different_colored_bishop = false;
 
@@ -310,10 +312,10 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
             for index in 0..def::BOARD_SIZE {
                 match state.squares[index] {
                     def::WB => {
-                        wb_reachable_mask = state.bitmask.b_attack_masks[index];
+                        wb_reachable_mask = bitmask.b_attack_masks[index];
                     },
                     def::BB => {
-                        bb_reachable_mask = state.bitmask.b_attack_masks[index]
+                        bb_reachable_mask = bitmask.b_attack_masks[index]
                     },
                     _ => {}
                 }
@@ -407,6 +409,8 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         -1
     };
 
+    let bitmask = bitmask::get_bitmask();
+
     let (w_features_map, b_features_map) = extract_features(state);
 
     let mut midgame_positional_score =
@@ -426,7 +430,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
             midgame_positional_score += KING_LOST_CAS_RIGHTS_PEN;
         }
 
-        let file_masks = state.bitmask.file_masks;
+        let file_masks = bitmask.file_masks;
 
         if file_masks[state.wk_index] & state.bitboard.w_pawn & WK_PAWN_COVER_MASK == 0 {
             midgame_positional_score += KING_EXPOSED_PEN;
@@ -436,7 +440,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
             midgame_positional_score += KING_EXPOSED_PEN;
         }
 
-        if (state.bitmask.wk_attack_zone_masks[state.wk_index] & state.bitboard.w_pawn).count_ones() < 2 {
+        if (bitmask.wk_attack_zone_masks[state.wk_index] & state.bitboard.w_pawn).count_ones() < 2 {
             midgame_positional_score += KING_EXPOSED_PEN;
         }
     }
@@ -446,7 +450,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
             midgame_positional_score -= KING_LOST_CAS_RIGHTS_PEN;
         }
 
-        let file_masks = state.bitmask.file_masks;
+        let file_masks = bitmask.file_masks;
 
         if file_masks[state.bk_index] & state.bitboard.b_pawn & BK_PAWN_COVER_MASK == 0 {
             midgame_positional_score -= KING_EXPOSED_PEN;
@@ -456,7 +460,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
             midgame_positional_score -= KING_EXPOSED_PEN;
         }
 
-        if (state.bitmask.bk_attack_zone_masks[state.bk_index] & state.bitboard.b_pawn).count_ones() < 2 {
+        if (bitmask.bk_attack_zone_masks[state.bk_index] & state.bitboard.b_pawn).count_ones() < 2 {
             midgame_positional_score -= KING_EXPOSED_PEN;
         }
     }
@@ -488,9 +492,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 
 fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
-    let file_masks = state.bitmask.file_masks;
     let bitboard = state.bitboard;
-    let bitmask = state.bitmask;
+    let bitmask = bitmask::get_bitmask();
+    let file_masks = bitmask.file_masks;
 
     let mut w_feature_map = FeatureMap::empty();
     let mut b_feature_map = FeatureMap::empty();

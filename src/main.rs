@@ -3,6 +3,7 @@
  */
 
 mod bitboard;
+mod bitmask;
 mod def;
 mod eval;
 mod hashtable;
@@ -15,7 +16,6 @@ mod uci;
 mod util;
 mod zob_keys;
 
-use bitboard::BitMask;
 use prng::XorshiftPrng;
 use state::State;
 use search::SearchEngine;
@@ -42,13 +42,13 @@ fn main() {
     }
 
     zob_keys::init();
+    bitmask::init();
 
     let (sender, receiver) = mpsc::channel();
 
     thread::spawn(move || {
         let mut search_engine = SearchEngine::new(def::DEFAULT_HASH_SIZE_UNIT);
-        let bitmask = BitMask::new();
-        let mut state = State::new(uci::FEN_START_POS, &bitmask);
+        let mut state = State::new(uci::FEN_START_POS);
 
         loop {
             let command: String = receiver.recv().unwrap();
@@ -58,7 +58,7 @@ fn main() {
                     search_engine.set_hash_size(hash_size);
                 },
                 UciCommand::Position(fen_str, mov_list) => {
-                    state = State::new(&fen_str, &bitmask);
+                    state = State::new(&fen_str);
     
                     if mov_list.is_empty() {
                         continue
