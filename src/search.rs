@@ -33,6 +33,8 @@ const DELTA_MARGIN: i32 = 200;
 const FP_DEPTH: u8 = 7;
 const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
+const SQR_VAL_REDUCE_FACTOR: i32 = 10;
+
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
 static mut NODE_COUNT: u64 = 0;
@@ -476,7 +478,8 @@ impl SearchEngine {
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
                 let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                ordered_mov_list.push((history_score / butterfly_score, gives_check, mov));
+                let sqr_val_diff = eval::get_square_val_diff(state.squares[from], from, to) / SQR_VAL_REDUCE_FACTOR;
+                ordered_mov_list.push((history_score / butterfly_score + sqr_val_diff, gives_check, mov));
             }
         }
 
