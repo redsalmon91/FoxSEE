@@ -40,8 +40,6 @@ const TIME_CHECK_INTEVAL: u64 = 4095;
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
 
-static mut IN_CUT: bool = false;
-
 pub static mut ABORT_SEARCH: bool = false;
 
 use std::time::Instant;
@@ -144,7 +142,7 @@ impl SearchEngine {
                 SEL_DEPTH = 0;
             }
 
-            let score = self.ab_search(state, in_check, false, alpha, beta, depth, 0);
+            let score = self.ab_search(state, in_check, false, false, alpha, beta, depth, 0);
 
             unsafe {
                 if ABORT_SEARCH {
@@ -225,7 +223,7 @@ impl SearchEngine {
         best_mov
     }
 
-    fn ab_search(&mut self, state: &mut State, in_check: bool, on_extend: bool, mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
+    fn ab_search(&mut self, state: &mut State, in_check: bool, on_extend: bool, on_cut: bool, mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
         unsafe {
             if ABORT_SEARCH {
                 return alpha
@@ -324,7 +322,7 @@ impl SearchEngine {
 
         let in_endgame = eval::is_in_endgame(state);
 
-        if !on_pv && !on_extend && !in_check && !in_endgame && depth <= FP_DEPTH {
+        if !on_pv && !on_extend && !on_cut && !in_check && !in_endgame && depth <= FP_DEPTH {
             let (score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -340,7 +338,7 @@ impl SearchEngine {
             }
         }
 
-        if !on_pv && !on_extend && !in_check && !in_endgame && depth >= NM_DEPTH {
+        if !on_pv && !on_extend && !on_cut && !in_check && !in_endgame && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -348,25 +346,7 @@ impl SearchEngine {
             };
 
             state.do_null_mov();
-
-            let mut already_in_cut = false;
-
-            unsafe {
-                if IN_CUT {
-                    already_in_cut = true;
-                } else {
-                    IN_CUT = true;
-                }
-            }
-
-            let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
-
-            unsafe {
-                if !already_in_cut {
-                    IN_CUT = false;
-                }
-            }
-
+            let scout_score = -self.ab_search(state, false, false, true, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
             state.undo_null_mov();
 
             unsafe {
@@ -404,7 +384,7 @@ impl SearchEngine {
                 pv_extended = true;
             }
 
-            let score = -self.ab_search(state, gives_check, pv_extended, -beta, -alpha, depth - 1, ply + 1);
+            let score = -self.ab_search(state, gives_check, pv_extended, false, -beta, -alpha, depth - 1, ply + 1);
 
             state.undo_mov(from, to, tp);
 
@@ -511,33 +491,33 @@ impl SearchEngine {
             }
 
             let score = if depth > 1 && mov_count > 1 && !extended {
-                let score = -self.ab_search(state, *gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth), ply + 1);
+                let score = -self.ab_search(state, *gives_check, extended, true, -alpha - 1, -alpha, depth - ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
-                        let score = -self.ab_search(state, *gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
+                        let score = -self.ab_search(state, *gives_check, extended, false, -alpha-1, -alpha, depth - 1, ply + 1);
 
                         if score > alpha && score < beta {
-                            -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                            -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
                         } else {
                             score
                         }
                     } else {
-                        -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                        -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
                     }
                 } else {
                     score
                 }
             } else {
                 if pv_found {
-                    let score = -self.ab_search(state, *gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
+                    let score = -self.ab_search(state, *gives_check, extended, true, -alpha-1, -alpha, depth - 1, ply + 1);
 
                     if score > alpha && score < beta {
-                        -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                        -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
                     } else {
                         score
                     }
                 } else {
-                    -self.ab_search(state, *gives_check, extended, -beta, -alpha, depth - 1, ply + 1)
+                    -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
                 }
             };
 
@@ -613,7 +593,7 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let score = -self.ab_search(state, gives_check, true, -beta, -alpha, depth, ply + 1);
+            let score = -self.ab_search(state, gives_check, true, false, -beta, -alpha, depth, ply + 1);
 
             state.undo_mov(from, to, tp);
 
@@ -810,12 +790,6 @@ impl SearchEngine {
 
     #[inline]
     fn update_killer_table(&mut self, ply: u8, mov: u32, score: i32, depth: u8) {
-        unsafe {
-            if IN_CUT {
-                return
-            }
-        }
-
         let ply_index = ply as usize;
 
         if ply_index >= PV_TRACK_LENGTH {
