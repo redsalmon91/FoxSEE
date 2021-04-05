@@ -370,7 +370,7 @@ impl BitMask {
             }
         }
 
-        for index in 8..def::BOARD_SIZE - 16 {
+        for index in 8..def::BOARD_SIZE - 8 {
             let mut connected_mask = 0;
 
             if index % 8 != 0 {
@@ -386,7 +386,7 @@ impl BitMask {
             self.wp_connected_sqr_masks[index] = connected_mask;
         }
 
-        for index in 16..def::BOARD_SIZE - 8 {
+        for index in 8..def::BOARD_SIZE - 8 {
             let mut connected_mask = 0;
 
             if index % 8 != 0 {

@@ -22,6 +22,7 @@ static EG_PAWN_ESSENTIAL_VAL: i32 = 50;
 static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 
 static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 50, 70, 90, 0];
+static CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 50, 0];
 
 static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -10;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
@@ -565,6 +566,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
                     w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
 
+                    if bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
+                        w_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
+                    }
+
                     let king_distance = def::get_file_distance(index, state.wk_index);
                     w_feature_map.passed_pawn_king_distance += king_distance;
 
@@ -610,6 +615,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
                     b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+
+                    if bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
+                        b_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
+                    }
 
                     let king_distance = def::get_file_distance(index, state.bk_index);
                     b_feature_map.passed_pawn_king_distance += king_distance;
