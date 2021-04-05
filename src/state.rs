@@ -6,6 +6,7 @@ use crate::{
     bitboard::{BitMask, BitBoard},
     def,
     util,
+    zob_keys,
 };
 
 use std::fmt;
@@ -71,12 +72,10 @@ pub struct State<'state> {
     pub king_index_stack: Vec<(usize, usize)>,
 
     pub full_mov_count: u16,
-
-    zob_keys: &'state Vec<Vec<u64>>,
 }
 
 impl <'state> State<'state> {
-    pub fn new(fen_string: &str, zob_keys: &'state Vec<Vec<u64>>, bitmask: &'state BitMask) -> Self {
+    pub fn new(fen_string: &str, bitmask: &'state BitMask) -> Self {
         let fen_segment_list: Vec<&str> = fen_string.split(" ").collect();
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
@@ -105,7 +104,7 @@ impl <'state> State<'state> {
                 if char_code.is_alphabetic() {
                     let piece = util::map_piece_char_to_code(char_code);
                     squares[index] = piece;
-                    hash_key ^= zob_keys[index][piece as usize];
+                    hash_key ^= zob_keys::get_board_zob_key(index, piece);
 
                     match piece {
                         def::WP => {
@@ -188,7 +187,6 @@ impl <'state> State<'state> {
 
             full_mov_count,
 
-            zob_keys,
             bitmask,
         }
     }
@@ -284,7 +282,7 @@ impl <'state> State<'state> {
         let to_index_mask = self.bitmask.index_masks[to];
         let move_index_mask = from_index_mask ^ to_index_mask;
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][moving_piece as usize];
+        self.hash_key ^= zob_keys::get_board_zob_key(from, moving_piece) ^ zob_keys::get_board_zob_key(to, moving_piece);
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
             self.bitboard.w_all ^= move_index_mask;
@@ -360,7 +358,7 @@ impl <'state> State<'state> {
             }
         } else {
             self.non_cap_mov_count = 0;
-            self.hash_key ^= self.zob_keys[to][taken_piece as usize];
+            self.hash_key ^= zob_keys::get_board_zob_key(to, taken_piece);
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
                 self.bitboard.w_all ^= to_index_mask;
@@ -547,10 +545,10 @@ impl <'state> State<'state> {
             _ => (),
         }
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][promo as usize];
+        self.hash_key ^= zob_keys::get_board_zob_key(from, moving_piece) ^ zob_keys::get_board_zob_key(to, promo);
 
         if taken_piece != 0 {
-            self.hash_key ^= self.zob_keys[to][taken_piece as usize];
+            self.hash_key ^= zob_keys::get_board_zob_key(to, taken_piece);
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
                 self.bitboard.w_all ^= to_index_mask;
@@ -694,10 +692,10 @@ impl <'state> State<'state> {
             self.wk_index = to;
 
             self.squares[def::CAS_SQUARE_WK-2..=def::CAS_SQUARE_WK+1].copy_from_slice(&WK_AFTER_CAS_SQRS);
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WK-2][def::WK as usize]
-                ^ self.zob_keys[def::CAS_SQUARE_WK][def::WK as usize]
-                ^ self.zob_keys[def::CAS_SQUARE_WK-1][def::WR as usize]
-                ^ self.zob_keys[def::CAS_SQUARE_WK+1][def::WR as usize];
+            self.hash_key ^= zob_keys::get_board_zob_key(def::CAS_SQUARE_WK-2, def::WK)
+                ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_WK, def::WK)
+                ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_WK-1, def::WR)
+                ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_WK+1, def::WR);
             self.bitboard.w_all ^= WK_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WK_CAS_R_MASK;
         } else if to == def::CAS_SQUARE_BK {
@@ -706,10 +704,10 @@ impl <'state> State<'state> {
             self.bk_index = to;
 
             self.squares[def::CAS_SQUARE_BK-2..=def::CAS_SQUARE_BK+1].copy_from_slice(&BK_AFTER_CAS_SQRS);
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BK-2][def::BK as usize]
-            ^ self.zob_keys[def::CAS_SQUARE_BK][def::BK as usize]
-            ^ self.zob_keys[def::CAS_SQUARE_BK-1][def::BR as usize]
-            ^ self.zob_keys[def::CAS_SQUARE_BK+1][def::BR as usize];
+            self.hash_key ^= zob_keys::get_board_zob_key(def::CAS_SQUARE_BK-2, def::BK)
+            ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_BK, def::BK)
+            ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_BK-1, def::BR)
+            ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_BK+1, def::BR);
 
             self.bitboard.b_all ^= BK_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BK_CAS_R_MASK;
@@ -719,10 +717,10 @@ impl <'state> State<'state> {
             self.wk_index = to;
 
             self.squares[def::CAS_SQUARE_WQ-2..=def::CAS_SQUARE_WQ+2].copy_from_slice(&WQ_AFTER_CAS_SQRS);
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_WQ+2][def::WK as usize]
-                ^ self.zob_keys[def::CAS_SQUARE_WQ][def::WK as usize]
-                ^ self.zob_keys[def::CAS_SQUARE_WQ-2][def::WR as usize]
-                ^ self.zob_keys[def::CAS_SQUARE_WQ+1][def::WR as usize];
+            self.hash_key ^= zob_keys::get_board_zob_key(def::CAS_SQUARE_WQ+2, def::WK)
+                ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_WQ, def::WK)
+                ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_WQ-2, def::WR)
+                ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_WQ+1, def::WR);
 
             self.bitboard.w_all ^= WQ_CAS_ALL_MASK;
             self.bitboard.w_rook ^= WQ_CAS_R_MASK;
@@ -732,10 +730,10 @@ impl <'state> State<'state> {
             self.bk_index = to;
 
             self.squares[def::CAS_SQUARE_BQ-2..=def::CAS_SQUARE_BQ+2].copy_from_slice(&BQ_AFTER_CAS_SQRS);
-            self.hash_key ^= self.zob_keys[def::CAS_SQUARE_BQ+2][def::BK as usize]
-            ^ self.zob_keys[def::CAS_SQUARE_BQ][def::BK as usize]
-            ^ self.zob_keys[def::CAS_SQUARE_BQ-2][def::BR as usize]
-            ^ self.zob_keys[def::CAS_SQUARE_BQ+1][def::BR as usize];
+            self.hash_key ^= zob_keys::get_board_zob_key(def::CAS_SQUARE_BQ+2, def::BK)
+            ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_BQ, def::BK)
+            ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_BQ-2, def::BR)
+            ^ zob_keys::get_board_zob_key(def::CAS_SQUARE_BQ+1, def::BR);
 
             self.bitboard.b_all ^= BQ_CAS_ALL_MASK;
             self.bitboard.b_rook ^= BQ_CAS_R_MASK;
@@ -804,7 +802,7 @@ impl <'state> State<'state> {
             _ => ()
         }
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][moving_piece as usize] ^ self.zob_keys[taken_index][taken_piece as usize];
+        self.hash_key ^= zob_keys::get_board_zob_key(from, moving_piece) ^ zob_keys::get_board_zob_key(to, moving_piece) ^ zob_keys::get_board_zob_key(taken_index, taken_piece);
 
         self.taken_piece_stack.push(taken_piece);
         self.squares[to] = moving_piece;
@@ -865,7 +863,7 @@ impl <'state> State<'state> {
         let moving_piece = self.squares[from];
         let move_index_mask = self.bitmask.index_masks[from] ^ self.bitmask.index_masks[to];
 
-        self.hash_key ^= self.zob_keys[from][moving_piece as usize] ^ self.zob_keys[to][moving_piece as usize];
+        self.hash_key ^= zob_keys::get_board_zob_key(from, moving_piece) ^ zob_keys::get_board_zob_key(to, moving_piece);
 
         if def::on_same_side(def::PLAYER_W, moving_piece) {
             self.bitboard.w_all ^= move_index_mask;
@@ -969,14 +967,13 @@ mod tests {
     use crate::{
         bitboard::BitMask,
         def,
-        prng::XorshiftPrng,
     };
 
     #[test]
     fn test_new_startpos() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
+        let state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &bitmask);
 
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
@@ -985,9 +982,9 @@ mod tests {
 
     #[test]
     fn test_do_move_1() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &bitmask);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
@@ -1011,9 +1008,9 @@ mod tests {
 
     #[test]
     fn test_do_move_2() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r1bqk1nr/pPpp1ppp/2n5/2b1p3/2B1P3/2N2N2/P1PP1PPP/R1BQK2R w KQkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r1bqk1nr/pPpp1ppp/2n5/2b1p3/2B1P3/2N2N2/P1PP1PPP/R1BQK2R w KQkq - 0 1", &bitmask);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
@@ -1040,9 +1037,9 @@ mod tests {
 
     #[test]
     fn test_do_move_3() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r3k2r/pbppnppp/1bn2q2/4p3/2B5/2N1PN2/PPPP1PPP/R1BQK2R b Qkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r3k2r/pbppnppp/1bn2q2/4p3/2B5/2N1PN2/PPPP1PPP/R1BQK2R b Qkq - 0 1", &bitmask);
         assert_eq!(0b0111, state.cas_rights);
         assert_eq!(0b0000, state.cas_history);
         assert_eq!(0, state.enp_square);
@@ -1080,9 +1077,9 @@ mod tests {
 
     #[test]
     fn test_do_move_4() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &zob_keys, &bitmask);
+        let mut state = State::new("4r1k1/pp1Q1ppp/3B4/q2p4/5P1P/P3PbPK/1P1r4/2R5 b - - 3 5", &bitmask);
         assert_eq!(0b0000, state.cas_rights);
         assert_eq!(0, state.enp_square);
         assert_eq!(def::PLAYER_B, state.player);
@@ -1112,9 +1109,9 @@ mod tests {
 
     #[test]
     fn test_do_move_5() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r1bqkbnr/ppp1p1pp/2n5/3pPp2/3P4/8/PPP2PPP/RNBQKBNR w KQkq f6 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r1bqkbnr/ppp1p1pp/2n5/3pPp2/3P4/8/PPP2PPP/RNBQKBNR w KQkq f6 0 1", &bitmask);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(util::map_sqr_notation_to_index("f6"), state.enp_square);
         assert_eq!(def::PLAYER_W, state.player);
@@ -1141,9 +1138,9 @@ mod tests {
 
     #[test]
     fn test_do_move_6() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B1P1NBn/pPP2PPP/R3K2R b KQ - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B1P1NBn/pPP2PPP/R3K2R b KQ - 0 1", &bitmask);
 
         state.do_mov(util::map_sqr_notation_to_index("e5"), util::map_sqr_notation_to_index("e4"), def::MOV_REG, 0);
         state.do_mov(util::map_sqr_notation_to_index("f3"), util::map_sqr_notation_to_index("d2"), def::MOV_REG, 0);
@@ -1187,9 +1184,9 @@ mod tests {
 
     #[test]
     fn test_do_move_7() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1", &bitmask);
         assert_eq!(0b1111, state.cas_rights);
         assert_eq!(0b0000, state.cas_history);
 
@@ -1204,9 +1201,9 @@ mod tests {
 
     #[test]
     fn test_zob_hash_1() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1", &bitmask);
         let original_hash = state.hash_key;
 
         state.do_mov(util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("g1"), def::MOV_CAS, 0);
@@ -1235,9 +1232,9 @@ mod tests {
 
     #[test]
     fn test_zob_hash_2() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 1", &bitmask);
         let original_hash = state.hash_key;
 
         state.do_mov(util::map_sqr_notation_to_index("e8"), util::map_sqr_notation_to_index("c8"), def::MOV_CAS, 0);
@@ -1260,9 +1257,9 @@ mod tests {
 
     #[test]
     fn test_bitboard_1() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1", &zob_keys, &bitmask);
+        let mut state = State::new("r3kb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1", &bitmask);
 
         assert_eq!(0b00000000_00000000_00000000_00000000_00010000_00001000_11100111_00000000, state.bitboard.w_pawn);
         assert_eq!(0b00000000_11100111_00001000_00010000_00000000_00000000_00000000_00000000, state.bitboard.b_pawn);
@@ -1308,9 +1305,9 @@ mod tests {
 
     #[test]
     fn test_is_draw() {
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
+        zob_keys::init();
         let bitmask = BitMask::new();
-        let mut state = State::new("8/p2rrpk1/R2p1p1p/1P1P1P1P/R2KP1P1/8/8/8 b - - 12 57", &zob_keys, &bitmask);
+        let mut state = State::new("8/p2rrpk1/R2p1p1p/1P1P1P1P/R2KP1P1/8/8/8 b - - 12 57", &bitmask);
 
         assert!(!state.is_draw());
 

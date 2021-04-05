@@ -13,6 +13,7 @@ mod state;
 mod time_control;
 mod uci;
 mod util;
+mod zob_keys;
 
 use bitboard::BitMask;
 use prng::XorshiftPrng;
@@ -40,13 +41,14 @@ fn main() {
         std::process::exit(0);
     }
 
+    zob_keys::init();
+
     let (sender, receiver) = mpsc::channel();
 
     thread::spawn(move || {
         let mut search_engine = SearchEngine::new(def::DEFAULT_HASH_SIZE_UNIT);
-        let zob_keys = XorshiftPrng::new().create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
         let bitmask = BitMask::new();
-        let mut state = State::new(uci::FEN_START_POS, &zob_keys, &bitmask);
+        let mut state = State::new(uci::FEN_START_POS, &bitmask);
 
         loop {
             let command: String = receiver.recv().unwrap();
@@ -56,7 +58,7 @@ fn main() {
                     search_engine.set_hash_size(hash_size);
                 },
                 UciCommand::Position(fen_str, mov_list) => {
-                    state = State::new(&fen_str, &zob_keys, &bitmask);
+                    state = State::new(&fen_str, &bitmask);
     
                     if mov_list.is_empty() {
                         continue
