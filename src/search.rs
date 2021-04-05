@@ -247,11 +247,6 @@ impl SearchEngine {
             return 0
         }
 
-        if !in_check && self.in_stale_mate(state) {
-            self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
-            return 0
-        }
-
         let mating_val = eval::MATE_VAL - ply as i32;
         if mating_val < beta {
             if alpha >= mating_val {
@@ -631,6 +626,11 @@ impl SearchEngine {
         if alpha > original_alpha {
             self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
+            if !in_check && self.in_stale_mate(state) {
+                self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
+                return 0
+            }
+
             self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 
