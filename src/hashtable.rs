@@ -7,6 +7,7 @@ struct TableEntry {
     key: u64,
     player: u8,
     depth: u8,
+    age: u16,
     cas_rights: u8,
     enp_sqr: u8,
     flag: u8,
@@ -20,6 +21,7 @@ impl TableEntry {
             key: 0,
             player: 0,
             depth: 0,
+            age: 0,
             cas_rights: 0,
             enp_sqr: 0,
             flag: 0,
@@ -67,14 +69,15 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn set(&mut self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) -> bool {
+    pub fn set(&mut self, key: u64, player: u8, depth: u8, age: u16, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) -> bool {
         let entry = &self.table[(key & self.mod_base) as usize];
 
-        if depth >= entry.depth || key != entry.key {
+        if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,
                 player,
                 depth,
+                age,
                 cas_rights,
                 enp_sqr: enp_sqr as u8,
                 flag,
@@ -93,47 +96,12 @@ impl DepthPreferredHashTable {
     }
 }
 
-pub struct AlwaysReplaceHashTable {
-    mod_base: u64,
-    table: Vec<TableEntry>,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl AlwaysReplaceHashTable {
-    pub fn new(size: usize) -> Self {
-        AlwaysReplaceHashTable {
-            mod_base: (size - 1) as u64,
-            table: vec![TableEntry::empty(); size],
-        }
-    }
-
-    pub fn get(&self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
-        let entry = &self.table[(key & self.mod_base) as usize];
-
-        if entry.key == key && entry.player == player && entry.cas_rights == cas_rights && entry.enp_sqr == enp_sqr as u8 {
-            if entry.depth >= depth {
-                LookupResult::Match(entry.flag, entry.score, entry.mov)
-            } else {
-                LookupResult::MovOnly(entry.mov)
-            }
-        } else {
-            LookupResult::NoMatch
-        }
-    }
-
-    pub fn set(&mut self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) {
-        self.table[(key & self.mod_base) as usize] = TableEntry {
-            key,
-            player,
-            depth,
-            cas_rights,
-            enp_sqr: enp_sqr as u8,
-            flag,
-            score, 
-            mov,
-        };
-    }
-
-    pub fn clear(&mut self) {
-        self.table = vec![TableEntry::empty(); self.mod_base as usize + 1];
+    #[test]
+    fn test_xxx_1() {
+        println!("{}", std::mem::size_of::<TableEntry>());   
     }
 }

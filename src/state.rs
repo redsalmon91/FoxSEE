@@ -15,6 +15,8 @@ const FEN_PLAYER_INDEX: usize = 1;
 const FEN_CAS_RIGHTS_INDEX: usize = 2;
 const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
+const FEN_FULL_MOV_INDEX: usize = 5;
+
 const LAST_MOV_POS_INDEX: usize = 4;
 const MAX_NON_CAP_MOV_COUNT: usize = 100;
 
@@ -68,6 +70,8 @@ pub struct State<'state> {
     pub non_cap_mov_count_stack: Vec<u16>,
     pub king_index_stack: Vec<(usize, usize)>,
 
+    pub full_mov_count: u16,
+
     zob_keys: &'state Vec<Vec<u64>>,
 }
 
@@ -78,6 +82,7 @@ impl <'state> State<'state> {
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
         let enp_square = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
         let non_cap_mov_count = fen_segment_list[FEN_HALF_MOV_INDEX].parse::<u16>().unwrap();
+        let full_mov_count = fen_segment_list[FEN_FULL_MOV_INDEX].parse::<u16>().unwrap();
 
         let mut squares = [0; def::BOARD_SIZE];
         let mut hash_key = 0;
@@ -180,6 +185,8 @@ impl <'state> State<'state> {
             history_pos_stack: Vec::new(),
             non_cap_mov_count_stack: Vec::new(),
             king_index_stack: Vec::new(),
+
+            full_mov_count,
 
             zob_keys,
             bitmask,

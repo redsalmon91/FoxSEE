@@ -5,7 +5,7 @@
 use crate::{
     def,
     eval,
-    hashtable::{AlwaysReplaceHashTable, DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
+    hashtable::{DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
     mov_table,
     state::State,
     time_control::TimeCapacity,
@@ -43,7 +43,6 @@ use LookupResult::*;
 
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
-    always_replace_hash_table: AlwaysReplaceHashTable,
     primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
@@ -56,7 +55,6 @@ impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
-            always_replace_hash_table: AlwaysReplaceHashTable::new(hash_size >> 1),
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
@@ -68,12 +66,10 @@ impl SearchEngine {
 
     pub fn reset(&mut self) {
         self.depth_preferred_hash_table.clear();
-        self.always_replace_hash_table.clear();
     }
 
     pub fn set_hash_size(&mut self, hash_size: usize) {
         self.depth_preferred_hash_table = DepthPreferredHashTable::new(hash_size >> 1);
-        self.always_replace_hash_table = AlwaysReplaceHashTable::new(hash_size >> 1);
     }
 
     pub fn perft(&self, state: &mut State, depth: u8) -> usize {
@@ -248,7 +244,7 @@ impl SearchEngine {
         }
 
         if !in_check && self.in_stale_mate(state) {
-            self.set_hash(state, MAX_DEPTH, HASH_TYPE_EXACT, 0, 0);
+            self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
             return 0
         }
 
@@ -402,7 +398,7 @@ impl SearchEngine {
                     self.update_killer_table(ply, pv_mov, score, depth);
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
+                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, pv_mov);
 
                 return score
             }
@@ -568,7 +564,7 @@ impl SearchEngine {
                     }
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, *mov);
+                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, *mov);
 
                 return score
             }
@@ -610,7 +606,7 @@ impl SearchEngine {
                     self.update_killer_table(ply, pv_mov, score, depth);
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, pv_mov);
+                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, pv_mov);
 
                 return score
             }
@@ -630,9 +626,9 @@ impl SearchEngine {
         }
 
         if alpha > original_alpha {
-            self.set_hash(state, depth, HASH_TYPE_EXACT, alpha, best_mov);
+            self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
-            self.set_hash(state, depth, HASH_TYPE_ALPHA, best_score, best_mov);
+            self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 
         alpha
@@ -781,19 +777,12 @@ impl SearchEngine {
 
     #[inline]
     fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
-        match self.depth_preferred_hash_table.get(state.hash_key, state.player, depth, state.cas_rights, state.enp_square) {
-            NoMatch => {
-                self.always_replace_hash_table.get(state.hash_key, state.player, depth, state.cas_rights, state.enp_square)
-            },
-            matched => matched
-        }
+        self.depth_preferred_hash_table.get(state.hash_key, state.player, depth, state.cas_rights, state.enp_square)
     }
 
     #[inline]
-    fn set_hash(&mut self, state: &State, depth: u8, hash_flag: u8, score: i32, mov: u32) {
-        if !self.depth_preferred_hash_table.set(state.hash_key, state.player, depth, state.cas_rights, state.enp_square, hash_flag, score, mov) {
-            self.always_replace_hash_table.set(state.hash_key, state.player, depth, state.cas_rights, state.enp_square, hash_flag, score, mov);
-        }
+    fn set_hash(&mut self, state: &State, depth: u8, age: u16, hash_flag: u8, score: i32, mov: u32) {
+        self.depth_preferred_hash_table.set(state.hash_key, state.player, depth, age, state.cas_rights, state.enp_square, hash_flag, score, mov);
     }
 
     #[inline]
