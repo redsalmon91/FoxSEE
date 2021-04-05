@@ -5,11 +5,8 @@
 #[derive(Clone)]
 struct TableEntry {
     key: u64,
-    player: u8,
     depth: u8,
     age: u16,
-    cas_rights: u8,
-    enp_sqr: u8,
     flag: u8,
     score: i32,
     mov: u32,
@@ -19,11 +16,8 @@ impl TableEntry {
     fn empty() -> Self {
         TableEntry {
             key: 0,
-            player: 0,
             depth: 0,
             age: 0,
-            cas_rights: 0,
-            enp_sqr: 0,
             flag: 0,
             score: 0,
             mov: 0,
@@ -55,10 +49,10 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn get(&self, key: u64, player: u8, depth: u8, cas_rights: u8, enp_sqr: usize) -> LookupResult {
+    pub fn get(&self, key: u64, depth: u8) -> LookupResult {
         let entry = &self.table[(key & self.mod_base) as usize];
 
-        if entry.key == key && entry.player == player && entry.cas_rights == cas_rights && entry.enp_sqr == enp_sqr as u8 {
+        if entry.key == key {
             if entry.depth >= depth {
                 LookupResult::Match(entry.flag, entry.score, entry.mov)
             } else {
@@ -69,17 +63,14 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn set(&mut self, key: u64, player: u8, depth: u8, age: u16, cas_rights: u8, enp_sqr: usize, flag: u8, score: i32, mov: u32) -> bool {
+    pub fn set(&mut self, key: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) -> bool {
         let entry = &self.table[(key & self.mod_base) as usize];
 
         if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,
-                player,
                 depth,
                 age,
-                cas_rights,
-                enp_sqr: enp_sqr as u8,
                 flag,
                 score, 
                 mov,
@@ -96,12 +87,3 @@ impl DepthPreferredHashTable {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_xxx_1() {
-        println!("{}", std::mem::size_of::<TableEntry>());   
-    }
-}

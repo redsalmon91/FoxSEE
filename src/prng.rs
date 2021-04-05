@@ -2,10 +2,6 @@
  * Copyright (C) 2020 Zixiao Han
  */
 
-use crate::{
-    def,
-};
-
 static SEED_C89: u64 = 0b10110110_00101111_10100100_01011000_00001000_01100100_11010111_11111010;
 static SEED_A86: u64 = 0b10111001_11010011_00111100_00010100_00110000_00100110_11001111_10110110;
 
@@ -24,7 +20,7 @@ impl XorshiftPrng {
         }
     }
 
-    fn gen_rand(&mut self) -> u64 {
+    pub fn gen_rand(&mut self) -> u64 {
         let s0 = self.state[0];
         let mut s1 = self.state[1];
 
@@ -37,11 +33,34 @@ impl XorshiftPrng {
         next_rand
     }
 
+    pub fn create_prn_list(&mut self, dim: usize) -> Vec<u64> {
+        let mut prn_table = vec![0; dim];
+
+        for i in 0..dim {
+            let mut prn = self.gen_rand();
+
+            'trail_error: loop {
+                for ii in 0..i {
+                    if prn_table[ii] == prn {
+                        prn = self.gen_rand();
+                        continue 'trail_error
+                    }
+                }
+
+                break
+            }
+
+            prn_table[i] = prn;
+        }
+
+        prn_table
+    }
+
     pub fn create_prn_table(&mut self, fst_dim: usize, snd_dim: usize) -> Vec<Vec<u64>> {
         let mut prn_table = vec![vec![0; snd_dim]; fst_dim];
 
-        for i in 0..def::BOARD_SIZE {
-            for j in 0..def::PIECE_CODE_RANGE {
+        for i in 0..fst_dim {
+            for j in 0..snd_dim {
                 let mut prn = self.gen_rand();
 
                 'trail_error: loop {
@@ -71,7 +90,7 @@ mod tests {
     use crate::def;
 
     #[test]
-    fn test_gen_rand() {
+    fn test_gen_rand_table() {
         let mut rand = XorshiftPrng::new();
         let rand_table = rand.create_prn_table(def::BOARD_SIZE, def::PIECE_CODE_RANGE);
 
@@ -85,5 +104,22 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_gen_rand_list() {
+        let mut rand = XorshiftPrng::new();
+        let rand_list = rand.create_prn_list(def::BOARD_SIZE);
+
+        let mut hash_key = 0;
+        for i in 0..def::BOARD_SIZE {
+            hash_key ^= rand_list[i];
+
+            if hash_key == 0 {
+                panic!("bad hash");
+            }
+        }
+
+        println!("{:?}", rand_list)
     }
 }

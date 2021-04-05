@@ -10,6 +10,7 @@ use crate::{
     state::State,
     time_control::TimeCapacity,
     util,
+    zob_keys,
 };
 
 const PV_TRACK_LENGTH: usize = 128;
@@ -777,12 +778,12 @@ impl SearchEngine {
 
     #[inline]
     fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
-        self.depth_preferred_hash_table.get(state.hash_key, state.player, depth, state.cas_rights, state.enp_square)
+        self.depth_preferred_hash_table.get(get_hash_key(state), depth)
     }
 
     #[inline]
     fn set_hash(&mut self, state: &State, depth: u8, age: u16, hash_flag: u8, score: i32, mov: u32) {
-        self.depth_preferred_hash_table.set(state.hash_key, state.player, depth, age, state.cas_rights, state.enp_square, hash_flag, score, mov);
+        self.depth_preferred_hash_table.set(get_hash_key(state), depth, age, hash_flag, score, mov);
     }
 
     #[inline]
@@ -881,6 +882,19 @@ impl SearchEngine {
 
         true
     }
+}
+
+#[inline]
+fn get_hash_key(state: &State) -> u64 {
+    let mut key = state.hash_key
+    ^ zob_keys::get_enp_sqr_zob_key(state.enp_square as usize)
+    ^ zob_keys::get_cas_rights_zob_key(state.cas_rights);
+
+    if state.player == def::PLAYER_B {
+        key ^= zob_keys::get_b_player_zob_key();
+    }
+
+    key
 }
 
 fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
