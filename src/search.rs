@@ -450,13 +450,12 @@ impl SearchEngine {
             }
         }
 
-        for (sort_score, gives_check, mov) in &ordered_mov_list {
+        for (_sort_score, gives_check, mov) in &ordered_mov_list {
             mov_count += 1;
 
             let (from, to, tp, promo) = util::decode_u32_mov(*mov);
 
             let is_capture = state.squares[to] != 0;
-            let is_winning_capture = is_capture && *sort_score >= SORTING_CAP_BASE_VAL;
 
             state.do_mov(from, to, tp, promo);
 
@@ -471,34 +470,39 @@ impl SearchEngine {
 
             let mut reduced = false;
 
-            if depth > 1 && mov_count > 1 && !extended && !is_winning_capture {
+            if depth > 1 && mov_count > 1 && !extended {
                depth -= ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth - 1);
                reduced = true;
             }
 
-            let mut score = if pv_found {
-                -self.ab_search(state, *gives_check, extended, true, -alpha - 1, -alpha, depth - 1, ply + 1)
-            } else {
-                -self.ab_search(state, *gives_check, extended, reduced, -beta, -alpha, depth - 1, ply + 1)
-            };
+            let original_beta = beta;
+            let mut beta = beta;
+
+            if pv_found {
+                beta = alpha + 1;
+            }
+
+            let mut score = -self.ab_search(state, *gives_check, extended, reduced || pv_found, -beta, -alpha, depth - 1, ply + 1);
 
             if score > alpha {
                 if reduced {
                     depth = original_depth;
 
-                    if pv_found {
-                        score = -self.ab_search(state, *gives_check, extended, true, -alpha-1, -alpha, depth - 1, ply + 1);
+                    score = -self.ab_search(state, *gives_check, extended, pv_found, -beta, -alpha, depth - 1, ply + 1);
 
-                        if score > alpha && score < beta {
-                            pv_found = false;
-                            score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
-                        }
-                    } else {
+                    if beta != original_beta && score > alpha {
+                        pv_found = false;
+                        beta = original_beta;
+
                         score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
                     }
-                }  else if pv_found && score < beta {
-                    pv_found = false;
-                    score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
+                } else {
+                    if beta != original_beta {
+                        pv_found = false;
+                        beta = original_beta;
+
+                        score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
+                    }
                 }
             }
 
