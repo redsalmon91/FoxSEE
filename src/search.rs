@@ -356,7 +356,7 @@ impl SearchEngine {
 
             let mut depth = depth;
 
-            if gives_check && !in_endgame {
+            if gives_check {
                 depth += 1;
                 pv_extended = true;
             }
@@ -463,7 +463,7 @@ impl SearchEngine {
             let mut depth = depth;
             let mut extended = false;
 
-            if *gives_check && !in_endgame {
+            if *gives_check {
                 depth += 1;
                 extended = true;
             }
