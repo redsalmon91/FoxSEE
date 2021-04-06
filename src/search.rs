@@ -53,7 +53,7 @@ pub struct SearchEngine {
 impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
-            depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
+            depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size),
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
@@ -68,7 +68,7 @@ impl SearchEngine {
     }
 
     pub fn set_hash_size(&mut self, hash_size: usize) {
-        self.depth_preferred_hash_table = DepthPreferredHashTable::new(hash_size >> 1);
+        self.depth_preferred_hash_table = DepthPreferredHashTable::new(hash_size);
     }
 
     pub fn perft(&self, state: &mut State, depth: u8) -> usize {
@@ -774,12 +774,12 @@ impl SearchEngine {
 
     #[inline]
     fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
-        self.depth_preferred_hash_table.get(get_hash_key(state), depth)
+        self.depth_preferred_hash_table.get(get_hash_key(state), state.hash_key, depth)
     }
 
     #[inline]
     fn set_hash(&mut self, state: &State, depth: u8, age: u16, hash_flag: u8, score: i32, mov: u32) {
-        self.depth_preferred_hash_table.set(get_hash_key(state), depth, age, hash_flag, score, mov);
+        self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, age, hash_flag, score, mov);
     }
 
     #[inline]

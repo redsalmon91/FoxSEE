@@ -5,6 +5,7 @@
 #[derive(Clone)]
 struct TableEntry {
     key: u64,
+    board_key: u64,
     depth: u8,
     age: u16,
     flag: u8,
@@ -16,6 +17,7 @@ impl TableEntry {
     fn empty() -> Self {
         TableEntry {
             key: 0,
+            board_key: 0,
             depth: 0,
             age: 0,
             flag: 0,
@@ -49,10 +51,10 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn get(&self, key: u64, depth: u8) -> LookupResult {
+    pub fn get(&self, key: u64, board_key: u64, depth: u8) -> LookupResult {
         let entry = &self.table[(key & self.mod_base) as usize];
 
-        if entry.key == key {
+        if entry.key == key && entry.board_key == board_key {
             if entry.depth >= depth {
                 LookupResult::Match(entry.flag, entry.score, entry.mov)
             } else {
@@ -63,12 +65,13 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn set(&mut self, key: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) -> bool {
+    pub fn set(&mut self, key: u64, board_key: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) -> bool {
         let entry = &self.table[(key & self.mod_base) as usize];
 
         if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,
+                board_key,
                 depth,
                 age,
                 flag,

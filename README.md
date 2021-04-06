@@ -27,7 +27,6 @@ UCI chess engine written in Rust!
 - Piece-Square Tables
 - Null-Move Pruning
 - Delta Pruning
-- Reversed Futility Pruning
 - Mate Distance Pruning
 
 ## How to build
