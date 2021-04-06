@@ -30,11 +30,6 @@ const MAX_DEPTH: u8 = 128;
 
 const DELTA_MARGIN: i32 = 200;
 
-const FP_DEPTH: u8 = 7;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
-
-const SQR_VAL_REDUCE_FACTOR: i32 = 10;
-
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
 static mut NODE_COUNT: u64 = 0;
@@ -158,7 +153,9 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                best_mov = pv_table[0];
+                if score > alpha && score < beta {
+                    best_mov = pv_table[0];
+                }
 
                 unsafe {
                     let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
@@ -295,7 +292,7 @@ impl SearchEngine {
                         if score > alpha {
                             alpha = score;
 
-                            if beta - alpha > 1 {
+                            if beta - alpha > 1 && pv_mov != 0 {
                                 is_singular_mov = true;
                             }
                         }
@@ -316,22 +313,6 @@ impl SearchEngine {
         let on_pv = beta - alpha > 1;
 
         let in_endgame = eval::is_in_endgame(state);
-
-        if !on_pv && !on_extend && !on_cut && !in_check && !in_endgame && depth <= FP_DEPTH {
-            let (score, is_draw) = eval::eval_materials(state);
-
-            if is_draw {
-                return 0
-            }
-
-            if score - FUTILITY_MARGIN[depth as usize] >= beta {
-                let score = eval::eval_state(state, score);
-
-                if score - FUTILITY_MARGIN[depth as usize] >= beta {
-                    return beta
-                }
-            }
-        }
 
         if !on_pv && !on_extend && !on_cut && !in_check && !in_endgame && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
@@ -358,6 +339,7 @@ impl SearchEngine {
         let mut mov_count = 0;
         let mut best_score = -eval::MATE_VAL;
         let mut best_mov = pv_mov;
+        let mut best_mov_depth = depth;
         let mut pv_found = false;
         let mut pv_extended = false;
 
@@ -403,6 +385,7 @@ impl SearchEngine {
             if score > best_score {
                 best_score = score;
                 best_mov = pv_mov;
+                best_mov_depth = depth;
             }
 
             if score > alpha {
@@ -453,8 +436,7 @@ impl SearchEngine {
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
                 let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                let sqr_val_diff = eval::get_square_val_diff(state.squares[from], from, to) / SQR_VAL_REDUCE_FACTOR;
-                ordered_mov_list.push((history_score / butterfly_score + sqr_val_diff, gives_check, mov));
+                ordered_mov_list.push((history_score / butterfly_score, gives_check, mov));
             }
         }
 
@@ -468,15 +450,17 @@ impl SearchEngine {
             }
         }
 
-        for (_sort_score, gives_check, mov) in &ordered_mov_list {
+        for (sort_score, gives_check, mov) in &ordered_mov_list {
             mov_count += 1;
 
             let (from, to, tp, promo) = util::decode_u32_mov(*mov);
 
             let is_capture = state.squares[to] != 0;
+            let is_winning_capture = is_capture && *sort_score >= SORTING_CAP_BASE_VAL;
 
             state.do_mov(from, to, tp, promo);
 
+            let original_depth = depth;
             let mut depth = depth;
             let mut extended = false;
 
@@ -485,36 +469,38 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !extended {
-                let score = -self.ab_search(state, *gives_check, extended, true, -alpha - 1, -alpha, depth - ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth), ply + 1);
-                if score > alpha {
+            let mut reduced = false;
+
+            if depth > 1 && mov_count > 1 && !extended && !is_winning_capture {
+               depth -= ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth - 1);
+               reduced = true;
+            }
+
+            let mut score = if pv_found {
+                -self.ab_search(state, *gives_check, extended, true, -alpha - 1, -alpha, depth - 1, ply + 1)
+            } else {
+                -self.ab_search(state, *gives_check, extended, reduced, -beta, -alpha, depth - 1, ply + 1)
+            };
+
+            if score > alpha {
+                if reduced {
+                    depth = original_depth;
+
                     if pv_found {
-                        let score = -self.ab_search(state, *gives_check, extended, false, -alpha-1, -alpha, depth - 1, ply + 1);
+                        score = -self.ab_search(state, *gives_check, extended, true, -alpha-1, -alpha, depth - 1, ply + 1);
 
                         if score > alpha && score < beta {
-                            -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
-                        } else {
-                            score
+                            pv_found = false;
+                            score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
                         }
                     } else {
-                        -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
+                        score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
                     }
-                } else {
-                    score
+                }  else if pv_found && score < beta {
+                    pv_found = false;
+                    score = -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1);
                 }
-            } else {
-                if pv_found {
-                    let score = -self.ab_search(state, *gives_check, extended, true, -alpha-1, -alpha, depth - 1, ply + 1);
-
-                    if score > alpha && score < beta {
-                        -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
-                    } else {
-                        score
-                    }
-                } else {
-                    -self.ab_search(state, *gives_check, extended, false, -beta, -alpha, depth - 1, ply + 1)
-                }
-            };
+            }
 
             state.undo_mov(from, to, tp);
 
@@ -570,6 +556,7 @@ impl SearchEngine {
             if score > best_score {
                 best_score = score;
                 best_mov = *mov;
+                best_mov_depth = depth;
             }
 
             if score > alpha {
@@ -588,7 +575,9 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let score = -self.ab_search(state, gives_check, true, false, -beta, -alpha, depth, ply + 1);
+            let depth = depth + 1;
+
+            let score = -self.ab_search(state, gives_check, true, false, -beta, -alpha, depth - 1, ply + 1);
 
             state.undo_mov(from, to, tp);
 
@@ -616,6 +605,7 @@ impl SearchEngine {
             if score > best_score {
                 best_score = score;
                 best_mov = pv_mov;
+                best_mov_depth = depth;
             }
 
             if score > alpha {
@@ -624,14 +614,14 @@ impl SearchEngine {
         }
 
         if alpha > original_alpha {
-            self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
+            self.set_hash(state, best_mov_depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
             if !in_check && self.in_stale_mate(state) {
                 self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
                 return 0
             }
 
-            self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
+            self.set_hash(state, best_mov_depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 
         alpha
@@ -1173,6 +1163,26 @@ mod tests {
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b3"));
+        assert_eq!(to, util::map_sqr_notation_to_index("b4"));
+    }
+
+    #[test]
+    fn test_search_9() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("r2q1rk1/p3bppp/b1n1p3/2Nn4/8/5NP1/PPQBPPBP/R3K2R b KQ - 0 12");
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
         assert_eq!(to, util::map_sqr_notation_to_index("b4"));
     }
 }

@@ -281,26 +281,6 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
-pub fn get_square_val_diff(moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
-    match moving_piece {
-        def::WP => SQR_TABLE_WP[to_index] - SQR_TABLE_WP[from_index],
-        def::WN => SQR_TABLE_WN[to_index] - SQR_TABLE_WN[from_index],
-        def::WB => SQR_TABLE_WB[to_index] - SQR_TABLE_WB[from_index],
-        def::WR => SQR_TABLE_WR[to_index] - SQR_TABLE_WR[from_index],
-        def::WQ => SQR_TABLE_WQ[to_index] - SQR_TABLE_WQ[from_index],
-        def::WK => SQR_TABLE_WK[to_index] - SQR_TABLE_WK[from_index],
-
-        def::BP => SQR_TABLE_BP[to_index] - SQR_TABLE_BP[from_index],
-        def::BN => SQR_TABLE_BN[to_index] - SQR_TABLE_BN[from_index],
-        def::BB => SQR_TABLE_BB[to_index] - SQR_TABLE_BB[from_index],
-        def::BR => SQR_TABLE_BR[to_index] - SQR_TABLE_BR[from_index],
-        def::BQ => SQR_TABLE_BQ[to_index] - SQR_TABLE_BQ[from_index],
-        def::BK => SQR_TABLE_BK[to_index] - SQR_TABLE_BK[from_index],
-
-        _ => 0,
-    }
-}
-
 pub fn is_in_endgame(state: &State) -> bool {
     get_phase(state) <= EG_PHASE
 }
