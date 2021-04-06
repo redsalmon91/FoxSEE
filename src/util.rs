@@ -186,6 +186,11 @@ pub fn get_highest_index(mask: u64) -> usize {
     63 - mask.leading_zeros() as usize
 }
 
+#[inline]
+pub const fn sqr(value: i32) -> i32 {
+    value * value
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

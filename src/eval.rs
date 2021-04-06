@@ -6,7 +6,7 @@ use crate::{
     bitmask,
     def,
     state::State,
-    util::{get_lowest_index, get_highest_index}
+    util::{sqr, get_lowest_index, get_highest_index}
 };
 
 pub static MATE_VAL: i32 = 20000;
@@ -413,12 +413,12 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.rook_open_count * ROOK_OPEN_VAL
         + w_features_map.passed_pawn_point
         + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
-        + minus_one_sqr(w_features_map.king_attacker_count) * KING_ATTACK_VAL
+        + sqr(w_features_map.king_attacker_count) * KING_ATTACK_VAL
         - b_features_map.mg_sqr_point
         - b_features_map.rook_open_count * ROOK_OPEN_VAL
         - b_features_map.passed_pawn_point
         - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
-        - minus_one_sqr(b_features_map.king_attacker_count) * KING_ATTACK_VAL;
+        - sqr(b_features_map.king_attacker_count) * KING_ATTACK_VAL;
 
     if state.bitboard.b_queen != 0 {
         if (state.cas_rights | state.cas_history) & 0b1100 == 0 {
@@ -1005,13 +1005,3 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     (w_feature_map, b_feature_map)
 }
 
-#[inline]
-fn minus_one_sqr(value: i32) -> i32 {
-    let value = if value == 0 {
-        0
-    } else {
-        value - 1
-    };
-
-    value * value
-}
