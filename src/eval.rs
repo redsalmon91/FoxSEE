@@ -12,10 +12,10 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
-static Q_VAL: i32 = 1200;
-static R_VAL: i32 = 600;
-static B_VAL: i32 = 400;
-static N_VAL: i32 = 380;
+static Q_VAL: i32 = 1000;
+static R_VAL: i32 = 525;
+static B_VAL: i32 = 350;
+static N_VAL: i32 = 345;
 static P_VAL: i32 = 100;
 
 static EG_PAWN_ESSENTIAL_VAL: i32 = 50;
