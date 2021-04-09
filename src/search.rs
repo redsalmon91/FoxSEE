@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Zixiao Han
+ * Copyright (C) 2020-2021 Zixiao Han
  */
 
 use crate::{
@@ -43,7 +43,6 @@ static mut SEL_DEPTH: u8 = 0;
 pub static mut ABORT_SEARCH: bool = false;
 
 use std::time::Instant;
-use LookupResult::*;
 
 pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
@@ -247,6 +246,10 @@ impl SearchEngine {
             return 0
         }
 
+        if depth == 0 {
+            return self.q_search(state, alpha, beta, ply);
+        }
+
         let mating_val = eval::MATE_VAL - ply as i32;
         if mating_val < beta {
             if alpha >= mating_val {
@@ -271,46 +274,44 @@ impl SearchEngine {
         let mut is_singular_mov = false;
 
         match self.get_hash(state, depth) {
-            Match(flag, score, mov) => {
-                pv_mov = mov;
+            Some(result) => {
+                pv_mov = result.mov;
 
-                match flag {
-                    HASH_TYPE_EXACT => {
-                        return score;
-                    },
-                    HASH_TYPE_ALPHA => {
-                        if score <= alpha {
-                            return alpha
-                        }
+                let (found_exact, exact_score) = result.exact;
 
-                        if score < beta {
-                            beta = score;
-                        }
-                    },
-                    HASH_TYPE_BETA => {
-                        if score >= beta {
-                            return beta
-                        }
+                if found_exact {
+                    return exact_score;
+                }
 
-                        if score > alpha {
-                            alpha = score;
+                let (found_lowerbound, lb_score) = result.lower_bound;
 
-                            if beta - alpha > 1 {
-                                is_singular_mov = true;
-                            }
+                if found_lowerbound {
+                    if lb_score >= beta {
+                        return beta
+                    }
+
+                    if lb_score > alpha {
+                        alpha = lb_score;
+
+                        if beta - alpha > 1 {
+                            is_singular_mov = true;
                         }
-                    },
-                    _ => (),
+                    }
+                }
+
+                let (found_upperbound, ub_score) = result.upper_bound;
+
+                if found_upperbound {
+                    if ub_score <= alpha {
+                        return alpha
+                    }
+    
+                    if ub_score < beta {
+                        beta = ub_score;
+                    }
                 }
             },
-            MovOnly(mov) => {
-                pv_mov = mov;
-            },
-            _ => (),
-        }
-
-        if depth == 0 {
-            return self.q_search(state, alpha, beta, ply);
+            None => {},
         }
 
         let on_pv = beta - alpha > 1;
@@ -748,12 +749,9 @@ impl SearchEngine {
         let mut mov = 0;
 
         match self.get_hash(state, MAX_DEPTH) {
-            Match(_flag, _score, hash_mov) => {
-                mov = hash_mov;
-            },
-            MovOnly(hash_mov) => {
-                mov = hash_mov;
-            },
+            Some(result) => {
+                mov = result.mov;
+            }
             _ => (),
         }
 
@@ -779,7 +777,7 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
+    fn get_hash(&self, state: &State, depth: u8) -> Option<LookupResult> {
         self.depth_preferred_hash_table.get(get_hash_key(state), depth)
     }
 
