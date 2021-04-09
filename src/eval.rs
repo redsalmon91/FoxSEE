@@ -444,13 +444,13 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         w_features_map.mg_sqr_point
         + w_features_map.rook_open_count * ROOK_OPEN_VAL
         + w_features_map.passed_pawn_point
-        + w_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
+        + w_features_map.strong_king_attack_count * w_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
         + w_features_map.weak_king_attack_count * WEAK_K_ATTACK_VAL
         + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         - b_features_map.mg_sqr_point
         - b_features_map.rook_open_count * ROOK_OPEN_VAL
         - b_features_map.passed_pawn_point
-        - b_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
+        - b_features_map.strong_king_attack_count * b_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
         - b_features_map.weak_king_attack_count * WEAK_K_ATTACK_VAL
         - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN;
 
