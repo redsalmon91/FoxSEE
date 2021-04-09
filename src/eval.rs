@@ -24,6 +24,8 @@ static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 50, 70, 90, 0];
 static CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 50, 0];
 
+static EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
+
 static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -10;
 static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
 static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
@@ -210,12 +212,12 @@ static SQR_TABLE_WK: [i32; def::BOARD_SIZE] = [
 
 static SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
     -50,-40,-30,-20,-20,-30,-40,-50,
-    -40,-30,-10,-10,-10,-10,-30,-40,
-    -30,-10, 10, 30, 30, 10,-10,-30,
-    -30,-10, 30, 50, 50, 30,-10,-30,
-    -30,-10, 30, 50, 50, 30,-10,-30,
-    -30,-10, 10, 30, 30, 10,-10,-30,
-    -30,-30,-10,-10,-10,-10,-30,-40,
+    -40, 10, 10, 10, 10, 10, 10,-40,
+    -30, 10, 30, 30, 30, 30, 10,-30,
+    -30, 10, 30, 50, 50, 30, 10,-30,
+    -30, 10, 30, 50, 50, 30, 10,-30,
+    -30, 10, 30, 30, 30, 30, 10,-30,
+    -30, 10, 10, 10, 10, 10, 10,-40,
     -50,-40,-30,-30,-30,-30,-40,-50,
 ];
 
@@ -291,7 +293,7 @@ pub fn get_square_val_diff(state: &State, moving_piece: u8, from_index: usize, t
     match moving_piece {
         def::WP => {
             if is_in_endgame(state) {
-                SQR_TABLE_WP_ENDGAME[to_index] - SQR_TABLE_WP_ENDGAME[from_index]
+                (SQR_TABLE_WP_ENDGAME[to_index] - SQR_TABLE_WP_ENDGAME[from_index]) * EG_P_SQR_DIFF_MULTIPLIER
             } else {
                 SQR_TABLE_WP[to_index] - SQR_TABLE_WP[from_index]
             }
@@ -310,7 +312,7 @@ pub fn get_square_val_diff(state: &State, moving_piece: u8, from_index: usize, t
 
         def::BP => {
             if is_in_endgame(state) {
-                SQR_TABLE_BP_ENDGAME[to_index] - SQR_TABLE_BP_ENDGAME[from_index]
+                (SQR_TABLE_BP_ENDGAME[to_index] - SQR_TABLE_BP_ENDGAME[from_index]) * EG_P_SQR_DIFF_MULTIPLIER
             } else {
                 SQR_TABLE_BP[to_index] - SQR_TABLE_BP[from_index]
             }
