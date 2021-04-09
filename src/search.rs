@@ -51,6 +51,7 @@ pub struct SearchEngine {
     depth_preferred_hash_table: DepthPreferredHashTable,
     primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
+    counter_mov_table: [[[u32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     time_tracker: Instant,
@@ -63,6 +64,7 @@ impl SearchEngine {
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size >> 1),
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
+            counter_mov_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             time_tracker: Instant::now(),
@@ -120,6 +122,7 @@ impl SearchEngine {
 
         self.primary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
+        self.counter_mov_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.depth_preferred_hash_table.clear();
@@ -424,6 +427,7 @@ impl SearchEngine {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, pv_mov, score, depth);
+                    self.update_counter_mov_table(state, pv_mov);
                 }
 
                 self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, pv_mov);
@@ -449,6 +453,7 @@ impl SearchEngine {
         mov_table::gen_reg_mov_list(state, &mut mov_list);
 
         let (primary_killer, secondary_killer) = self.get_killer_mov(ply);
+        let counter_mov = self.get_counter_mov(state);
 
         let mut ordered_mov_list = Vec::new();
 
@@ -477,6 +482,8 @@ impl SearchEngine {
                 } else {
                     ordered_mov_list.push((SORTING_CAP_BASE_VAL + see(state, from, to, tp, promo), gives_check, mov));
                 }
+            } else if mov == counter_mov {
+                ordered_mov_list.push((SORTING_CAP_BASE_VAL, gives_check, mov));
             } else if mov == primary_killer {
                 ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_Q_VAL, gives_check, mov));
             } else if mov == secondary_killer {
@@ -559,6 +566,7 @@ impl SearchEngine {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, *mov, score, depth);
+                    self.update_counter_mov_table(state, pv_mov);
 
                     if pv_mov != 0 {
                         let (from, to, _tp, _promo) = util::decode_u32_mov(pv_mov);
@@ -633,6 +641,7 @@ impl SearchEngine {
                 if !is_capture {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, pv_mov, score, depth);
+                    self.update_counter_mov_table(state, pv_mov);
                 }
 
                 self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, pv_mov);
@@ -863,6 +872,26 @@ impl SearchEngine {
         }
 
         (primary_killer, secondary_killer)
+    }
+
+    #[inline]
+    fn update_counter_mov_table(&mut self, state: &State, mov: u32) {
+        match state.history_mov_stack.last() {
+            Some((from, to)) => {
+                self.counter_mov_table[state.player as usize - 1][*from][*to] = mov;
+            },
+            None => {}
+        }
+    }
+
+    #[inline]
+    fn get_counter_mov(&self, state: &State) -> u32 {
+        match state.history_mov_stack.last() {
+            Some((from, to)) => {
+                self.counter_mov_table[state.player as usize - 1][*from][*to]
+            },
+            None => 0
+        }
     }
 
     #[inline]

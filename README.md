@@ -22,8 +22,9 @@ UCI chess engine written in Rust!
 - Passed-Pawn Extensions
 - Singular Extensions
 - Late-Move Reductions
-- Relative History Heuristic
 - Killer Heuristic
+- Relative History Heuristic
+- Counter-Move Heuristic
 - Null-Move Pruning
 - Delta Pruning
 - Reversed Futility Pruning

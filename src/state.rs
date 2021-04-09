@@ -68,6 +68,7 @@ pub struct State {
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
     pub history_pos_stack: Vec<(u64, u8)>,
+    pub history_mov_stack: Vec<(usize, usize)>,
     pub non_cap_mov_count_stack: Vec<u16>,
     pub king_index_stack: Vec<(usize, usize)>,
 
@@ -184,6 +185,7 @@ impl State {
             enp_sqr_stack: Vec::new(),
             cas_rights_stack: Vec::new(),
             history_pos_stack: Vec::new(),
+            history_mov_stack: Vec::new(),
             non_cap_mov_count_stack: Vec::new(),
             king_index_stack: Vec::new(),
 
@@ -238,6 +240,7 @@ impl State {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
         self.history_pos_stack.push((self.hash_key, self.player));
+        self.history_mov_stack.push((from, to));
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
         self.enp_square = 0;
@@ -257,6 +260,7 @@ impl State {
     pub fn undo_mov(&mut self, from: usize, to: usize, mov_type: u8) {
         self.cas_rights = self.cas_rights_stack.pop().unwrap();
         self.enp_square = self.enp_sqr_stack.pop().unwrap();
+        self.history_mov_stack.pop();
         self.non_cap_mov_count = self.non_cap_mov_count_stack.pop().unwrap();
         let (wk_index, bk_index) = self.king_index_stack.pop().unwrap();
         self.wk_index = wk_index;
