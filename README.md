@@ -12,6 +12,7 @@ UCI chess engine written in Rust!
 - Negamax Search with Alpha-Beta Pruning
 - Quiescence Search
 - Iterative Deepening
+- Internal Iterative Deepening
 - Aspiration Window
 - Bitboards
 - Zobrist Hashing
@@ -23,12 +24,11 @@ UCI chess engine written in Rust!
 - Late-Move Reductions
 - Relative History Heuristic
 - Killer Heuristic
-- Tapered Evaluation
-- Piece-Square Tables
 - Null-Move Pruning
 - Delta Pruning
 - Reversed Futility Pruning
 - Mate Distance Pruning
+- Piece-Square Tables
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/learn/get-started)

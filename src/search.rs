@@ -26,6 +26,9 @@ const MAX_WD_EXTENSION_COUNT: i32 = 10;
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
+const IID_DEPTH: u8 = 7;
+const IID_DEPTH_R: u8 = 2;
+
 const MAX_DEPTH: u8 = 128;
 
 const DELTA_MARGIN: i32 = 200;
@@ -319,14 +322,14 @@ impl SearchEngine {
         let in_endgame = eval::is_in_endgame(state);
 
         if !on_pv && !on_extend && !in_check && !in_endgame && depth <= FP_DEPTH {
-            let (score, is_draw) = eval::eval_materials(state);
+            let (material_score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
                 return 0
             }
 
-            if score - FUTILITY_MARGIN[depth as usize] >= beta {
-                let score = eval::eval_state(state, score);
+            if material_score - FUTILITY_MARGIN[depth as usize] >= beta {
+                let score = eval::eval_state(state, material_score);
 
                 if score - FUTILITY_MARGIN[depth as usize] >= beta {
                     return beta
@@ -353,6 +356,33 @@ impl SearchEngine {
 
             if scout_score >= beta && scout_score != 0 {
                 return beta
+            }
+        }
+
+        if on_pv && pv_mov == 0 && depth >= IID_DEPTH {
+            self.ab_search(state, in_check, on_extend, alpha, beta, depth - IID_DEPTH_R, ply);
+
+            unsafe {
+                if ABORT_SEARCH {
+                    return alpha
+                }
+            }
+
+            match self.get_hash(state, depth) {
+                Some(result) => {
+                    pv_mov = result.mov;
+
+                    let (found_lowerbound, lb_score) = result.lower_bound;
+
+                    if found_lowerbound {
+                        if lb_score > alpha {
+                            if beta - alpha > 1 {
+                                is_singular_mov = true;
+                            }
+                        }
+                    }
+                },
+                _ => (),
             }
         }
 
@@ -1119,7 +1149,7 @@ mod tests {
         zob_keys::init();
         bitmask::init();
 
-        let mut state = State::new("4r1k1/1bq2ppp/8/r4p1Q/pPpP1P2/N3p1PP/PP3P2/3RR1K1 b - - 0 30");
+        let mut state = State::new("r2q1rk1/p3bppp/b1n1p3/2Nn4/8/5NP1/PPQBPPBP/R3K2R b KQ - 0 12");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1130,8 +1160,8 @@ mod tests {
         let best_mov = search_engine.search(&mut state, time_capacity, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("c7"));
-        assert_eq!(to, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(from, util::map_sqr_notation_to_index("c6"));
+        assert_eq!(to, util::map_sqr_notation_to_index("b4"));
     }
 
     #[test]
