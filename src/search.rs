@@ -664,7 +664,7 @@ impl SearchEngine {
             return 0
         }
 
-        if material_score - DELTA_MARGIN >= beta {
+        if material_score - DELTA_MARGIN >= beta && !eval::is_in_endgame(state) {
             return beta
         }
 
