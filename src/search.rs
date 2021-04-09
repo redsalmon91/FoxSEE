@@ -17,6 +17,8 @@ const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_CAP_BASE_VAL: i32 = 10000000;
+const SORTING_HISTORY_BASE_VAL: i32 = 10000;
+
 const SORTING_Q_VAL: i32 = 1000;
 const SORTING_HALF_PAWN_VAL: i32 = 50;
 
@@ -35,8 +37,6 @@ const DELTA_MARGIN: i32 = 200;
 
 const FP_DEPTH: u8 = 7;
 const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 900, 1020, 1140];
-
-const SQR_VAL_REDUCE_FACTOR: i32 = 10;
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
@@ -490,9 +490,14 @@ impl SearchEngine {
                 ordered_mov_list.push((SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_HALF_PAWN_VAL, gives_check, mov));
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
-                let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                let sqr_val_diff = eval::get_square_val_diff(state.squares[from], from, to) / SQR_VAL_REDUCE_FACTOR;
-                ordered_mov_list.push((history_score / butterfly_score + sqr_val_diff, gives_check, mov));
+
+                if history_score != 0 {
+                    let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
+                    ordered_mov_list.push((SORTING_HISTORY_BASE_VAL + history_score / butterfly_score, gives_check, mov));
+                } else {
+                    let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);  
+                    ordered_mov_list.push((sqr_val_diff, gives_check, mov));
+                }
             }
         }
 
