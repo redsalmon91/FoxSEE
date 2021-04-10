@@ -8,8 +8,8 @@ UCI chess engine written in Rust!
 
 ## Features
 
-- Principal Variance Search
 - Negamax Search with Alpha-Beta Pruning
+- Principal Variance Search
 - Quiescence Search
 - Iterative Deepening
 - Internal Iterative Deepening
@@ -19,7 +19,6 @@ UCI chess engine written in Rust!
 - Transposition Table
 - Static Exchange Evalution (SEE)
 - Check Extensions
-- Passed-Pawn Extensions
 - Singular Extensions
 - Late-Move Reductions
 - Killer Heuristic
@@ -41,11 +40,11 @@ This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCI
 Aside from the standard set of UCI commands, `perft x` is also supported.
 
 ## Limitations
-- Search `x` nodes is currently not supported
-- Search `mate` in `x` moves is currently not supported
-- Search specific moves under a given position is currently not supported
-- `ponder` is currently not supported
-- Big-endian systems are not supported
+- Search `x` nodes NOT not supported
+- Search `mate` in `x` moves NOT not supported
+- Search specific moves under a given position is NOT supported
+- `ponder` is currently NOT supported
+- Big-endian systems are NOT supported
 
 ## References
 [Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
