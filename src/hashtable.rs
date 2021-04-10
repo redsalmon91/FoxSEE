@@ -5,24 +5,26 @@
 #[derive(Clone, Copy)]
 struct TableEntry {
     key: u64,
-    exact: (i32, u8),
-    lower_bound: (i32, u8),
-    upper_bound: (i32, u8),
     age: u16,
     depth: u8,
     mov: u32,
+    safe_check: u16,
+    exact: (i32, u8),
+    lower_bound: (i32, u8),
+    upper_bound: (i32, u8),
 }
 
 impl TableEntry {
     fn empty() -> Self {
         TableEntry {
             key: 0,
-            exact: (0,0),
-            lower_bound: (0,0),
-            upper_bound: (0,0),
             age: 0,
             depth: 0,
             mov: 0,
+            safe_check: 0,
+            exact: (0,0),
+            lower_bound: (0,0),
+            upper_bound: (0,0),
         }
     }
 }
@@ -52,10 +54,10 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn get(&self, key: u64, depth: u8) -> Option<LookupResult> {
+    pub fn get(&self, key: u64, safe_check: u16, depth: u8) -> Option<LookupResult> {
         let entry = &self.table[(key & self.mod_base) as usize];
 
-        if entry.key == key {
+        if entry.key == key && entry.safe_check == safe_check {
             let mut result = LookupResult {
                 exact: (false, 0),
                 lower_bound: (false, 0),
@@ -87,37 +89,10 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn set(&mut self, key: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) {
+    pub fn set(&mut self, key: u64, safe_check: u16, depth: u8, age: u16, flag: u8, score: i32, mov: u32) {
         let mut entry = &mut self.table[(key & self.mod_base) as usize];
 
-        if entry.key != key {
-            if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
-                let mut new_entry = TableEntry {
-                    key,
-                    exact: (0, 0),
-                    lower_bound: (0, 0),
-                    upper_bound: (0, 0),
-                    depth,
-                    age,
-                    mov,
-                };
-
-                match flag {
-                    HASH_TYPE_EXACT => {
-                        new_entry.exact = (score, depth);
-                    },
-                    HASH_TYPE_BETA => {
-                        new_entry.lower_bound = (score, depth);
-                    },
-                    HASH_TYPE_ALPHA => {
-                        new_entry.upper_bound = (score, depth);
-                    },
-                    _ => {},
-                }
-
-                self.table[(key & self.mod_base) as usize] = new_entry;
-            }
-        } else {
+        if entry.key == key && entry.safe_check == safe_check {
             match flag {
                 HASH_TYPE_EXACT => {
                     let (_saved_score, saved_depth) = entry.exact;
@@ -148,6 +123,34 @@ impl DepthPreferredHashTable {
             }
 
             entry.mov = mov;
+        } else {
+            if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
+                let mut new_entry = TableEntry {
+                    key,
+                    safe_check,
+                    depth,
+                    age,
+                    mov,
+                    exact: (0, 0),
+                    lower_bound: (0, 0),
+                    upper_bound: (0, 0),
+                };
+
+                match flag {
+                    HASH_TYPE_EXACT => {
+                        new_entry.exact = (score, depth);
+                    },
+                    HASH_TYPE_BETA => {
+                        new_entry.lower_bound = (score, depth);
+                    },
+                    HASH_TYPE_ALPHA => {
+                        new_entry.upper_bound = (score, depth);
+                    },
+                    _ => {},
+                }
+
+                self.table[(key & self.mod_base) as usize] = new_entry;
+            }
         }
     }
 

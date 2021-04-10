@@ -40,6 +40,8 @@ const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 420, 540, 660, 780, 90
 
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
+const SAFE_CHECK_SHIFT: usize = 24;
+
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
 
@@ -822,12 +824,12 @@ impl SearchEngine {
 
     #[inline]
     fn get_hash(&self, state: &State, depth: u8) -> Option<LookupResult> {
-        self.depth_preferred_hash_table.get(get_hash_key(state), depth)
+        self.depth_preferred_hash_table.get(get_hash_key(state), (state.hash_key >> SAFE_CHECK_SHIFT) as u16, depth)
     }
 
     #[inline]
     fn set_hash(&mut self, state: &State, depth: u8, age: u16, hash_flag: u8, score: i32, mov: u32) {
-        self.depth_preferred_hash_table.set(get_hash_key(state), depth, age, hash_flag, score, mov);
+        self.depth_preferred_hash_table.set(get_hash_key(state), (state.hash_key >> SAFE_CHECK_SHIFT) as u16, depth, age, hash_flag, score, mov);
     }
 
     #[inline]
