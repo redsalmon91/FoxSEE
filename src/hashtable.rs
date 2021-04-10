@@ -5,26 +5,32 @@
 #[derive(Clone, Copy)]
 struct TableEntry {
     key: u64,
-    age: u16,
-    depth: u8,
-    mov: u32,
     safe_check: u16,
-    exact: (i32, u8),
-    lower_bound: (i32, u8),
-    upper_bound: (i32, u8),
+    age: u16,
+    mov: u32,
+    depth: u8,
+    exact_score: i32,
+    exact_depth: u8,
+    lb_score: i32,
+    lb_depth: u8,
+    ub_score: i32,
+    ub_depth: u8,
 }
 
 impl TableEntry {
     fn empty() -> Self {
         TableEntry {
             key: 0,
-            age: 0,
-            depth: 0,
-            mov: 0,
             safe_check: 0,
-            exact: (0,0),
-            lower_bound: (0,0),
-            upper_bound: (0,0),
+            age: 0,
+            mov: 0,
+            depth: 0,
+            exact_score: 0,
+            exact_depth: 0,
+            lb_score: 0,
+            lb_depth: 0,
+            ub_score: 0,
+            ub_depth: 0,
         }
     }
 }
@@ -65,22 +71,16 @@ impl DepthPreferredHashTable {
                 mov: entry.mov,
             };
 
-            let (score, score_depth) = entry.exact;
-
-            if score_depth >= depth {
-                result.exact = (true, score);
+            if entry.exact_depth >= depth {
+                result.exact = (true, entry.exact_score);
             }
 
-            let (score, score_depth) = entry.lower_bound;
-
-            if score_depth >= depth {
-                result.lower_bound = (true, score);
+            if entry.lb_depth >= depth {
+                result.lower_bound = (true, entry.lb_score);
             }
 
-            let (score, score_depth) = entry.upper_bound;
-
-            if score_depth >= depth {
-                result.upper_bound = (true, score);
+            if entry.ub_depth >= depth {
+                result.upper_bound = (true, entry.ub_score);
             }
 
             Some(result)
@@ -95,24 +95,21 @@ impl DepthPreferredHashTable {
         if entry.key == key && entry.safe_check == safe_check {
             match flag {
                 HASH_TYPE_EXACT => {
-                    let (_saved_score, saved_depth) = entry.exact;
-
-                    if depth > saved_depth {
-                        entry.exact = (score, depth);
+                    if depth > entry.exact_depth {
+                        entry.exact_score = score;
+                        entry.exact_depth = depth;
                     }
                 },
                 HASH_TYPE_BETA => {
-                    let (saved_score, saved_depth) = entry.lower_bound;
-
-                    if depth > saved_depth || (depth == saved_depth && score > saved_score) {
-                        entry.lower_bound = (score, depth);
+                    if depth > entry.lb_depth || (depth == entry.lb_depth && score > entry.lb_score) {
+                        entry.lb_score = score;
+                        entry.lb_depth = depth;
                     }
                 },
                 HASH_TYPE_ALPHA => {
-                    let (saved_score, saved_depth) = entry.upper_bound;
-
-                    if depth > saved_depth || (depth == saved_depth && score < saved_score) {
-                        entry.upper_bound = (score, depth);
+                    if depth > entry.ub_depth || (depth == entry.ub_depth && score < entry.ub_score) {
+                        entry.ub_score = score;
+                        entry.ub_depth = depth;
                     }
                 },
                 _ => {},
@@ -128,23 +125,29 @@ impl DepthPreferredHashTable {
                 let mut new_entry = TableEntry {
                     key,
                     safe_check,
-                    depth,
                     age,
                     mov,
-                    exact: (0, 0),
-                    lower_bound: (0, 0),
-                    upper_bound: (0, 0),
+                    depth,
+                    exact_score: 0,
+                    exact_depth: 0,
+                    lb_score: 0,
+                    lb_depth: 0,
+                    ub_score: 0,
+                    ub_depth: 0,
                 };
 
                 match flag {
                     HASH_TYPE_EXACT => {
-                        new_entry.exact = (score, depth);
+                        new_entry.exact_score = score;
+                        new_entry.exact_depth = depth;
                     },
                     HASH_TYPE_BETA => {
-                        new_entry.lower_bound = (score, depth);
+                        new_entry.lb_score = score;
+                        new_entry.lb_depth = depth;
                     },
                     HASH_TYPE_ALPHA => {
-                        new_entry.upper_bound = (score, depth);
+                        new_entry.ub_score = score;
+                        new_entry.ub_depth = depth;
                     },
                     _ => {},
                 }
@@ -158,4 +161,3 @@ impl DepthPreferredHashTable {
         self.table = vec![TableEntry::empty(); self.mod_base as usize + 1];
     }
 }
-

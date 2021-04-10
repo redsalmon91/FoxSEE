@@ -3,13 +3,13 @@
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "7.2.3";
+pub static VERSION: &str = "7.2.5";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 128;
-pub const DEFAULT_HASH_SIZE_UNIT: usize = 8388608;
+pub const DEFAULT_HASH_SIZE_UNIT: usize = 4194304;
 pub const MIN_HASH_SIZE_MB: usize = 1;
-pub const MIN_HASH_SIZE_UNIT: usize = 65536;
+pub const MIN_HASH_SIZE_UNIT: usize = 32768;
 pub const MAX_HASH_SIZE_MB: usize = 512;
 
 pub const BOARD_SIZE: usize = 64;
