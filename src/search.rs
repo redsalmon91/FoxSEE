@@ -27,13 +27,13 @@ const SORTING_HALF_P_VAL: i32 = 50;
 const WD_SIZE: i32 = 10;
 const MAX_WD_EXTENSION_COUNT: i32 = 10;
 
+const MAX_DEPTH: u8 = 128;
+
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
 const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
-
-const MAX_DEPTH: u8 = 128;
 
 const DELTA_MARGIN: i32 = 200;
 
@@ -271,7 +271,6 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply);
         }
 
-        let original_alpha = alpha;
         let on_pv = beta - alpha > 1;
 
         let mating_val = eval::MATE_VAL - ply as i32;
@@ -291,6 +290,8 @@ impl SearchEngine {
 
             alpha = mated_val;
         }
+
+        let original_alpha = alpha;
 
         let mut hash_mov = 0;
         let mut is_singular_mov = false;
@@ -314,10 +315,10 @@ impl SearchEngine {
 
                     if lb_score > alpha {
                         alpha = lb_score;
+                    }
 
-                        if beta - alpha > 1 {
-                            is_singular_mov = true;
-                        }
+                    if on_pv {
+                        is_singular_mov = true;
                     }
                 }
 

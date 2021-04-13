@@ -15,7 +15,7 @@ pub static TERM_VAL: i32 = 10000;
 static Q_VAL: i32 = 1200;
 static R_VAL: i32 = 600;
 static B_VAL: i32 = 400;
-static N_VAL: i32 = 400;
+static N_VAL: i32 = 390;
 static P_VAL: i32 = 100;
 
 static EG_PAWN_ESSENTIAL_VAL: i32 = 90;
