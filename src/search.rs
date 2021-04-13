@@ -435,7 +435,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture {
+                if !is_capture && promo == 0 {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, hash_mov, score, depth);
                     self.update_counter_mov_table(state, hash_mov);
@@ -597,7 +597,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture {
+                if !is_capture && promo == 0 {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, mov, score, depth);
                     self.update_counter_mov_table(state, mov);
@@ -608,7 +608,7 @@ impl SearchEngine {
 
                             let is_capture = state.squares[to] != 0;
 
-                            if !is_capture {
+                            if !is_capture && promo == 0 {
                                 self.update_butterfly_table(state.player, from, to);
                             }
 
@@ -619,7 +619,7 @@ impl SearchEngine {
 
                                 let is_capture = state.squares[to] != 0;
 
-                                if !is_capture {
+                                if !is_capture && promo == 0 {
                                     self.update_butterfly_table(state.player, from, to);
                                 }
                             }
@@ -631,7 +631,7 @@ impl SearchEngine {
 
                                 let is_capture = state.squares[to] != 0;
 
-                                if !is_capture {
+                                if !is_capture && promo == 0 {
                                     self.update_butterfly_table(state.player, from, to);
                                 }
                             }
@@ -676,7 +676,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                if !is_capture {
+                if !is_capture && promo == 0 {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, hash_mov, score, depth);
                     self.update_counter_mov_table(state, hash_mov);
@@ -687,7 +687,7 @@ impl SearchEngine {
                 return score
             }
 
-            if !is_capture {
+            if !is_capture && promo == 0 {
                 self.update_butterfly_table(state.player, from, to);
             }
 
