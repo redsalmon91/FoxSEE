@@ -176,7 +176,9 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                best_mov = pv_table[0];
+                if score > alpha && score < beta {
+                    best_mov = pv_table[0];
+                }
 
                 unsafe {
                     let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
@@ -269,6 +271,9 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply);
         }
 
+        let original_alpha = alpha;
+        let on_pv = beta - alpha > 1;
+
         let mating_val = eval::MATE_VAL - ply as i32;
         if mating_val < beta {
             if alpha >= mating_val {
@@ -286,8 +291,6 @@ impl SearchEngine {
 
             alpha = mated_val;
         }
-
-        let original_alpha = alpha;
 
         let mut hash_mov = 0;
         let mut is_singular_mov = false;
@@ -332,8 +335,6 @@ impl SearchEngine {
             },
             None => {},
         }
-
-        let on_pv = beta - alpha > 1;
 
         if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
             let (material_score, is_draw) = eval::eval_materials(state);
