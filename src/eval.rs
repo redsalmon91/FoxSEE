@@ -32,7 +32,7 @@ static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
 static DOUBLED_PAWN_PEN: i32 = -20;
 static ISOLATED_PAWN_PEN: i32 = -10;
 
-static WEAK_K_ATTACK_VAL: i32 = 5;
+static WEAK_K_ATTACK_VAL: i32 = 10;
 static STRONG_K_ATTACK_VAL: i32 = 20;
 
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
@@ -951,7 +951,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WP[index];
                 w_feature_map.eg_sqr_point += SQR_TABLE_WP_ENDGAME[index];
 
-                w_feature_map.strong_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
+                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
             },
             def::WN => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WN[index];
@@ -998,7 +998,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
                 b_feature_map.eg_sqr_point += SQR_TABLE_BP_ENDGAME[index];
 
-                b_feature_map.strong_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
+                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
             },
             def::BN => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BN[index];
