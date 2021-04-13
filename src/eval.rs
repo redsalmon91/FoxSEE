@@ -33,7 +33,7 @@ static DOUBLED_PAWN_PEN: i32 = -20;
 static ISOLATED_PAWN_PEN: i32 = -10;
 
 static WEAK_K_ATTACK_VAL: i32 = 5;
-static STRONG_K_ATTACK_VAL: i32 = 10;
+static STRONG_K_ATTACK_VAL: i32 = 20;
 
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 

@@ -3,6 +3,7 @@
  */
 
 use crate::{
+    bitmask,
     def,
     eval,
     hashtable::{DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
@@ -483,6 +484,7 @@ impl SearchEngine {
             state.do_mov(from, to, tp, promo);
 
             let gives_check = mov_table::is_in_check(state, state.player);
+            let is_passer = is_passed_pawn(state, state.squares[to], to);
 
             state.undo_mov(from, to, tp);
 
@@ -500,12 +502,16 @@ impl SearchEngine {
                 } else {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                 }
+            } else if promo != 0 {
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + eval::val_of(promo);
             } else if mov == counter_mov {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL;
             } else if mov == primary_killer {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_HALF_P_VAL;
             } else if mov == secondary_killer {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL;
+            } else if gives_check || is_passer {
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
@@ -552,7 +558,7 @@ impl SearchEngine {
             }
 
             let score = if depth > 1 && mov_count > 1 && !extended {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64 + depth as f64).sqrt() as u8).min(depth), ply + 1);
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
@@ -991,6 +997,23 @@ fn get_hash_key(state: &State) -> u64 {
     }
 
     key
+}
+
+#[inline]
+fn is_passed_pawn(state: &State, moving_piece: u8, to_index: usize) -> bool {
+    let bitmask = bitmask::get_bitmask();
+
+    match moving_piece {
+        def::WP => {
+            bitmask.wp_forward_masks[to_index] & state.bitboard.b_pawn == 0
+            && bitmask.file_masks[to_index] & state.bitboard.b_all == 0
+        },
+        def::BP => {
+            bitmask.bp_forward_masks[to_index] & state.bitboard.w_pawn == 0
+            && bitmask.file_masks[to_index] & state.bitboard.w_all == 0
+        },
+        _ => false
+    }
 }
 
 fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
