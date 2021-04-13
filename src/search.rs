@@ -882,10 +882,13 @@ impl SearchEngine {
                 self.primary_killer_table[ply_index] = (mov, score, depth);
                 self.secondary_killer_table[ply_index] = (primary_killer_mov, killer_score, killer_depth);
             } else {
-                self.secondary_killer_table[ply_index] = (mov, score, depth);
+                let (_secondary_killer_mov, killer_score, killer_depth) = self.secondary_killer_table[ply_index];
+                if score >= killer_score && depth >= killer_depth {
+                    self.secondary_killer_table[ply_index] = (mov, score, depth);
+                }
             }
         } else {
-            self.secondary_killer_table[ply_index] = (mov, score, depth);
+            self.primary_killer_table[ply_index] = (mov, score, depth);
         }
     }
 
