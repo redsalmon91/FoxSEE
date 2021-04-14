@@ -36,6 +36,8 @@ static WEAK_K_ATTACK_VAL: i32 = 10;
 static STRONG_K_ATTACK_VAL: i32 = 20;
 
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
+static KING_EXPO_PEN: i32 = -10;
+static KING_COMPLETE_EXPO_PEN: i32 = -50;
 
 static ROOK_OPEN_VAL: i32 = 20;
 
@@ -480,6 +482,36 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     if state.bitboard.w_queen != 0 {
         if (state.cas_rights | state.cas_history) & 0b0011 == 0 {
             midgame_positional_score -= KING_LOST_CAS_RIGHTS_PEN;
+        }
+    }
+
+    let bitmask = bitmask::get_bitmask();
+
+    let wk_pawn_cover_mask = bitmask.wk_attack_zone_masks[state.wk_index] & state.bitboard.w_pawn;
+    if wk_pawn_cover_mask == 0 {
+        midgame_positional_score += KING_COMPLETE_EXPO_PEN;
+    } else {
+        let wk_pawn_cover_count = wk_pawn_cover_mask.count_ones() as i32;
+        if wk_pawn_cover_count < 3 {
+            midgame_positional_score += KING_EXPO_PEN;
+
+            if wk_pawn_cover_count < 2 {
+                midgame_positional_score += KING_EXPO_PEN;
+            }
+        }
+    }
+
+    let bk_pawn_cover_mask = bitmask.bk_attack_zone_masks[state.bk_index] & state.bitboard.b_pawn;
+    if bk_pawn_cover_mask == 0 {
+        midgame_positional_score -= KING_COMPLETE_EXPO_PEN;
+    } else {
+        let bk_pawn_cover_count = bk_pawn_cover_mask.count_ones() as i32;
+        if bk_pawn_cover_count < 3 {
+            midgame_positional_score -= KING_EXPO_PEN;
+
+            if bk_pawn_cover_count < 2 {
+                midgame_positional_score -= KING_EXPO_PEN;
+            }
         }
     }
 
