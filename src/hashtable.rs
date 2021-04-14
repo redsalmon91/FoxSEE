@@ -95,9 +95,12 @@ impl DepthPreferredHashTable {
         if entry.key == key && entry.safe_check == safe_check {
             match flag {
                 HASH_TYPE_EXACT => {
-                    if depth > entry.exact_depth {
+                    if depth >= entry.exact_depth {
                         entry.exact_score = score;
                         entry.exact_depth = depth;
+                    }
+
+                    if depth >= entry.depth {
                         entry.mov = mov;
                     }
                 },
@@ -105,6 +108,9 @@ impl DepthPreferredHashTable {
                     if depth > entry.lb_depth || (depth == entry.lb_depth && score > entry.lb_score) {
                         entry.lb_score = score;
                         entry.lb_depth = depth;
+                    }
+
+                    if depth >= entry.depth {
                         entry.mov = mov;
                     }
                 },
@@ -112,6 +118,9 @@ impl DepthPreferredHashTable {
                     if depth > entry.ub_depth || (depth == entry.ub_depth && score < entry.ub_score) {
                         entry.ub_score = score;
                         entry.ub_depth = depth;
+                    }
+
+                    if depth >= entry.depth {
                         entry.mov = mov;
                     }
                 },

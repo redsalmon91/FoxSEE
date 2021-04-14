@@ -37,9 +37,6 @@ const IID_DEPTH_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
 
-const FP_DEPTH: u8 = 7;
-const FUTILITY_MARGIN: [i32; FP_DEPTH as usize + 1] = [0, 400, 500, 600, 700, 800, 900, 1000];
-
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
 static mut NODE_COUNT: u64 = 0;
@@ -53,7 +50,6 @@ struct OrderedMov {
     mov: u32,
     sort_score: i32,
     gives_check: bool,
-    allow_lmr: bool,
 }
 
 struct OrderedCap {
@@ -139,7 +135,6 @@ impl SearchEngine {
         self.counter_mov_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
-        self.depth_preferred_hash_table.clear();
 
         unsafe {
             ABORT_SEARCH = false;
@@ -338,22 +333,6 @@ impl SearchEngine {
             None => {},
         }
 
-        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
-            let (material_score, is_draw) = eval::eval_materials(state);
-
-            if is_draw {
-                return 0
-            }
-
-            if material_score - FUTILITY_MARGIN[depth as usize] >= beta {
-                let score = eval::eval_state(state, material_score);
-
-                if score - FUTILITY_MARGIN[depth as usize] >= beta {
-                    return beta
-                }
-            }
-        }
-
         if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
@@ -495,7 +474,6 @@ impl SearchEngine {
                 mov,
                 gives_check,
                 sort_score: 0,
-                allow_lmr: false,
             };
 
             if state.squares[to] != 0 {
@@ -516,7 +494,6 @@ impl SearchEngine {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL;
             } else if gives_check || is_passer {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
-                ordered_mov.allow_lmr = true;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
@@ -527,8 +504,6 @@ impl SearchEngine {
                     let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
                     ordered_mov.sort_score = sqr_val_diff;
                 }
-
-                ordered_mov.allow_lmr = true;
             }
 
             ordered_mov_list.push(ordered_mov);
@@ -564,7 +539,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
+            let score = if depth > 1 && mov_count > 1 && !extended {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
@@ -689,7 +664,7 @@ impl SearchEngine {
                     self.update_counter_mov_table(state, hash_mov);
                 }
 
-                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, hash_mov);
+                self.set_hash(state, depth+1, state.full_mov_count, HASH_TYPE_BETA, score, hash_mov);
 
                 return score
             }
