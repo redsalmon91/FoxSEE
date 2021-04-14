@@ -53,6 +53,7 @@ struct OrderedMov {
     mov: u32,
     sort_score: i32,
     gives_check: bool,
+    allow_lmr: bool,
 }
 
 struct OrderedCap {
@@ -494,6 +495,7 @@ impl SearchEngine {
                 mov,
                 gives_check,
                 sort_score: 0,
+                allow_lmr: false,
             };
 
             if state.squares[to] != 0 {
@@ -514,6 +516,7 @@ impl SearchEngine {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL;
             } else if gives_check || is_passer {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
+                ordered_mov.allow_lmr = true;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
@@ -524,6 +527,8 @@ impl SearchEngine {
                     let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
                     ordered_mov.sort_score = sqr_val_diff;
                 }
+
+                ordered_mov.allow_lmr = true;
             }
 
             ordered_mov_list.push(ordered_mov);
@@ -559,7 +564,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !extended {
+            let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
