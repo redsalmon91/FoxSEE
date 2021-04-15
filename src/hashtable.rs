@@ -95,7 +95,7 @@ impl DepthPreferredHashTable {
         if entry.key == key && entry.safe_check == safe_check {
             match flag {
                 HASH_TYPE_EXACT => {
-                    if depth >= entry.exact_depth {
+                    if depth > entry.exact_depth {
                         entry.exact_score = score;
                         entry.exact_depth = depth;
                     }

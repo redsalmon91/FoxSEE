@@ -132,7 +132,6 @@ impl SearchEngine {
 
         self.primary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
-        self.counter_mov_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
 
@@ -164,6 +163,28 @@ impl SearchEngine {
                 }
             }
 
+            if score <= alpha {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
+            if score >= beta {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    beta = eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
             let mut pv_table = [0; PV_TRACK_LENGTH];
             self.retrieve_pv(state, &mut pv_table, 0);
 
@@ -172,9 +193,7 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                if score > alpha && score < beta {
-                    best_mov = pv_table[0];
-                }
+                best_mov = pv_table[0];
 
                 unsafe {
                     let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
@@ -200,28 +219,6 @@ impl SearchEngine {
                 if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
                     break
                 }
-            }
-
-            if score <= alpha {
-                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
-                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
-                    window_extended_count += 1;
-                } else {
-                    alpha = -eval::MATE_VAL;
-                }
-
-                continue;
-            }
-
-            if score >= beta {
-                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
-                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
-                    window_extended_count += 1;
-                } else {
-                    beta = eval::MATE_VAL;
-                }
-
-                continue;
             }
 
             depth += 1;
@@ -260,7 +257,7 @@ impl SearchEngine {
         }
 
         if ply > 0 && state.is_draw() {
-            return 0
+            return 0;
         }
 
         if depth == 0 {
@@ -311,10 +308,10 @@ impl SearchEngine {
 
                     if lb_score > alpha {
                         alpha = lb_score;
-                    }
 
-                    if on_pv {
-                        is_singular_mov = true;
+                        if on_pv {
+                            is_singular_mov = true;
+                        }
                     }
                 }
 
@@ -350,7 +347,7 @@ impl SearchEngine {
                 }
             }
 
-            if scout_score >= beta && scout_score != 0 {
+            if scout_score != 0 && scout_score >= beta {
                 return beta
             }
         }
@@ -368,13 +365,11 @@ impl SearchEngine {
                 Some(result) => {
                     hash_mov = result.mov;
 
-                    let (found_lowerbound, lb_score) = result.lower_bound;
+                    if on_pv {
+                        let (found_lowerbound, lb_score) = result.lower_bound;
 
-                    if found_lowerbound {
-                        if lb_score > alpha {
-                            if beta - alpha > 1 {
-                                is_singular_mov = true;
-                            }
+                        if found_lowerbound && lb_score > alpha {
+                            is_singular_mov = true;
                         }
                     }
                 },
@@ -639,6 +634,8 @@ impl SearchEngine {
         }
 
         if is_singular_mov && !pv_extended {
+            let depth = depth + 1;
+
             let (from, to, tp, promo) = util::decode_u32_mov(hash_mov);
 
             let is_capture = state.squares[to] != 0;
@@ -647,7 +644,7 @@ impl SearchEngine {
 
             let gives_check = mov_table::is_in_check(state, state.player);
 
-            let score = -self.ab_search(state, gives_check, true, -beta, -alpha, depth, ply + 1);
+            let score = -self.ab_search(state, gives_check, true, -beta, -alpha, depth-1, ply + 1);
 
             state.undo_mov(from, to, tp);
 
@@ -673,20 +670,21 @@ impl SearchEngine {
                 self.update_butterfly_table(state.player, from, to);
             }
 
+            if score > alpha {
+                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, score, hash_mov);
+                return score;
+            }
+
             if score > best_score {
                 best_score = score;
                 best_mov = hash_mov;
-            }
-
-            if score > alpha {
-                alpha = score;
             }
         }
 
         if best_score <= -eval::TERM_VAL {
             if !in_check && self.in_stale_mate(state) {
                 self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
-                return 0
+                return 0;
             }
         }
 

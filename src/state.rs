@@ -19,7 +19,6 @@ const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const FEN_FULL_MOV_INDEX: usize = 5;
 
-const LAST_MOV_POS_INDEX: usize = 4;
 const MAX_NON_CAP_MOV_COUNT: usize = 100;
 
 const K_CAS_SQR_SIZE: usize = 4;
@@ -64,6 +63,17 @@ pub struct State {
 
     pub bitboard: BitBoard,
 
+    pub wp_count: i32,
+    pub wn_count: i32,
+    pub wb_count: i32,
+    pub wr_count: i32,
+    pub wq_count: i32,
+    pub bp_count: i32,
+    pub bn_count: i32,
+    pub bb_count: i32,
+    pub br_count: i32,
+    pub bq_count: i32,
+
     pub taken_piece_stack: Vec<u8>,
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
@@ -90,6 +100,16 @@ impl State {
         let mut hash_key = 0;
         let mut wk_index = 0;
         let mut bk_index = 0;
+        let mut wp_count = 0;
+        let mut wn_count = 0;
+        let mut wb_count = 0;
+        let mut wr_count = 0;
+        let mut wq_count = 0;
+        let mut bp_count = 0;
+        let mut bn_count = 0;
+        let mut bb_count = 0;
+        let mut br_count = 0;
+        let mut bq_count = 0;
         let mut bitboard = BitBoard::new();
 
         let rank_string_list: Vec<&str> = fen_segment_list[FEN_SQRS_INDEX].split("/").collect();
@@ -112,33 +132,43 @@ impl State {
                     match piece {
                         def::WP => {
                             bitboard.w_pawn ^= bitmask.index_masks[index];
+                            wp_count += 1;
                         },
                         def::BP => {
                             bitboard.b_pawn ^= bitmask.index_masks[index];
+                            bp_count += 1;
                         },
                         def::WN => {
                             bitboard.w_knight ^= bitmask.index_masks[index];
+                            wn_count += 1;
                         },
                         def::BN => {
                             bitboard.b_knight ^= bitmask.index_masks[index];
+                            bn_count += 1;
                         },
                         def::WB => {
                             bitboard.w_bishop ^= bitmask.index_masks[index];
+                            wb_count += 1;
                         },
                         def::BB => {
                             bitboard.b_bishop ^= bitmask.index_masks[index];
+                            bb_count += 1;
                         },
                         def::WR => {
                             bitboard.w_rook ^= bitmask.index_masks[index];
+                            wr_count += 1;
                         },
                         def::BR => {
                             bitboard.b_rook ^= bitmask.index_masks[index];
+                            br_count += 1;
                         },
                         def::WQ => {
                             bitboard.w_queen ^= bitmask.index_masks[index];
+                            wq_count += 1;
                         },
                         def::BQ => {
                             bitboard.b_queen ^= bitmask.index_masks[index];
+                            bq_count += 1;
                         },
                         def::WK => {
                             wk_index = index;
@@ -180,6 +210,16 @@ impl State {
             cas_history: 0,
 
             bitboard,
+            wp_count,
+            wn_count,
+            wb_count,
+            wr_count,
+            wq_count,
+            bp_count,
+            bn_count,
+            bb_count,
+            br_count,
+            bq_count,
 
             taken_piece_stack: Vec::new(),
             enp_sqr_stack: Vec::new(),
@@ -197,16 +237,7 @@ impl State {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize + 1);
 
-        if check_range < LAST_MOV_POS_INDEX {
-            return false
-        }
-
         if check_range >= MAX_NON_CAP_MOV_COUNT {
-            return true
-        }
-
-        let (pos_hash, _player) = self.history_pos_stack[history_len - LAST_MOV_POS_INDEX];
-        if pos_hash == self.hash_key {
             return true
         }
 
@@ -368,33 +399,43 @@ impl State {
             match taken_piece {
                 def::WP => {
                     self.bitboard.w_pawn ^= to_index_mask;
+                    self.wp_count -= 1;
                 },
                 def::WN => {
                     self.bitboard.w_knight ^= to_index_mask;
+                    self.wn_count -= 1;
                 },
                 def::WB => {
                     self.bitboard.w_bishop ^= to_index_mask;
+                    self.wb_count -= 1;
                 },
                 def::WR => {
                     self.bitboard.w_rook ^= to_index_mask;
+                    self.wr_count -= 1;
                 },
                 def::WQ => {
                     self.bitboard.w_queen ^= to_index_mask;
+                    self.wq_count -= 1;
                 },
                 def::BP => {
                     self.bitboard.b_pawn ^= to_index_mask;
+                    self.bp_count -= 1;
                 },
                 def::BN => {
                     self.bitboard.b_knight ^= to_index_mask;
+                    self.bn_count -= 1;
                 },
                 def::BB => {
                     self.bitboard.b_bishop ^= to_index_mask;
+                    self.bb_count -= 1;
                 },
                 def::BR => {
                     self.bitboard.b_rook ^= to_index_mask;
+                    self.br_count -= 1;
                 },
                 def::BQ => {
                     self.bitboard.b_queen ^= to_index_mask;
+                    self.bq_count -= 1;
                 },
                 _ => (),
             }
@@ -466,33 +507,43 @@ impl State {
             match taken_piece {
                 def::WP => {
                     self.bitboard.w_pawn ^= to_index_mask;
+                    self.wp_count += 1;
                 },
                 def::WN => {
                     self.bitboard.w_knight ^= to_index_mask;
+                    self.wn_count += 1;
                 },
                 def::WB => {
                     self.bitboard.w_bishop ^= to_index_mask;
+                    self.wb_count += 1;
                 },
                 def::WR => {
                     self.bitboard.w_rook ^= to_index_mask;
+                    self.wr_count += 1;
                 },
                 def::WQ => {
                     self.bitboard.w_queen ^= to_index_mask;
+                    self.wq_count += 1;
                 },
                 def::BP => {
                     self.bitboard.b_pawn ^= to_index_mask;
+                    self.bp_count += 1;
                 },
                 def::BN => {
                     self.bitboard.b_knight ^= to_index_mask;
+                    self.bn_count += 1;
                 },
                 def::BB => {
                     self.bitboard.b_bishop ^= to_index_mask;
+                    self.bb_count += 1;
                 },
                 def::BR => {
                     self.bitboard.b_rook ^= to_index_mask;
+                    self.br_count += 1;
                 },
                 def::BQ => {
                     self.bitboard.b_queen ^= to_index_mask;
+                    self.bq_count += 1;
                 },
                 _ => (),
             }
@@ -510,36 +561,46 @@ impl State {
             self.bitboard.w_pawn ^= from_index_mask;
             self.bitboard.w_all ^= from_index_mask;
             self.bitboard.w_all ^= to_index_mask;
+            self.wp_count -= 1;
         } else {
             self.bitboard.b_pawn ^= from_index_mask;
             self.bitboard.b_all ^= from_index_mask;
             self.bitboard.b_all ^= to_index_mask;
+            self.bp_count -= 1;
         }
 
         match promo {
             def::WN => {
                 self.bitboard.w_knight ^= to_index_mask;
+                self.wn_count += 1;
             },
             def::WB => {
                 self.bitboard.w_bishop ^= to_index_mask;
+                self.wb_count += 1;
             },
             def::WR => {
                 self.bitboard.w_rook ^= to_index_mask;
+                self.wr_count += 1;
             },
             def::WQ => {
                 self.bitboard.w_queen ^= to_index_mask;
+                self.wq_count += 1;
             },
             def::BN => {
                 self.bitboard.b_knight ^= to_index_mask;
+                self.bn_count += 1;
             },
             def::BB => {
                 self.bitboard.b_bishop ^= to_index_mask;
+                self.bb_count += 1;
             },
             def::BR => {
                 self.bitboard.b_rook ^= to_index_mask;
+                self.br_count += 1;
             },
             def::BQ => {
                 self.bitboard.b_queen ^= to_index_mask;
+                self.bq_count += 1;
             },
             _ => (),
         }
@@ -558,27 +619,35 @@ impl State {
             match taken_piece {
                 def::WN => {
                     self.bitboard.w_knight ^= to_index_mask;
+                    self.wn_count -= 1;
                 },
                 def::WB => {
                     self.bitboard.w_bishop ^= to_index_mask;
+                    self.wb_count -= 1;
                 },
                 def::WR => {
                     self.bitboard.w_rook ^= to_index_mask;
+                    self.wr_count -= 1;
                 },
                 def::WQ => {
                     self.bitboard.w_queen ^= to_index_mask;
+                    self.wq_count -= 1;
                 },
                 def::BN => {
                     self.bitboard.b_knight ^= to_index_mask;
+                    self.bn_count -= 1;
                 },
                 def::BB => {
                     self.bitboard.b_bishop ^= to_index_mask;
+                    self.bb_count -= 1;
                 },
                 def::BR => {
                     self.bitboard.b_rook ^= to_index_mask;
+                    self.br_count -= 1;
                 },
                 def::BQ => {
                     self.bitboard.b_queen ^= to_index_mask;
+                    self.bq_count -= 1;
                 },
                 _ => (),
             }
@@ -611,36 +680,46 @@ impl State {
             self.bitboard.w_pawn ^= from_index_mask;
             self.bitboard.w_all ^= from_index_mask;
             self.bitboard.w_all ^= to_index_mask;
+            self.wp_count += 1;
         } else {
             self.bitboard.b_pawn ^= from_index_mask;
             self.bitboard.b_all ^= from_index_mask;
             self.bitboard.b_all ^= to_index_mask;
+            self.bp_count += 1;
         }
 
         match promo {
             def::WN => {
                 self.bitboard.w_knight ^= to_index_mask;
+                self.wn_count -= 1;
             },
             def::WB => {
                 self.bitboard.w_bishop ^= to_index_mask;
+                self.wb_count -= 1;
             },
             def::WR => {
                 self.bitboard.w_rook ^= to_index_mask;
+                self.wr_count -= 1;
             },
             def::WQ => {
                 self.bitboard.w_queen ^= to_index_mask;
+                self.wq_count -= 1;
             },
             def::BN => {
                 self.bitboard.b_knight ^= to_index_mask;
+                self.bn_count -= 1;
             },
             def::BB => {
                 self.bitboard.b_bishop ^= to_index_mask;
+                self.bb_count -= 1;
             },
             def::BR => {
                 self.bitboard.b_rook ^= to_index_mask;
+                self.br_count -= 1;
             },
             def::BQ => {
                 self.bitboard.b_queen ^= to_index_mask;
+                self.bq_count -= 1;
             },
             _ => (),
         }
@@ -655,27 +734,35 @@ impl State {
             match taken_piece {
                 def::WN => {
                     self.bitboard.w_knight ^= to_index_mask;
+                    self.wn_count += 1;
                 },
                 def::WB => {
                     self.bitboard.w_bishop ^= to_index_mask;
+                    self.wb_count += 1;
                 },
                 def::WR => {
                     self.bitboard.w_rook ^= to_index_mask;
+                    self.wr_count += 1;
                 },
                 def::WQ => {
                     self.bitboard.w_queen ^= to_index_mask;
+                    self.wq_count += 1;
                 },
                 def::BN => {
                     self.bitboard.b_knight ^= to_index_mask;
+                    self.bn_count += 1;
                 },
                 def::BB => {
                     self.bitboard.b_bishop ^= to_index_mask;
+                    self.bb_count += 1;
                 },
                 def::BR => {
                     self.bitboard.b_rook ^= to_index_mask;
+                    self.br_count += 1;
                 },
                 def::BQ => {
                     self.bitboard.b_queen ^= to_index_mask;
+                    self.bq_count += 1;
                 },
                 _ => (),
             }
@@ -788,6 +875,8 @@ impl State {
                 self.bitboard.b_all ^= from_index_mask;
                 self.bitboard.b_pawn ^= to_index_mask;
                 self.bitboard.b_all ^= to_index_mask;
+
+                self.wp_count -= 1;
             },
             def::BP => {
                 self.bitboard.b_pawn ^= taken_index_mask;
@@ -797,6 +886,8 @@ impl State {
                 self.bitboard.w_all ^= from_index_mask;
                 self.bitboard.w_pawn ^= to_index_mask;
                 self.bitboard.w_all ^= to_index_mask;
+
+                self.bp_count -= 1;
             },
             _ => ()
         }
@@ -836,6 +927,8 @@ impl State {
                 self.bitboard.b_all ^= from_index_mask;
                 self.bitboard.b_pawn ^= to_index_mask;
                 self.bitboard.b_all ^= to_index_mask;
+
+                self.wp_count += 1;
             },
             def::BP => {
                 self.bitboard.b_pawn ^= taken_index_mask;
@@ -845,6 +938,8 @@ impl State {
                 self.bitboard.w_all ^= from_index_mask;
                 self.bitboard.w_pawn ^= to_index_mask;
                 self.bitboard.w_all ^= to_index_mask;
+
+                self.bp_count += 1;
             },
             _ => ()
         }

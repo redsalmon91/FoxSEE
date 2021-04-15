@@ -12,10 +12,10 @@ use crate::{
 pub static MATE_VAL: i32 = 20000;
 pub static TERM_VAL: i32 = 10000;
 
-static Q_VAL: i32 = 1000;
-static R_VAL: i32 = 525;
-static B_VAL: i32 = 350;
-static N_VAL: i32 = 350;
+static Q_VAL: i32 = 1200;
+static R_VAL: i32 = 600;
+static B_VAL: i32 = 400;
+static N_VAL: i32 = 400;
 static P_VAL: i32 = 100;
 
 static EG_PAWN_ESSENTIAL_VAL: i32 = 90;
@@ -341,24 +341,36 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     let bitboard = state.bitboard;
     let bitmask = bitmask::get_bitmask();
 
+    let w_queen_count = state.wq_count;
+    let w_rook_count = state.wr_count;
+    let w_bishop_count = state.wb_count;
+    let w_knight_count = state.wn_count;
+    let w_pawn_count = state.wp_count;
+
+    let b_queen_count = state.bq_count;
+    let b_rook_count = state.br_count;
+    let b_bishop_count = state.bb_count;
+    let b_knight_count = state.bn_count;
+    let b_pawn_count = state.bp_count;
+
     let mut is_endgame_with_different_colored_bishop = false;
 
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-        if (bitboard.w_bishop | bitboard.w_knight).count_ones() < 2 && (bitboard.b_bishop | bitboard.b_knight).count_ones() < 2 {
+        if b_bishop_count + w_knight_count < 2 && b_bishop_count + b_knight_count < 2 {
             return (0, true)
         }
 
-        if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && bitboard.b_knight.count_ones() < 3 {
+        if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && b_knight_count < 3 {
             return (0, true)
         }
 
-        if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && bitboard.w_knight.count_ones() < 3 {
+        if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && w_knight_count < 3 {
             return (0, true)
         }
     }
 
     if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-        if bitboard.w_bishop.count_ones() == 1 && bitboard.b_bishop.count_ones() == 1 {
+        if w_bishop_count == 1 && b_bishop_count == 1 {
             let mut wb_reachable_mask = 0;
             let mut bb_reachable_mask = 0;
 
@@ -378,18 +390,6 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
         }
     }
 
-    let w_queen_count = bitboard.w_queen.count_ones() as i32;
-    let w_rook_count = bitboard.w_rook.count_ones() as i32;
-    let w_bishop_count = bitboard.w_bishop.count_ones() as i32;
-    let w_knight_count = bitboard.w_knight.count_ones() as i32;
-    let w_pawn_count = bitboard.w_pawn.count_ones() as i32;
-
-    let b_queen_count = bitboard.b_queen.count_ones() as i32;
-    let b_rook_count = bitboard.b_rook.count_ones() as i32;
-    let b_bishop_count = bitboard.b_bishop.count_ones() as i32;
-    let b_knight_count = bitboard.b_knight.count_ones() as i32;
-    let b_pawn_count = bitboard.b_pawn.count_ones() as i32;
-
     let material_score = w_queen_count * Q_VAL
     + w_rook_count * R_VAL
     + w_bishop_count * B_VAL
@@ -401,21 +401,21 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     - b_knight_count * N_VAL
     - b_pawn_count * P_VAL;
 
-    if material_score > 0 && (bitboard.w_pawn | bitboard.w_rook | bitboard.w_queen) == 0 && (bitboard.w_knight | bitboard.w_bishop).count_ones() == 1 && bitboard.b_pawn.count_ones() == 1 {
+    if material_score > 0 && (bitboard.w_pawn | bitboard.w_rook | bitboard.w_queen) == 0 && w_knight_count + w_bishop_count == 1 && b_pawn_count == 1 {
         return (0, false)
     }
 
-    if material_score < 0 && (bitboard.b_pawn | bitboard.b_rook | bitboard.b_queen) == 0 && (bitboard.b_knight | bitboard.b_bishop).count_ones() == 1 && bitboard.w_pawn.count_ones() == 1 {
+    if material_score < 0 && (bitboard.b_pawn | bitboard.b_rook | bitboard.b_queen) == 0 && b_knight_count + b_bishop_count == 1 && w_pawn_count == 1 {
         return (0, false)
     }
 
     let mut eg_score = 0;
 
-    if bitboard.w_bishop.count_ones() > 1 {
+    if w_bishop_count > 1 {
         eg_score += BISHOP_PAIR_VAL;
     }
 
-    if bitboard.b_bishop.count_ones() > 1 {
+    if b_bishop_count > 1 {
         eg_score -= BISHOP_PAIR_VAL;
     }
 
@@ -455,12 +455,10 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
 }
 
 pub fn get_phase(state: &State) -> i32 {
-    let bitboard = state.bitboard;
-
-    (bitboard.w_queen | bitboard.b_queen).count_ones() as i32 * Q_PHASE_WEIGHT
-    + (bitboard.w_rook | bitboard.b_rook).count_ones() as i32 * R_PHASE_WEIGHT
-    + (bitboard.w_bishop | bitboard.b_bishop).count_ones() as i32 * B_PHASE_WEIGHT
-    + (bitboard.w_knight | bitboard.b_knight).count_ones() as i32 * N_PHASE_WEIGHT
+    (state.wq_count + state.bq_count) * Q_PHASE_WEIGHT
+    + (state.wr_count + state.br_count) * R_PHASE_WEIGHT
+    + (state.wb_count + state.bb_count) * B_PHASE_WEIGHT
+    + (state.wn_count + state.bn_count) * N_PHASE_WEIGHT
 }
 
 pub fn eval_state(state: &State, material_score: i32) -> i32 {
