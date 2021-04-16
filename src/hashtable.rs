@@ -98,30 +98,30 @@ impl DepthPreferredHashTable {
                     if depth > entry.exact_depth {
                         entry.exact_score = score;
                         entry.exact_depth = depth;
-                    }
 
-                    if depth >= entry.depth {
-                        entry.mov = mov;
+                        if depth >= entry.depth {
+                            entry.mov = mov;
+                        }
                     }
                 },
                 HASH_TYPE_BETA => {
                     if depth > entry.lb_depth || (depth == entry.lb_depth && score > entry.lb_score) {
                         entry.lb_score = score;
                         entry.lb_depth = depth;
-                    }
 
-                    if depth >= entry.depth {
-                        entry.mov = mov;
+                        if depth > entry.depth || (depth == entry.depth && depth != entry.exact_depth) {
+                            entry.mov = mov;
+                        }
                     }
                 },
                 HASH_TYPE_ALPHA => {
                     if depth > entry.ub_depth || (depth == entry.ub_depth && score < entry.ub_score) {
                         entry.ub_score = score;
                         entry.ub_depth = depth;
-                    }
 
-                    if depth >= entry.depth {
-                        entry.mov = mov;
+                        if entry.mov == 0 {
+                            entry.mov = mov;
+                        }
                     }
                 },
                 _ => {},

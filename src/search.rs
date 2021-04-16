@@ -37,6 +37,9 @@ const IID_DEPTH_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
 
+const FP_DEPTH: u8 = 7;
+const FP_MARGIN: [i32; 8] = [0, 420, 540, 660, 780, 900, 1020, 1140];
+
 const TIME_CHECK_INTEVAL: u64 = 4095;
 
 static mut NODE_COUNT: u64 = 0;
@@ -50,6 +53,7 @@ struct OrderedMov {
     mov: u32,
     sort_score: i32,
     gives_check: bool,
+    allow_lmr: bool,
 }
 
 struct OrderedCap {
@@ -64,6 +68,7 @@ pub struct SearchEngine {
     counter_mov_table: [[[u32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    prev_search_score: i32,
     time_tracker: Instant,
     max_time_millis: u128,
 }
@@ -77,6 +82,7 @@ impl SearchEngine {
             counter_mov_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            prev_search_score: 0,
             time_tracker: Instant::now(),
             max_time_millis: 0,
         }
@@ -84,6 +90,7 @@ impl SearchEngine {
 
     pub fn reset(&mut self) {
         self.depth_preferred_hash_table.clear();
+        self.prev_search_score = 0;
     }
 
     pub fn set_hash_size(&mut self, hash_size: usize) {
@@ -141,8 +148,8 @@ impl SearchEngine {
 
         let in_check = mov_table::is_in_check(state, state.player);
 
-        let mut alpha = -eval::MATE_VAL;
-        let mut beta = eval::MATE_VAL;
+        let mut alpha = self.prev_search_score - WD_SIZE;
+        let mut beta = self.prev_search_score + WD_SIZE;
 
         let mut depth = 1;
         let mut best_mov = 0;
@@ -161,28 +168,6 @@ impl SearchEngine {
                 if ABORT_SEARCH {
                     break
                 }
-            }
-
-            if score <= alpha {
-                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
-                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
-                    window_extended_count += 1;
-                } else {
-                    alpha = -eval::MATE_VAL;
-                }
-
-                continue;
-            }
-
-            if score >= beta {
-                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
-                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
-                    window_extended_count += 1;
-                } else {
-                    beta = eval::MATE_VAL;
-                }
-
-                continue;
             }
 
             let mut pv_table = [0; PV_TRACK_LENGTH];
@@ -221,6 +206,28 @@ impl SearchEngine {
                 }
             }
 
+            if score <= alpha {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
+            if score >= beta {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    beta = eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
             depth += 1;
             accumulated_time_taken = total_time_taken;
 
@@ -231,6 +238,7 @@ impl SearchEngine {
             alpha = score - WD_SIZE;
             beta = score + WD_SIZE;
             window_extended_count = 0;
+            self.prev_search_score = score;
         }
 
         best_mov
@@ -303,7 +311,7 @@ impl SearchEngine {
 
                 if found_lowerbound {
                     if lb_score >= beta {
-                        return beta
+                        return beta;
                     }
 
                     if lb_score > alpha {
@@ -319,7 +327,7 @@ impl SearchEngine {
 
                 if found_upperbound {
                     if ub_score <= alpha {
-                        return alpha
+                        return alpha;
                     }
 
                     if ub_score < beta {
@@ -328,6 +336,20 @@ impl SearchEngine {
                 }
             },
             None => {},
+        }
+
+        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
+            let (material_score, is_draw) = eval::eval_materials(state);
+
+            if is_draw {
+                return 0;
+            }
+
+            if material_score - FP_MARGIN[depth as usize] >= beta {
+                if eval::eval_state(state, material_score) - FP_MARGIN[depth as usize] >= beta {
+                    return beta;
+                }
+            }
         }
 
         if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
@@ -469,6 +491,7 @@ impl SearchEngine {
                 mov,
                 gives_check,
                 sort_score: 0,
+                allow_lmr: false,
             };
 
             if state.squares[to] != 0 {
@@ -499,6 +522,8 @@ impl SearchEngine {
                     let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
                     ordered_mov.sort_score = sqr_val_diff;
                 }
+
+                ordered_mov.allow_lmr = true;
             }
 
             ordered_mov_list.push(ordered_mov);
@@ -534,7 +559,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !extended {
+            let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if pv_found {
@@ -681,16 +706,16 @@ impl SearchEngine {
             }
         }
 
-        if best_score <= -eval::TERM_VAL {
-            if !in_check && self.in_stale_mate(state) {
-                self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
-                return 0;
-            }
-        }
-
         if alpha > original_alpha {
             self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
+            if best_score < -eval::TERM_VAL {
+                if !in_check && self.in_stale_mate(state) {
+                    self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
+                    return 0;
+                }
+            }
+
             self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 

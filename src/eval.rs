@@ -21,6 +21,7 @@ static P_VAL: i32 = 100;
 static EG_PAWN_ESSENTIAL_VAL: i32 = 90;
 static EG_HEAVY_PIECE_ESSENTIAL_VAL: i32 = 50;
 static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
+static EG_PAWN_EXTRA_VAL: i32 = 20;
 
 static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 80, 0];
 static CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 30, 0];
@@ -410,6 +411,9 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     }
 
     let mut eg_score = 0;
+
+    eg_score += w_pawn_count * EG_PAWN_EXTRA_VAL;
+    eg_score -= b_pawn_count * EG_PAWN_EXTRA_VAL;
 
     if w_bishop_count > 1 {
         eg_score += BISHOP_PAIR_VAL;
