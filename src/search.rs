@@ -69,6 +69,7 @@ pub struct SearchEngine {
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     prev_search_score: i32,
+    null_mov_count: u8,
     time_tracker: Instant,
     max_time_millis: u128,
 }
@@ -83,6 +84,7 @@ impl SearchEngine {
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             prev_search_score: 0,
+            null_mov_count: 0,
             time_tracker: Instant::now(),
             max_time_millis: 0,
         }
@@ -264,7 +266,7 @@ impl SearchEngine {
             return eval::MATE_VAL - ply as i32
         }
 
-        if ply > 0 && state.is_draw() {
+        if ply > 0 && self.null_mov_count == 0 && state.is_draw() {
             return 0;
         }
 
@@ -359,9 +361,13 @@ impl SearchEngine {
                 NM_R
             };
 
+            self.null_mov_count += 1;
+
             state.do_null_mov();
             let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
             state.undo_null_mov();
+
+            self.null_mov_count -= 1;
 
             unsafe {
                 if ABORT_SEARCH {
