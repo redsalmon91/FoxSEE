@@ -5,16 +5,12 @@
 #[derive(Clone, Copy)]
 struct TableEntry {
     key: u64,
-    safe_check: u16,
+    safe_check: u64,
+    flag: u8,
     age: u16,
-    mov: u32,
     depth: u8,
-    exact_score: i32,
-    exact_depth: u8,
-    lb_score: i32,
-    lb_depth: u8,
-    ub_score: i32,
-    ub_depth: u8,
+    score: i32,
+    mov: u32,
 }
 
 impl TableEntry {
@@ -22,15 +18,11 @@ impl TableEntry {
         TableEntry {
             key: 0,
             safe_check: 0,
+            flag: 0,
             age: 0,
-            mov: 0,
             depth: 0,
-            exact_score: 0,
-            exact_depth: 0,
-            lb_score: 0,
-            lb_depth: 0,
-            ub_score: 0,
-            ub_depth: 0,
+            score: 0,
+            mov: 0,
         }
     }
 }
@@ -39,12 +31,16 @@ pub const HASH_TYPE_EXACT: u8 = 0;
 pub const HASH_TYPE_ALPHA: u8 = 1;
 pub const HASH_TYPE_BETA: u8 = 2;
 
-#[derive(PartialEq, Debug)]
-pub struct LookupResult {
-    pub exact: (bool, i32),
-    pub lower_bound: (bool, i32),
-    pub upper_bound: (bool, i32),
+pub struct CompleteEntry {
+    pub flag: u8,
+    pub score: i32,
     pub mov: u32,
+}
+
+pub enum LookupResult {
+    Complete(CompleteEntry),
+    MovOnly(u32),
+    NotFound,
 }
 
 pub struct DepthPreferredHashTable {
@@ -60,109 +56,50 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn get(&self, key: u64, safe_check: u16, depth: u8) -> Option<LookupResult> {
+    pub fn get(&self, key: u64, safe_check: u64, depth: u8) -> LookupResult {
         let entry = &self.table[(key & self.mod_base) as usize];
 
         if entry.key == key && entry.safe_check == safe_check {
-            let mut result = LookupResult {
-                exact: (false, 0),
-                lower_bound: (false, 0),
-                upper_bound: (false, 0),
-                mov: entry.mov,
-            };
-
-            if entry.exact_depth >= depth {
-                result.exact = (true, entry.exact_score);
+            if entry.depth >= depth {
+                LookupResult::Complete(CompleteEntry {
+                    flag: entry.flag,
+                    score: entry.score,
+                    mov: entry.mov,
+                })
+            } else {
+                LookupResult::MovOnly(entry.mov)
             }
-
-            if entry.lb_depth >= depth {
-                result.lower_bound = (true, entry.lb_score);
-            }
-
-            if entry.ub_depth >= depth {
-                result.upper_bound = (true, entry.ub_score);
-            }
-
-            Some(result)
         } else {
-            None
+            LookupResult::NotFound
         }
     }
 
-    pub fn set(&mut self, key: u64, safe_check: u16, depth: u8, age: u16, flag: u8, score: i32, mov: u32) {
-        let mut entry = &mut self.table[(key & self.mod_base) as usize];
+    pub fn set(&mut self, key: u64, safe_check: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) {
+        let entry = &mut self.table[(key & self.mod_base) as usize];
 
-        if entry.key == key && entry.safe_check == safe_check {
-            match flag {
-                HASH_TYPE_EXACT => {
-                    if depth > entry.exact_depth {
-                        entry.exact_score = score;
-                        entry.exact_depth = depth;
-
-                        if depth >= entry.depth {
-                            entry.mov = mov;
-                        }
-                    }
-                },
-                HASH_TYPE_BETA => {
-                    if depth > entry.lb_depth || (depth == entry.lb_depth && score > entry.lb_score) {
-                        entry.lb_score = score;
-                        entry.lb_depth = depth;
-
-                        if depth > entry.depth || (depth == entry.depth && depth != entry.exact_depth) {
-                            entry.mov = mov;
-                        }
-                    }
-                },
-                HASH_TYPE_ALPHA => {
-                    if depth > entry.ub_depth || (depth == entry.ub_depth && score < entry.ub_score) {
-                        entry.ub_score = score;
-                        entry.ub_depth = depth;
-
-                        if entry.mov == 0 {
-                            entry.mov = mov;
-                        }
-                    }
-                },
-                _ => {},
-            }
-
-            if depth > entry.depth {
-                entry.depth = depth;
-            }
-        } else {
-            if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
-                let mut new_entry = TableEntry {
+        if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
+            if key == entry.key {
+                if (depth as u16 + age) > (entry.depth as u16 + entry.age) || flag != HASH_TYPE_ALPHA {
+                    self.table[(key & self.mod_base) as usize] = TableEntry {
+                        key,
+                        safe_check,
+                        flag,
+                        age,
+                        depth,
+                        score,
+                        mov,
+                    };
+                }
+            } else {
+                self.table[(key & self.mod_base) as usize] = TableEntry {
                     key,
                     safe_check,
+                    flag,
                     age,
-                    mov,
                     depth,
-                    exact_score: 0,
-                    exact_depth: 0,
-                    lb_score: 0,
-                    lb_depth: 0,
-                    ub_score: 0,
-                    ub_depth: 0,
+                    score,
+                    mov,
                 };
-
-                match flag {
-                    HASH_TYPE_EXACT => {
-                        new_entry.exact_score = score;
-                        new_entry.exact_depth = depth;
-                    },
-                    HASH_TYPE_BETA => {
-                        new_entry.lb_score = score;
-                        new_entry.lb_depth = depth;
-                    },
-                    HASH_TYPE_ALPHA => {
-                        new_entry.ub_score = score;
-                        new_entry.ub_depth = depth;
-                    },
-                    _ => {},
-                }
-
-                self.table[(key & self.mod_base) as usize] = new_entry;
             }
         }
     }

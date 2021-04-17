@@ -22,6 +22,8 @@ static EG_PAWN_ESSENTIAL_VAL: i32 = 90;
 static EG_HEAVY_PIECE_ESSENTIAL_VAL: i32 = 50;
 static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 static EG_PAWN_EXTRA_VAL: i32 = 20;
+static EG_ROOK_EXTRA_VAL: i32 = 50;
+static EG_BISHOP_PAIR_VAL: i32 = 50;
 
 static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 80, 0];
 static CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 30, 0];
@@ -43,8 +45,6 @@ static KING_COMPLETE_EXPO_PEN: i32 = -50;
 static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
 static ROOK_OPEN_VAL: i32 = 20;
-
-static BISHOP_PAIR_VAL: i32 = 30;
 
 static TOTAL_PHASE: i32 = 96;
 static Q_PHASE_WEIGHT: i32 = 16;
@@ -357,7 +357,7 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     let mut is_endgame_with_different_colored_bishop = false;
 
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-        if b_bishop_count + w_knight_count < 2 && b_bishop_count + b_knight_count < 2 {
+        if w_bishop_count + w_knight_count < 2 && b_bishop_count + b_knight_count < 2 {
             return (0, true)
         }
 
@@ -415,12 +415,15 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     eg_score += w_pawn_count * EG_PAWN_EXTRA_VAL;
     eg_score -= b_pawn_count * EG_PAWN_EXTRA_VAL;
 
+    eg_score += w_rook_count * EG_ROOK_EXTRA_VAL;
+    eg_score -= b_rook_count * EG_ROOK_EXTRA_VAL;
+
     if w_bishop_count > 1 {
-        eg_score += BISHOP_PAIR_VAL;
+        eg_score += EG_BISHOP_PAIR_VAL;
     }
 
     if b_bishop_count > 1 {
-        eg_score -= BISHOP_PAIR_VAL;
+        eg_score -= EG_BISHOP_PAIR_VAL;
     }
 
     if material_score > P_VAL && bitboard.w_pawn == 0 {

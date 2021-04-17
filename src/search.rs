@@ -6,7 +6,17 @@ use crate::{
     bitmask,
     def,
     eval,
-    hashtable::{DepthPreferredHashTable, LookupResult, HASH_TYPE_ALPHA, HASH_TYPE_BETA, HASH_TYPE_EXACT},
+    hashtable::{
+        DepthPreferredHashTable,
+        LookupResult::{
+            self,
+            Complete,
+            MovOnly,
+        },
+        HASH_TYPE_ALPHA,
+        HASH_TYPE_BETA,
+        HASH_TYPE_EXACT
+    },
     mov_table,
     state::State,
     time_control::TimeCapacity,
@@ -25,7 +35,7 @@ const SORTING_P_VAL: i32 = 100;
 const SORTING_HALF_P_VAL: i32 = 50;
 
 const WD_SIZE: i32 = 10;
-const MAX_WD_EXTENSION_COUNT: i32 = 10;
+const MAX_WD_EXTENSION_COUNT: i32 = 2;
 
 const MAX_DEPTH: u8 = 128;
 
@@ -180,31 +190,33 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                best_mov = pv_table[0];
+                if score > alpha {
+                    best_mov = pv_table[0];
 
-                unsafe {
-                    let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
-                    let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
+                    unsafe {
+                        let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
+                        let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
+
+                        if checkmate {
+                            let mate_score = if score > 0 {
+                                (eval::MATE_VAL - score + 1) / 2
+                            } else {
+                                (-eval::MATE_VAL - score - 1) / 2
+                            };
+
+                            println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                        } else {
+                            println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                        }
+                    }
 
                     if checkmate {
-                        let mate_score = if score > 0 {
-                            (eval::MATE_VAL - score + 1) / 2
-                        } else {
-                            (-eval::MATE_VAL - score - 1) / 2
-                        };
-
-                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
-                    } else {
-                        println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                        break
                     }
-                }
 
-                if checkmate {
-                    break
-                }
-
-                if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
-                    break
+                    if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
+                        break
+                    }
                 }
             }
 
@@ -300,44 +312,42 @@ impl SearchEngine {
         let mut is_singular_mov = false;
 
         match self.get_hash(state, depth) {
-            Some(result) => {
-                hash_mov = result.mov;
+            Complete(entry) => {
+                hash_mov = entry.mov;
 
-                let (found_exact, exact_score) = result.exact;
-
-                if found_exact {
-                    return exact_score;
-                }
-
-                let (found_lowerbound, lb_score) = result.lower_bound;
-
-                if found_lowerbound {
-                    if lb_score >= beta {
-                        return beta;
-                    }
-
-                    if lb_score > alpha {
-                        alpha = lb_score;
-
-                        if on_pv {
-                            is_singular_mov = true;
+                match entry.flag {
+                    HASH_TYPE_EXACT => {
+                        return entry.score;
+                    },
+                    HASH_TYPE_BETA => {
+                        if entry.score >= beta {
+                            return beta;
                         }
-                    }
-                }
 
-                let (found_upperbound, ub_score) = result.upper_bound;
+                        if entry.score > alpha {
+                            alpha = entry.score;
 
-                if found_upperbound {
-                    if ub_score <= alpha {
-                        return alpha;
-                    }
+                            if on_pv {
+                                is_singular_mov = true;
+                            }
+                        }
+                    },
+                    HASH_TYPE_ALPHA => {
+                        if entry.score <= alpha {
+                            return alpha;
+                        }
 
-                    if ub_score < beta {
-                        beta = ub_score;
-                    }
+                        if entry.score < beta {
+                            beta = entry.score;
+                        }
+                    },
+                    _ => {},
                 }
             },
-            None => {},
+            MovOnly(mov) => {
+                hash_mov = mov;
+            },
+            _ => {},
         }
 
         if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
@@ -390,16 +400,8 @@ impl SearchEngine {
             }
 
             match self.get_hash(state, depth) {
-                Some(result) => {
-                    hash_mov = result.mov;
-
-                    if on_pv {
-                        let (found_lowerbound, lb_score) = result.lower_bound;
-
-                        if found_lowerbound && lb_score > alpha {
-                            is_singular_mov = true;
-                        }
-                    }
+                MovOnly(mov) => {
+                    hash_mov = mov;
                 },
                 _ => (),
             }
@@ -467,6 +469,11 @@ impl SearchEngine {
         let mut mov_list = [0; def::MAX_MOV_COUNT];
 
         mov_table::gen_reg_mov_list(state, &mut mov_list);
+
+        if !in_check && self.in_stale_mate(state, &mov_list) {
+            self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
+            return 0;
+        }
 
         let (primary_killer, secondary_killer) = self.get_killer_mov(ply);
         let counter_mov = self.get_counter_mov(state);
@@ -568,7 +575,7 @@ impl SearchEngine {
             let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
-                    if pv_found {
+                    if on_pv && pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
                         if score > alpha && score < beta {
@@ -583,7 +590,7 @@ impl SearchEngine {
                     score
                 }
             } else {
-                if pv_found {
+                if on_pv && pv_found {
                     let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
                     if score > alpha && score < beta {
@@ -692,13 +699,9 @@ impl SearchEngine {
                     self.update_counter_mov_table(state, hash_mov);
                 }
 
-                self.set_hash(state, depth+1, state.full_mov_count, HASH_TYPE_BETA, score, hash_mov);
+                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, hash_mov);
 
                 return score
-            }
-
-            if !is_capture && promo == 0 {
-                self.update_butterfly_table(state.player, from, to);
             }
 
             if score > alpha {
@@ -715,13 +718,6 @@ impl SearchEngine {
         if alpha > original_alpha {
             self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
-            if best_score < -eval::TERM_VAL {
-                if !in_check && self.in_stale_mate(state) {
-                    self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
-                    return 0;
-                }
-            }
-
             self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 
@@ -842,8 +838,11 @@ impl SearchEngine {
         let mut mov = 0;
 
         match self.get_hash(state, MAX_DEPTH) {
-            Some(result) => {
-                mov = result.mov;
+            Complete(entry) => {
+                mov = entry.mov;
+            },
+            MovOnly(hash_mov) => {
+                mov = hash_mov;
             }
             _ => (),
         }
@@ -870,13 +869,13 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn get_hash(&self, state: &State, depth: u8) -> Option<LookupResult> {
-        self.depth_preferred_hash_table.get(get_hash_key(state), (state.hash_key >> 24) as u16, depth)
+    fn get_hash(&self, state: &State, depth: u8) -> LookupResult {
+        self.depth_preferred_hash_table.get(get_hash_key(state), state.hash_key, depth)
     }
 
     #[inline]
     fn set_hash(&mut self, state: &State, depth: u8, age: u16, hash_flag: u8, score: i32, mov: u32) {
-        self.depth_preferred_hash_table.set(get_hash_key(state), (state.hash_key >> 24) as u16, depth, age, hash_flag, score, mov);
+        self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, age, hash_flag, score, mov);
     }
 
     #[inline]
@@ -971,12 +970,8 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn in_stale_mate(&self, state: &mut State) -> bool {
+    fn in_stale_mate(&self, state: &mut State, mov_list: &[u32]) -> bool {
         let player = state.player;
-
-        let mut mov_list = [0; def::MAX_MOV_COUNT];
-
-        mov_table::gen_reg_mov_list(state, &mut mov_list);
 
         for mov_index in 0..def::MAX_CAP_COUNT {
             let mov = mov_list[mov_index];
