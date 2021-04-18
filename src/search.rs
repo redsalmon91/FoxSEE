@@ -192,33 +192,31 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                if score >= alpha && score <= beta {
-                    best_mov = pv_table[0];
+                best_mov = pv_table[0];
 
-                    unsafe {
-                        let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
-                        let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
-
-                        if checkmate {
-                            let mate_score = if score > 0 {
-                                (eval::MATE_VAL - score + 1) / 2
-                            } else {
-                                (-eval::MATE_VAL - score - 1) / 2
-                            };
-
-                            println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
-                        } else {
-                            println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
-                        }
-                    }
+                unsafe {
+                    let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
+                    let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
 
                     if checkmate {
-                        break
-                    }
+                        let mate_score = if score > 0 {
+                            (eval::MATE_VAL - score + 1) / 2
+                        } else {
+                            (-eval::MATE_VAL - score - 1) / 2
+                        };
 
-                    if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
-                        break
+                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                    } else {
+                        println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
                     }
+                }
+
+                if checkmate {
+                    break
+                }
+
+                if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
+                    break
                 }
             }
 
