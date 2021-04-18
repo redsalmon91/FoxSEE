@@ -47,6 +47,8 @@ const IID_DEPTH_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
 
+const THREAT_MARGIN: i32 = 50;
+
 const FP_DEPTH: u8 = 7;
 const FP_MARGIN: [i32; 8] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
@@ -190,7 +192,7 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                if score > alpha && score < beta {
+                if score >= alpha && score <= beta {
                     best_mov = pv_table[0];
 
                     unsafe {
@@ -287,25 +289,6 @@ impl SearchEngine {
         }
 
         let on_pv = beta - alpha > 1;
-
-        let mating_val = eval::MATE_VAL - ply as i32;
-        if mating_val < beta {
-            if alpha >= mating_val {
-                return mating_val;
-            }
-
-            beta = mating_val;
-        }
-
-        let mated_val = -eval::MATE_VAL + ply as i32;
-        if mated_val > alpha {
-            if beta <= mated_val {
-                return mated_val;
-            }
-
-            alpha = mated_val;
-        }
-
         let original_alpha = alpha;
 
         let mut hash_mov = 0;
@@ -350,19 +333,7 @@ impl SearchEngine {
             _ => {},
         }
 
-        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH && !eval::is_in_endgame(state) {
-            let (material_score, is_draw) = eval::eval_materials(state);
-
-            if is_draw {
-                return 0;
-            }
-
-            if material_score - FP_MARGIN[depth as usize] >= beta {
-                if eval::eval_state(state, material_score) - FP_MARGIN[depth as usize] >= beta {
-                    return beta;
-                }
-            }
-        }
+        let mut under_threat = false;
 
         if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
             let depth_reduction = if depth > NM_DEPTH {
@@ -381,12 +352,30 @@ impl SearchEngine {
 
             unsafe {
                 if ABORT_SEARCH {
-                    return alpha
+                    return alpha;
                 }
             }
 
-            if scout_score != 0 && scout_score >= beta {
-                return beta
+            if scout_score >= beta {
+                if scout_score != 0 {
+                    return beta;
+                }
+            } else if scout_score + THREAT_MARGIN <= alpha {
+                under_threat = true;
+            }
+        }
+
+        if !on_pv && !on_extend && !in_check && !under_threat && depth <= FP_DEPTH && !eval::is_in_endgame(state) {
+            let (material_score, is_draw) = eval::eval_materials(state);
+
+            if is_draw {
+                return 0;
+            }
+
+            if material_score - FP_MARGIN[depth as usize] >= beta {
+                if eval::eval_state(state, material_score) - FP_MARGIN[depth as usize] >= beta {
+                    return beta;
+                }
             }
         }
 
@@ -572,7 +561,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
+            let score = if depth > 1 && mov_count > 1 && !gives_check && !in_check && !under_threat && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
