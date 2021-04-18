@@ -190,7 +190,7 @@ impl SearchEngine {
             let total_time_taken = self.time_tracker.elapsed().as_millis();
 
             if pv_table[0] != 0 {
-                if score > alpha {
+                if score > alpha && score < beta {
                     best_mov = pv_table[0];
 
                     unsafe {
