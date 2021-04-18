@@ -350,7 +350,7 @@ impl SearchEngine {
             _ => {},
         }
 
-        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
+        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH && !eval::is_in_endgame(state) {
             let (material_score, is_draw) = eval::eval_materials(state);
 
             if is_draw {
@@ -364,7 +364,7 @@ impl SearchEngine {
             }
         }
 
-        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
+        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -838,9 +838,6 @@ impl SearchEngine {
         let mut mov = 0;
 
         match self.get_hash(state, MAX_DEPTH) {
-            Complete(entry) => {
-                mov = entry.mov;
-            },
             MovOnly(hash_mov) => {
                 mov = hash_mov;
             }
