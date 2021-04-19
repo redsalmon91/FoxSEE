@@ -48,8 +48,6 @@ const IID_DEPTH_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
 
-const THREAT_MARGIN: i32 = 50;
-
 const FP_DEPTH: u8 = 7;
 const FP_MARGIN: [i32; 8] = [0, 420, 540, 660, 780, 900, 1020, 1140];
 
@@ -336,9 +334,21 @@ impl SearchEngine {
             _ => {},
         }
 
-        let mut under_threat = false;
+        if !on_pv && !on_extend && !in_check && depth <= FP_DEPTH {
+            let (material_score, is_draw) = eval::eval_materials(state);
 
-        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
+            if is_draw {
+                return 0;
+            }
+
+            if material_score - FP_MARGIN[depth as usize] >= beta {
+                if eval::eval_state(state, material_score) - FP_MARGIN[depth as usize] >= beta {
+                    return beta;
+                }
+            }
+        }
+
+        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -359,26 +369,8 @@ impl SearchEngine {
                 }
             }
 
-            if scout_score >= beta {
-                if scout_score != 0 {
-                    return beta;
-                }
-            } else if scout_score + THREAT_MARGIN <= alpha {
-                under_threat = true;
-            }
-        }
-
-        if !on_pv && !on_extend && !in_check && !under_threat && depth <= FP_DEPTH && !eval::is_in_endgame(state) {
-            let (material_score, is_draw) = eval::eval_materials(state);
-
-            if is_draw {
-                return 0;
-            }
-
-            if material_score - FP_MARGIN[depth as usize] >= beta {
-                if eval::eval_state(state, material_score) - FP_MARGIN[depth as usize] >= beta {
-                    return beta;
-                }
+            if scout_score >= beta && scout_score != 0 {
+                return beta;
             }
         }
 
@@ -564,7 +556,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !in_check && !under_threat && ordered_mov.allow_lmr {
+            let score = if depth > 1 && mov_count > 1 && !gives_check && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
