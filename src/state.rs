@@ -270,6 +270,7 @@ impl State {
         self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
         self.enp_square = 0;
+        self.full_mov_count += 1;
 
         match mov_type {
             def::MOV_REG => self.do_reg_mov(from, to),
@@ -284,6 +285,7 @@ impl State {
     }
 
     pub fn undo_mov(&mut self, from: usize, to: usize, mov_type: u8) {
+        self.full_mov_count -= 1;
         self.cas_rights = self.cas_rights_stack.pop().unwrap();
         self.enp_square = self.enp_sqr_stack.pop().unwrap();
         self.history_mov_stack.pop();
@@ -292,7 +294,6 @@ impl State {
         self.wk_index = wk_index;
         self.bk_index = bk_index;
         self.hash_key = self.history_pos_stack.pop().unwrap().0;
-
         self.player = def::get_opposite_player(self.player);
 
         match mov_type {

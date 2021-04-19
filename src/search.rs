@@ -37,7 +37,8 @@ const SORTING_HALF_P_VAL: i32 = 50;
 const WD_SIZE: i32 = 10;
 const MAX_WD_EXTENSION_COUNT: i32 = 2;
 
-const MAX_DEPTH: u8 = 128;
+const MAX_DEPTH: u8 = 127;
+const PV_LOOKUP_DEPTH: u8 = 128;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -82,6 +83,7 @@ pub struct SearchEngine {
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     prev_search_score: i32,
     null_mov_count: u8,
+    tt_age: u16,
     time_tracker: Instant,
     max_time_millis: u128,
 }
@@ -97,6 +99,7 @@ impl SearchEngine {
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             prev_search_score: 0,
             null_mov_count: 0,
+            tt_age: 0,
             time_tracker: Instant::now(),
             max_time_millis: 0,
         }
@@ -155,6 +158,8 @@ impl SearchEngine {
         self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
+
+        self.tt_age = state.full_mov_count;
 
         unsafe {
             ABORT_SEARCH = false;
@@ -435,7 +440,7 @@ impl SearchEngine {
                     self.update_counter_mov_table(state, hash_mov);
                 }
 
-                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, hash_mov);
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, hash_mov);
 
                 return score
             }
@@ -458,7 +463,7 @@ impl SearchEngine {
         mov_table::gen_reg_mov_list(state, &mut mov_list);
 
         if !in_check && self.in_stale_mate(state, &mov_list) {
-            self.set_hash(state, MAX_DEPTH, state.full_mov_count, HASH_TYPE_EXACT, 0, 0);
+            self.set_hash(state, MAX_DEPTH, HASH_TYPE_EXACT, 0, 0);
             return 0;
         }
 
@@ -641,7 +646,7 @@ impl SearchEngine {
                     }
                 }
 
-                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, mov);
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, mov);
 
                 return score
             }
@@ -686,13 +691,13 @@ impl SearchEngine {
                     self.update_counter_mov_table(state, hash_mov);
                 }
 
-                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_BETA, score, hash_mov);
+                self.set_hash(state, depth, HASH_TYPE_BETA, score, hash_mov);
 
                 return score
             }
 
             if score > alpha {
-                self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, score, hash_mov);
+                self.set_hash(state, depth, HASH_TYPE_EXACT, score, hash_mov);
                 return score;
             }
 
@@ -703,9 +708,9 @@ impl SearchEngine {
         }
 
         if alpha > original_alpha {
-            self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_EXACT, alpha, best_mov);
+            self.set_hash(state, depth, HASH_TYPE_EXACT, alpha, best_mov);
         } else {
-            self.set_hash(state, depth, state.full_mov_count, HASH_TYPE_ALPHA, best_score, best_mov);
+            self.set_hash(state, depth, HASH_TYPE_ALPHA, best_score, best_mov);
         }
 
         alpha
@@ -824,7 +829,7 @@ impl SearchEngine {
 
         let mut mov = 0;
 
-        match self.get_hash(state, MAX_DEPTH) {
+        match self.get_hash(state, PV_LOOKUP_DEPTH) {
             MovOnly(hash_mov) => {
                 mov = hash_mov;
             }
@@ -858,8 +863,8 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn set_hash(&mut self, state: &State, depth: u8, age: u16, hash_flag: u8, score: i32, mov: u32) {
-        self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, age, hash_flag, score, mov);
+    fn set_hash(&mut self, state: &State, depth: u8, hash_flag: u8, score: i32, mov: u32) {
+        self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, self.tt_age, hash_flag, score, mov);
     }
 
     #[inline]
