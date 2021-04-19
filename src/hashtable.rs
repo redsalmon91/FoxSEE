@@ -79,17 +79,15 @@ impl DepthPreferredHashTable {
         let entry = &mut self.table[(key & self.mod_base) as usize];
 
         if key == entry.key && safe_check == entry.safe_check {
-            if depth >= entry.depth {
-                self.table[(key & self.mod_base) as usize] = TableEntry {
-                    key,
-                    safe_check,
-                    flag,
-                    age,
-                    depth,
-                    score,
-                    mov,
-                };
-            }
+            self.table[(key & self.mod_base) as usize] = TableEntry {
+                key,
+                safe_check,
+                flag,
+                age,
+                depth,
+                score,
+                mov,
+            };
         } else if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,

@@ -37,8 +37,8 @@ const SORTING_HALF_P_VAL: i32 = 50;
 const WD_SIZE: i32 = 10;
 const MAX_WD_EXTENSION_COUNT: i32 = 2;
 
-const MAX_DEPTH: u8 = 127;
-const PV_LOOKUP_DEPTH: u8 = 128;
+const MAX_DEPTH: u8 = 128;
+const PV_LOOKUP_DEPTH: u8 = 255;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -187,6 +187,28 @@ impl SearchEngine {
                 }
             }
 
+            if score <= alpha {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    alpha = -eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
+            if score >= beta {
+                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
+                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
+                    window_extended_count += 1;
+                } else {
+                    beta = eval::MATE_VAL;
+                }
+
+                continue;
+            }
+
             let mut pv_table = [0; PV_TRACK_LENGTH];
             self.retrieve_pv(state, &mut pv_table, 0);
 
@@ -223,28 +245,6 @@ impl SearchEngine {
                 }
             }
 
-            if score <= alpha {
-                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
-                    alpha = score - WD_SIZE * window_extended_count * window_extended_count;
-                    window_extended_count += 1;
-                } else {
-                    alpha = -eval::MATE_VAL;
-                }
-
-                continue;
-            }
-
-            if score >= beta {
-                if window_extended_count <= MAX_WD_EXTENSION_COUNT {
-                    beta = score + WD_SIZE * window_extended_count * window_extended_count;
-                    window_extended_count += 1;
-                } else {
-                    beta = eval::MATE_VAL;
-                }
-
-                continue;
-            }
-
             depth += 1;
             accumulated_time_taken = total_time_taken;
 
@@ -261,7 +261,7 @@ impl SearchEngine {
         best_mov
     }
 
-    fn ab_search(&mut self, state: &mut State, in_check: bool, on_extend: bool, mut alpha: i32, mut beta: i32, depth: u8, ply: u8) -> i32 {
+    fn ab_search(&mut self, state: &mut State, in_check: bool, on_extend: bool, mut alpha: i32, beta: i32, depth: u8, ply: u8) -> i32 {
         unsafe {
             if ABORT_SEARCH {
                 return alpha
@@ -308,21 +308,13 @@ impl SearchEngine {
                             return beta;
                         }
 
-                        if entry.score > alpha {
-                            alpha = entry.score;
-
-                            if on_pv {
-                                is_singular_mov = true;
-                            }
+                        if on_pv {
+                            is_singular_mov = true;
                         }
                     },
                     HASH_TYPE_ALPHA => {
                         if entry.score <= alpha {
                             return alpha;
-                        }
-
-                        if entry.score < beta {
-                            beta = entry.score;
                         }
                     },
                     _ => {},
