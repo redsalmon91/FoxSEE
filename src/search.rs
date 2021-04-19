@@ -304,7 +304,7 @@ impl SearchEngine {
                         return entry.score;
                     },
                     HASH_TYPE_BETA => {
-                        if entry.score >= beta {
+                        if !on_pv && entry.score >= beta {
                             return beta;
                         }
 
@@ -313,7 +313,7 @@ impl SearchEngine {
                         }
                     },
                     HASH_TYPE_ALPHA => {
-                        if entry.score <= alpha {
+                        if !on_pv && entry.score <= alpha {
                             return alpha;
                         }
                     },
@@ -1279,5 +1279,25 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b3"));
         assert_eq!(to, util::map_sqr_notation_to_index("b4"));
+    }
+
+    #[test]
+    fn test_search_9() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("8/8/1P1p4/2PP4/1P1K1k2/4r3/8/5q2 b - - 0 1");
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 15500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("f1"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d3"));
     }
 }

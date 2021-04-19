@@ -78,17 +78,7 @@ impl DepthPreferredHashTable {
     pub fn set(&mut self, key: u64, safe_check: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) {
         let entry = &mut self.table[(key & self.mod_base) as usize];
 
-        if key == entry.key && safe_check == entry.safe_check {
-            self.table[(key & self.mod_base) as usize] = TableEntry {
-                key,
-                safe_check,
-                flag,
-                age,
-                depth,
-                score,
-                mov,
-            };
-        } else if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
+        if (depth as u16 + age) >= (entry.depth as u16 + entry.age) || (key == entry.key && entry.flag != HASH_TYPE_EXACT && flag == HASH_TYPE_EXACT) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,
                 safe_check,
