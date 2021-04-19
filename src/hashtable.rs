@@ -2,8 +2,6 @@
  * Copyright (C) 2020-2021 Zixiao Han
  */
 
-use crate::eval;
-
 #[derive(Clone, Copy)]
 struct TableEntry {
     key: u64,
@@ -33,6 +31,7 @@ pub const HASH_TYPE_EXACT: u8 = 0;
 pub const HASH_TYPE_ALPHA: u8 = 1;
 pub const HASH_TYPE_BETA: u8 = 2;
 
+#[derive(Debug)]
 pub struct CompleteEntry {
     pub flag: u8,
     pub score: i32,
@@ -80,17 +79,15 @@ impl DepthPreferredHashTable {
         let entry = &mut self.table[(key & self.mod_base) as usize];
 
         if key == entry.key && safe_check == entry.safe_check {
-            if depth >= entry.depth || (score.abs() > eval::TERM_VAL && entry.score.abs() < eval::TERM_VAL) {
-                self.table[(key & self.mod_base) as usize] = TableEntry {
-                    key,
-                    safe_check,
-                    flag,
-                    age,
-                    depth,
-                    score,
-                    mov,
-                };
-            }
+            self.table[(key & self.mod_base) as usize] = TableEntry {
+                key,
+                safe_check,
+                flag,
+                age,
+                depth,
+                score,
+                mov,
+            };
         } else if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,
