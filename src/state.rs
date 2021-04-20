@@ -19,6 +19,7 @@ const FEN_ENP_SQR_INDEX: usize = 3;
 const FEN_HALF_MOV_INDEX: usize = 4;
 const FEN_FULL_MOV_INDEX: usize = 5;
 
+const REP_POS_START_INDEX: usize = 4;
 const MAX_NON_CAP_MOV_COUNT: usize = 100;
 
 const K_CAS_SQR_SIZE: usize = 4;
@@ -237,11 +238,15 @@ impl State {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.non_cap_mov_count as usize + 1);
 
+        if check_range < REP_POS_START_INDEX {
+            return false;
+        }
+
         if check_range >= MAX_NON_CAP_MOV_COUNT {
             return true
         }
 
-        for check_index in 1..=check_range {
+        for check_index in REP_POS_START_INDEX..=check_range {
             let (pos_hash, player) = self.history_pos_stack[history_len-check_index];
             if pos_hash == self.hash_key && player == self.player {
                 return true;

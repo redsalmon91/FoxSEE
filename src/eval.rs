@@ -22,11 +22,11 @@ const EG_PAWN_ESSENTIAL_VAL: i32 = 90;
 const EG_HEAVY_PIECE_ESSENTIAL_VAL: i32 = 50;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 const EG_PAWN_EXTRA_VAL: i32 = 20;
-const EG_ROOK_EXTRA_VAL: i32 = 50;
-const EG_BISHOP_PAIR_VAL: i32 = 50;
+const EG_BISHOP_EXTRA_VAL: i32 = 50;
+const EG_ROOK_EXTRA_VAL: i32 = 90;
 
-const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 80, 0];
-const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 30, 0];
+const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
+const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 20, 40, 60, 0];
 
 const EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
 
@@ -55,10 +55,10 @@ const EG_PHASE: i32 = 32;
 
 const TEMPO_VAL: i32 = 10;
 
-const N_MOB_SCORE: [i32; 9] = [-30, -20, -5, 0, 5, 10, 15, 20, 25];
-const B_MOB_SCORE: [i32; 14] = [-30, -10, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-const R_MOB_SCORE: [i32; 15] = [-20, -10, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30];
-const Q_MOB_SCORE: [i32; 28] = [-20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30];
+const N_MOB_SCORE: [i32; 9] = [-50, -20, -5, 0, 5, 10, 15, 20, 25];
+const B_MOB_SCORE: [i32; 14] = [-50, -10, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+const R_MOB_SCORE: [i32; 15] = [-50, -10, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30];
+const Q_MOB_SCORE: [i32; 28] = [-30, -20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
 
 const SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -415,16 +415,11 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     eg_score += w_pawn_count * EG_PAWN_EXTRA_VAL;
     eg_score -= b_pawn_count * EG_PAWN_EXTRA_VAL;
 
+    eg_score += w_bishop_count * EG_BISHOP_EXTRA_VAL;
+    eg_score -= b_bishop_count * EG_BISHOP_EXTRA_VAL;
+
     eg_score += w_rook_count * EG_ROOK_EXTRA_VAL;
     eg_score -= b_rook_count * EG_ROOK_EXTRA_VAL;
-
-    if w_bishop_count > 1 {
-        eg_score += EG_BISHOP_PAIR_VAL;
-    }
-
-    if b_bishop_count > 1 {
-        eg_score -= EG_BISHOP_PAIR_VAL;
-    }
 
     if material_score > P_VAL && bitboard.w_pawn == 0 {
         eg_score -= EG_PAWN_ESSENTIAL_VAL;
@@ -480,13 +475,11 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     let mut midgame_positional_score =
         w_features_map.mg_sqr_point
         + w_features_map.rook_open_count * ROOK_OPEN_VAL
-        + w_features_map.passed_pawn_point
         + w_features_map.strong_king_attack_count * w_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
         + w_features_map.weak_king_attack_count * WEAK_K_ATTACK_VAL
         + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         - b_features_map.mg_sqr_point
         - b_features_map.rook_open_count * ROOK_OPEN_VAL
-        - b_features_map.passed_pawn_point
         - b_features_map.strong_king_attack_count * b_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
         - b_features_map.weak_king_attack_count * WEAK_K_ATTACK_VAL
         - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN;

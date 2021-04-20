@@ -20,6 +20,7 @@ UCI chess engine written in Rust!
 - Static Exchange Evalution (SEE)
 - Check Extensions
 - Singular Extensions
+- Deep-Search Extensions
 - Late-Move Reductions
 - Killer Heuristic
 - Relative History Heuristic
