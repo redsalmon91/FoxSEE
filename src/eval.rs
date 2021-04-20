@@ -9,58 +9,58 @@ use crate::{
     util::{get_lowest_index, get_highest_index}
 };
 
-pub static MATE_VAL: i32 = 20000;
-pub static TERM_VAL: i32 = 10000;
+pub const MATE_VAL: i32 = 20000;
+pub const TERM_VAL: i32 = 10000;
 
-static Q_VAL: i32 = 1200;
-static R_VAL: i32 = 600;
-static B_VAL: i32 = 400;
-static N_VAL: i32 = 400;
-static P_VAL: i32 = 100;
+const Q_VAL: i32 = 1200;
+const R_VAL: i32 = 600;
+const B_VAL: i32 = 400;
+const N_VAL: i32 = 400;
+const P_VAL: i32 = 100;
 
-static EG_PAWN_ESSENTIAL_VAL: i32 = 90;
-static EG_HEAVY_PIECE_ESSENTIAL_VAL: i32 = 50;
-static EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
-static EG_PAWN_EXTRA_VAL: i32 = 20;
-static EG_ROOK_EXTRA_VAL: i32 = 50;
-static EG_BISHOP_PAIR_VAL: i32 = 50;
+const EG_PAWN_ESSENTIAL_VAL: i32 = 90;
+const EG_HEAVY_PIECE_ESSENTIAL_VAL: i32 = 50;
+const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
+const EG_PAWN_EXTRA_VAL: i32 = 20;
+const EG_ROOK_EXTRA_VAL: i32 = 50;
+const EG_BISHOP_PAIR_VAL: i32 = 50;
 
-static PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 80, 0];
-static CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 30, 0];
+const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 80, 0];
+const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 0, 0, 10, 20, 20, 30, 0];
 
-static EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
+const EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
 
-static PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -10;
-static UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
-static CONTROLLED_PASS_PAWN_VAL: i32 = 50;
-static DOUBLED_PAWN_PEN: i32 = -20;
-static ISOLATED_PAWN_PEN: i32 = -10;
+const PASSED_PAWN_KING_DISTANCE_BASE_PEN: i32 = -10;
+const UNSTOPPABLE_PASS_PAWN_VAL: i32 = 90;
+const CONTROLLED_PASS_PAWN_VAL: i32 = 50;
+const DOUBLED_PAWN_PEN: i32 = -20;
+const ISOLATED_PAWN_PEN: i32 = -10;
 
-static WEAK_K_ATTACK_VAL: i32 = 5;
-static STRONG_K_ATTACK_VAL: i32 = 20;
+const WEAK_K_ATTACK_VAL: i32 = 5;
+const STRONG_K_ATTACK_VAL: i32 = 20;
 
-static KING_EXPO_PEN: i32 = -10;
-static KING_COMPLETE_EXPO_PEN: i32 = -50;
+const KING_EXPO_PEN: i32 = -10;
+const KING_COMPLETE_EXPO_PEN: i32 = -50;
 
-static KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
+const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
-static ROOK_OPEN_VAL: i32 = 20;
+const ROOK_OPEN_VAL: i32 = 20;
 
-static TOTAL_PHASE: i32 = 96;
-static Q_PHASE_WEIGHT: i32 = 16;
-static R_PHASE_WEIGHT: i32 = 8;
-static B_PHASE_WEIGHT: i32 = 4;
-static N_PHASE_WEIGHT: i32 = 4;
-static EG_PHASE: i32 = 32;
+const TOTAL_PHASE: i32 = 96;
+const Q_PHASE_WEIGHT: i32 = 16;
+const R_PHASE_WEIGHT: i32 = 8;
+const B_PHASE_WEIGHT: i32 = 4;
+const N_PHASE_WEIGHT: i32 = 4;
+const EG_PHASE: i32 = 32;
 
-static TEMPO_VAL: i32 = 10;
+const TEMPO_VAL: i32 = 10;
 
-static N_MOB_SCORE: [i32; 9] = [-30, -20, -5, 0, 5, 10, 15, 20, 25];
-static B_MOB_SCORE: [i32; 14] = [-30, -10, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-static R_MOB_SCORE: [i32; 15] = [-20, -10, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30];
-static Q_MOB_SCORE: [i32; 28] = [-20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30];
+const N_MOB_SCORE: [i32; 9] = [-30, -20, -5, 0, 5, 10, 15, 20, 25];
+const B_MOB_SCORE: [i32; 14] = [-30, -10, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+const R_MOB_SCORE: [i32; 15] = [-20, -10, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30];
+const Q_MOB_SCORE: [i32; 28] = [-20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30];
 
-static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
      15, 30, 30, 30, 30, 30, 30, 15,
      10, 20, 20, 30, 30, 20, 20, 10,
@@ -71,7 +71,7 @@ static SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
-static SQR_TABLE_BP_ENDGAME: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BP_ENDGAME: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
      15, 30, 30, 30, 30, 30, 30, 15,
      10, 20, 20, 20, 20, 20, 20, 10,
@@ -82,7 +82,7 @@ static SQR_TABLE_BP_ENDGAME: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
-static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
      10, 10,  0,  0,  0,  0, 10, 10,
      10, 10,  0,  0,  0,  0, 10, 10,
@@ -93,7 +93,7 @@ static SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
-static SQR_TABLE_WP_ENDGAME: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WP_ENDGAME: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -104,7 +104,7 @@ static SQR_TABLE_WP_ENDGAME: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
-static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
     -60,-20,-20,-20,-20,-20,-20,-60,
     -30,-30, 20, 10, 10, 20,-30,-30,
     -20,  0, 15, 20, 20, 15,  0,-20,
@@ -115,7 +115,7 @@ static SQR_TABLE_BN: [i32; def::BOARD_SIZE] = [
     -60,-20,-20,-20,-20,-20,-20,-60,
 ];
 
-static SQR_TABLE_WN: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WN: [i32; def::BOARD_SIZE] = [
     -60,-20,-20,-20,-20,-20,-20,-60,
     -30,-30,  0,  0,  0,  0,-30,-30,
     -20,  5, 10,  0,  0, 10,  5,-20,
@@ -126,7 +126,7 @@ static SQR_TABLE_WN: [i32; def::BOARD_SIZE] = [
     -60,-20,-20,-20,-20,-20,-20,-60,
 ];
 
-static SQR_TABLE_BB: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BB: [i32; def::BOARD_SIZE] = [
     -50,-10,-10,-10,-10,-10,-10,-50,
     -20,  0, 10,  0,  0, 10,  0,-20,
     -10,  0,  5, 10, 10,  5,  0,-10,
@@ -137,7 +137,7 @@ static SQR_TABLE_BB: [i32; def::BOARD_SIZE] = [
     -50,-10,-10,-10,-10,-10,-10,-50,
 ];
 
-static SQR_TABLE_WB: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WB: [i32; def::BOARD_SIZE] = [
     -50,-10,-10,-10,-10,-10,-10,-50,
     -10,  5,  0,  0,  0,  0,  5,-10,
     -10, 10, 10,  5,  5, 10, 10,-10,
@@ -148,7 +148,7 @@ static SQR_TABLE_WB: [i32; def::BOARD_SIZE] = [
     -50,-10,-10,-10,-10,-10,-10,-50,
 ];
 
-static SQR_TABLE_BR: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BR: [i32; def::BOARD_SIZE] = [
      10, 10, 20, 20, 20, 20, 10, 10,
      10, 20, 30, 30, 30, 30, 20, 10,
      -5,  0,  0,  0,  0,  0,  0, -5,
@@ -159,7 +159,7 @@ static SQR_TABLE_BR: [i32; def::BOARD_SIZE] = [
      -5,  0,  0,  0,  0,  0,  0, -5,
 ];
 
-static SQR_TABLE_WR: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WR: [i32; def::BOARD_SIZE] = [
      -5,  0,  0,  0,  0,  0,  0, -5,
     -10, -5,  0,  0,  0,  0, -5,-10,
      -5,  0,  0,  0,  0,  0,  0, -5,
@@ -170,7 +170,7 @@ static SQR_TABLE_WR: [i32; def::BOARD_SIZE] = [
      10, 10, 20, 20, 20, 20, 10, 10,
 ];
 
-static SQR_TABLE_BQ: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BQ: [i32; def::BOARD_SIZE] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
     -10,-10,  0,  0,  0,  0,-10,-10,
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -181,7 +181,7 @@ static SQR_TABLE_BQ: [i32; def::BOARD_SIZE] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
 ];
 
-static SQR_TABLE_WQ: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WQ: [i32; def::BOARD_SIZE] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
     -10,-10,  0,  0,  0,  0,-10,-10,
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -192,7 +192,7 @@ static SQR_TABLE_WQ: [i32; def::BOARD_SIZE] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
 ];
 
-static SQR_TABLE_BK: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_BK: [i32; def::BOARD_SIZE] = [
     -90,-90,-90,-90,-90,-90,-90,-90,
     -90,-90,-90,-90,-90,-90,-90,-90,
     -90,-90,-90,-90,-90,-90,-90,-90,
@@ -203,7 +203,7 @@ static SQR_TABLE_BK: [i32; def::BOARD_SIZE] = [
       0, 20,  0,-20,-20,  0, 20,  0,
 ];
 
-static SQR_TABLE_WK: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_WK: [i32; def::BOARD_SIZE] = [
       0, 20,  0,-20,-20,  0, 20,  0,
       0, 10,-10,-30,-30,-10, 10,  0,
     -60,-60,-60,-60,-60,-60,-60,-60,
@@ -214,7 +214,7 @@ static SQR_TABLE_WK: [i32; def::BOARD_SIZE] = [
     -90,-90,-90,-90,-90,-90,-90,-90,
 ];
 
-static SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
+const SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
     -50,-40,-30,-20,-20,-30,-40,-50,
     -40, 10, 10, 10, 10, 10, 10,-40,
     -30, 10, 30, 30, 30, 30, 10,-30,
@@ -225,8 +225,8 @@ static SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
     -50,-40,-30,-30,-30,-30,-40,-50,
 ];
 
-static WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
-static BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
+const WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
+const BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {

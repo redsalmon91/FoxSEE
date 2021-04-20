@@ -304,7 +304,7 @@ impl SearchEngine {
                         return entry.score;
                     },
                     HASH_TYPE_BETA => {
-                        if !on_pv && entry.score >= beta {
+                        if entry.score >= beta {
                             return beta;
                         }
 
@@ -313,7 +313,7 @@ impl SearchEngine {
                         }
                     },
                     HASH_TYPE_ALPHA => {
-                        if !on_pv && entry.score <= alpha {
+                        if entry.score <= alpha {
                             return alpha;
                         }
                     },
@@ -522,12 +522,6 @@ impl SearchEngine {
             ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
-        unsafe {
-            if ABORT_SEARCH {
-                return alpha
-            }
-        }
-
         for ordered_mov in &ordered_mov_list {
             mov_count += 1;
 
@@ -705,17 +699,9 @@ impl SearchEngine {
             if ABORT_SEARCH {
                 return alpha
             }
-        }
 
-        unsafe {
             NODE_COUNT += 1;
-        }
 
-        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
-            return eval::MATE_VAL - ply as i32
-        }
-
-        unsafe {
             if ply > SEL_DEPTH {
                 SEL_DEPTH = ply;
             }
@@ -760,6 +746,10 @@ impl SearchEngine {
             }
 
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
+
+            if def::is_k(state.squares[to]) {
+                return eval::MATE_VAL - ply as i32;
+            }
 
             let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
 
