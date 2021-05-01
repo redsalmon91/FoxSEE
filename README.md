@@ -18,16 +18,14 @@ UCI chess engine written in Rust!
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
+- Null-Move Pruning
+- Delta Pruning
 - Check Extensions
 - Singular Extensions
-- Deep-Search Extensions
 - Late-Move Reductions
 - Killer Heuristic
 - Relative History Heuristic
 - Counter-Move Heuristic
-- Null-Move Pruning
-- Delta Pruning
-- Reversed Futility Pruning
 
 ## How to build
 Install [Rust](https://www.rust-lang.org/learn/get-started)
