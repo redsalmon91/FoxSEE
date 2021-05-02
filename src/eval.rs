@@ -27,7 +27,7 @@ const EG_P_VAL: i32 = 10;
 const EG_PAWN_ESSENTIAL_VAL: i32 = 90;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 
-const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
+static mut PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
 const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 20, 40, 60, 0];
 const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 0, 0];
 
@@ -294,6 +294,14 @@ pub fn val_of(piece: u8) -> i32 {
         def::BP => P_VAL,
 
         _ => 0,
+    }
+}
+
+pub fn inject_vals(vals: Vec<i32>) {
+    unsafe {
+        for i in 0..8 {
+            PASS_PAWN_VAL[i] = vals[i];
+        }
     }
 }
 
@@ -613,21 +621,23 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     }
                 }
 
-                if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
-                    w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
-
-                    if bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
-                        w_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
-                    }
-
-                    if piece_mask == 0 {
-                        let pawn_control_mask = bitmask.wp_front_control_sqr_masks[index];
-                        if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.wk_index] != 0 {
-                            w_feature_map.controlled_passed_pawn_count += 1;
+                unsafe {
+                    if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
+                        w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+    
+                        if bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
+                            w_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
                         }
+    
+                        if piece_mask == 0 {
+                            let pawn_control_mask = bitmask.wp_front_control_sqr_masks[index];
+                            if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.wk_index] != 0 {
+                                w_feature_map.controlled_passed_pawn_count += 1;
+                            }
+                        }
+                    } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.b_pawn).count_ones() == 1 && bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
+                        w_feature_map.passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
                     }
-                } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.b_pawn).count_ones() == 1 && bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
-                    w_feature_map.passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
                 }
 
                 if (file_mask & bitboard.w_pawn).count_ones() > 1 {
@@ -657,21 +667,23 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     }
                 }
 
-                if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
-                    b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
-
-                    if bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
-                        b_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
-                    }
-
-                    if piece_mask == 0 {
-                        let pawn_control_mask = bitmask.bp_front_control_sqr_masks[index];
-                        if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.bk_index] != 0 {
-                            b_feature_map.controlled_passed_pawn_count += 1;
+                unsafe {
+                    if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
+                        b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+    
+                        if bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
+                            b_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
                         }
+    
+                        if piece_mask == 0 {
+                            let pawn_control_mask = bitmask.bp_front_control_sqr_masks[index];
+                            if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.bk_index] != 0 {
+                                b_feature_map.controlled_passed_pawn_count += 1;
+                            }
+                        }
+                    } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.w_pawn).count_ones() == 1 && bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
+                        b_feature_map.passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
                     }
-                } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.w_pawn).count_ones() == 1 && bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
-                    b_feature_map.passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
                 }
 
                 if (file_mask & bitboard.b_pawn).count_ones() > 1 {

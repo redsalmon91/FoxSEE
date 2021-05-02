@@ -22,6 +22,8 @@ use search::SearchEngine;
 use time_control::TimeCapacity;
 use uci::{UciCommand, Rawmov};
 
+use std::env;
+
 use std::io::{self, prelude::*};
 use std::thread;
 use std::sync::mpsc;
@@ -40,6 +42,16 @@ fn main() {
         println!("only litte-endian systems are supported");
         std::process::exit(0);
     }
+
+    let mut injected_vals = Vec::new();
+    let mut args = env::args();
+    args.next();
+
+    for argument in args {
+        injected_vals.push(argument.parse::<i32>().unwrap());
+    }
+
+    eval::inject_vals(injected_vals);
 
     zob_keys::init();
     bitmask::init();
