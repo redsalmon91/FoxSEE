@@ -10,6 +10,7 @@ struct TableEntry {
     age: u16,
     depth: u8,
     score: i32,
+    eval: i32,
     mov: u32,
 }
 
@@ -22,6 +23,7 @@ impl TableEntry {
             age: 0,
             depth: 0,
             score: 0,
+            eval: 0,
             mov: 0,
         }
     }
@@ -35,6 +37,7 @@ pub struct LookupResult {
     pub flag: u8,
     pub depth: u8,
     pub score: i32,
+    pub eval: i32,
     pub mov: u32,
 }
 
@@ -59,6 +62,7 @@ impl DepthPreferredHashTable {
                 flag: entry.flag,
                 depth: entry.depth,
                 score: entry.score,
+                eval: entry.eval,
                 mov: entry.mov,
             })
         } else {
@@ -66,7 +70,7 @@ impl DepthPreferredHashTable {
         }
     }
 
-    pub fn set(&mut self, key: u64, safe_check: u64, depth: u8, age: u16, flag: u8, score: i32, mov: u32) {        
+    pub fn set(&mut self, key: u64, safe_check: u64, depth: u8, age: u16, flag: u8, score: i32, eval: i32, mov: u32) {        
         let entry = &mut self.table[(key & self.mod_base) as usize];
 
         if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
@@ -77,6 +81,7 @@ impl DepthPreferredHashTable {
                 age,
                 depth,
                 score,
+                eval,
                 mov,
             };
         }

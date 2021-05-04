@@ -18,8 +18,6 @@ UCI chess engine written in Rust!
 - Transposition Table
 - Static Exchange Evalution (SEE)
 - Null-Move Pruning
-- Delta Pruning
-- Reversed Futility Pruning
 - Check Extensions
 - Singular Extensions
 - Late-Move Reductions
