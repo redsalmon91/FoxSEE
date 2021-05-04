@@ -27,7 +27,7 @@ const EG_P_VAL: i32 = 10;
 const EG_PAWN_ESSENTIAL_VAL: i32 = 90;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 
-const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
+const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
 const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 20, 40, 60, 0];
 const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 0, 0];
 
@@ -39,11 +39,11 @@ const ISOLATED_PAWN_PEN: i32 = -10;
 const BEHIND_PAWN_PEN: i32 = -10;
 
 const WEAK_K_ATTACK_VAL: i32 = 5;
-const STRONG_K_ATTACK_VAL: i32 = 20;
+const STRONG_K_ATTACK_VAL: i32 = 10;
 
 const KING_EXPO_PEN: i32 = -10;
 const KING_COMPLETE_EXPO_PEN: i32 = -50;
-const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
+const KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
 
 const TOTAL_PHASE: i32 = 96;
 const Q_PHASE_WEIGHT: i32 = 16;

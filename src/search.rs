@@ -26,9 +26,9 @@ const PV_PRINT_LENGTH: usize = 16;
 const SORTING_CAP_BASE_VAL: i32 = 10000000;
 const SORTING_HISTORY_BASE_VAL: i32 = 10000;
 
-const SORTING_Q_VAL: i32 = 1200;
-const SORTING_P_VAL: i32 = 100;
-const SORTING_HALF_P_VAL: i32 = 50;
+const SORTING_Q_VAL: i32 = 1340;
+const SORTING_P_VAL: i32 = 120;
+const SORTING_HALF_P_VAL: i32 = 60;
 
 const MAX_DEPTH: u8 = 128;
 
@@ -38,9 +38,7 @@ const NM_R: u8 = 2;
 const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
 
-const DELTA_MARGIN: i32 = 200;
-
-const TIME_CHECK_INTEVAL: u64 = 4095;
+const TIME_CHECK_INTEVAL: u64 = 1024;
 
 static mut NODE_COUNT: u64 = 0;
 static mut SEL_DEPTH: u8 = 0;
@@ -69,7 +67,8 @@ pub struct SearchEngine {
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     null_mov_count: u8,
-    tt_age: u16,
+    root_full_mov_count: u16,
+    root_half_mov_count: u16,
     time_tracker: Instant,
     max_time_millis: u128,
 }
@@ -84,7 +83,8 @@ impl SearchEngine {
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             null_mov_count: 0,
-            tt_age: 0,
+            root_full_mov_count: 0,
+            root_half_mov_count: 0,
             time_tracker: Instant::now(),
             max_time_millis: 0,
         }
@@ -143,7 +143,8 @@ impl SearchEngine {
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
 
-        self.tt_age = state.full_mov_count;
+        self.root_full_mov_count = state.full_mov_count;
+        self.root_half_mov_count = state.non_cap_mov_count;
 
         unsafe {
             ABORT_SEARCH = false;
@@ -244,6 +245,7 @@ impl SearchEngine {
         }
 
         let on_pv = beta - alpha > 1;
+
         let original_alpha = alpha;
 
         let mut hash_mov = 0;
@@ -253,19 +255,23 @@ impl SearchEngine {
             Some(entry) => {
                 hash_mov = entry.mov;
 
-                if entry.depth >= depth {
+                if !on_pv && entry.depth >= depth {
+                    let hash_score = entry.score;
+
                     match entry.flag {
                         HASH_TYPE_EXACT => {
-                            return entry.score;
+                            if depth == entry.depth {
+                                return hash_score;
+                            }
                         },
                         HASH_TYPE_BETA => {
-                            if !on_pv && entry.score >= beta {
-                                return beta;
+                            if hash_score >= beta {
+                                return hash_score;
                             }
                         },
                         HASH_TYPE_ALPHA => {
-                            if !on_pv && entry.score <= alpha {
-                                return alpha;
+                            if hash_score <= alpha {
+                                return hash_score;
                             }
                         },
                         _ => {},
@@ -283,7 +289,7 @@ impl SearchEngine {
             return self.q_search(state, alpha, beta, ply);
         }
 
-        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH {
+        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH && !eval::is_in_endgame(state) {
             let depth_reduction = if depth > NM_DEPTH {
                 NM_R + 1
             } else {
@@ -491,7 +497,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && ordered_mov.allow_lmr {
+            let score = if depth > 1 && mov_count > 1 && !gives_check && !in_check && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
@@ -659,11 +665,7 @@ impl SearchEngine {
         let (material_score, is_draw) = eval::eval_materials(state);
 
         if is_draw {
-            return 0
-        }
-
-        if material_score - DELTA_MARGIN >= beta {
-            return material_score - DELTA_MARGIN;
+            return 0;
         }
 
         let score = eval::eval_state(state, material_score);
@@ -675,8 +677,6 @@ impl SearchEngine {
         if score > alpha {
             alpha = score;
         }
-
-        let delta = alpha - score - DELTA_MARGIN;
 
         let mut cap_list = [0; def::MAX_CAP_COUNT];
         mov_table::gen_capture_list(state, &mut cap_list);
@@ -691,19 +691,13 @@ impl SearchEngine {
             let cap = cap_list[mov_index];
 
             if cap == 0 {
-                break
+                break;
             }
 
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
             if def::is_k(state.squares[to]) {
                 return eval::MATE_VAL - ply as i32;
-            }
-
-            let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
-
-            if gain < delta {
-                continue;
             }
 
             scored_cap_list.push(OrderedCap {
@@ -787,7 +781,7 @@ impl SearchEngine {
 
     #[inline]
     fn set_hash(&mut self, state: &State, depth: u8, hash_flag: u8, score: i32, mov: u32) {
-        self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, self.tt_age, hash_flag, score, mov);
+        self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, self.root_full_mov_count, hash_flag, score, mov);
     }
 
     #[inline]
@@ -1225,7 +1219,7 @@ mod tests {
         zob_keys::init();
         bitmask::init();
 
-        let mut state = State::new("8/8/1P1p4/2PP4/1P1K1k2/4r3/8/5q2 b - - 0 1");
+        let mut state = State::new("r5k1/p5p1/1qnB3p/1r1pPR1b/2p5/Q1P3P1/2P3BP/5R1K b - - 2 34");
         let mut search_engine = SearchEngine::new(131072);
 
         let time_capacity = TimeCapacity {
@@ -1236,7 +1230,7 @@ mod tests {
         let best_mov = search_engine.search(&mut state, time_capacity, 64);
 
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
-        assert_eq!(from, util::map_sqr_notation_to_index("f1"));
-        assert_eq!(to, util::map_sqr_notation_to_index("d3"));
+        assert_eq!(from, util::map_sqr_notation_to_index("h5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("g6"));
     }
 }
