@@ -12,11 +12,11 @@ use crate::{
 pub const MATE_VAL: i32 = 20000;
 pub const TERM_VAL: i32 = 10000;
 
-const Q_VAL: i32 = 1250;
-const R_VAL: i32 = 650;
-const B_VAL: i32 = 410;
-const N_VAL: i32 = 380;
-const P_VAL: i32 = 110;
+const Q_VAL: i32 = 1200;
+const R_VAL: i32 = 600;
+const B_VAL: i32 = 400;
+const N_VAL: i32 = 400;
+const P_VAL: i32 = 100;
 
 const EG_Q_VAL: i32 = 90;
 const EG_R_VAL: i32 = 50;
@@ -28,8 +28,8 @@ const EG_PAWN_ESSENTIAL_VAL: i32 = 90;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 
 const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
-const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 20, 40, 60, 0];
-const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 20, 40, 60, 0, 0];
+const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
+const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0, 0];
 
 const EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
 
@@ -39,7 +39,7 @@ const ISOLATED_PAWN_PEN: i32 = -10;
 const BEHIND_PAWN_PEN: i32 = -10;
 
 const WEAK_K_ATTACK_VAL: i32 = 5;
-const STRONG_K_ATTACK_VAL: i32 = 10;
+const STRONG_K_ATTACK_VAL: i32 = 20;
 
 const KING_EXPO_PEN: i32 = -10;
 const KING_COMPLETE_EXPO_PEN: i32 = -50;

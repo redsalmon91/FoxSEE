@@ -37,7 +37,12 @@ const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
 
 const DELTA_MARGIN: i32 = 200;
-const BIG_DELTA_MARGIN: i32 = 1400;
+
+const FP_DEPTH: u8 = 7;
+const FP_MARGIN: i32 = 200;
+
+const RAZOR_DEPTH: u8 = 2;
+const RAZOR_MARGIN: i32 = 400;
 
 const TIME_CHECK_INTEVAL: u64 = 1024;
 
@@ -247,6 +252,26 @@ impl SearchEngine {
 
         let on_pv = beta - alpha > 1;
 
+        if depth == 0 {
+            let mut score = self.q_search(state, alpha, beta, ply);
+
+            if !on_pv {
+                return score;
+            }
+
+            let time_discount = state.full_mov_count as i32 - self.root_full_mov_count as i32;
+
+            if score > time_discount {
+                score -= time_discount;
+            } else if score < time_discount {
+                score += time_discount;
+            } else {
+                score = 0;
+            }
+
+            return score;
+        }
+
         let original_alpha = alpha;
 
         let mut hash_mov = 0;
@@ -259,22 +284,26 @@ impl SearchEngine {
                 hash_mov = entry.mov;
                 static_eval = entry.eval;
 
-                if !on_pv && entry.depth >= depth {
-                    let hash_score = entry.score;
+                if entry.depth >= depth {
+                    let mut hash_score = entry.score;
+
+                    if hash_score > eval::TERM_VAL {
+                        hash_score -= ply as i32;
+                    } else if hash_score < -eval::TERM_VAL {
+                        hash_score += ply as i32;
+                    }
 
                     match entry.flag {
                         HASH_TYPE_EXACT => {
-                            if depth == entry.depth {
-                                return hash_score;
-                            }
+                            return hash_score;
                         },
                         HASH_TYPE_BETA => {
-                            if hash_score >= beta {
+                            if !on_pv && hash_score >= beta {
                                 return hash_score;
                             }
                         },
                         HASH_TYPE_ALPHA => {
-                            if hash_score <= alpha {
+                            if !on_pv && hash_score <= alpha {
                                 return hash_score;
                             }
                         },
@@ -297,33 +326,43 @@ impl SearchEngine {
             },
         }
 
-        if depth == 0 {
-            return self.q_search(state, alpha, beta, ply);
-        }
-
-        if !on_pv && !on_extend && !in_check && depth >= NM_DEPTH && static_eval >= beta && !eval::is_in_endgame(state) {
-            let depth_reduction = if depth > NM_DEPTH {
-                NM_R + 1
-            } else {
-                NM_R
-            };
-
-            self.null_mov_count += 1;
-
-            state.do_null_mov();
-            let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
-            state.undo_null_mov();
-
-            self.null_mov_count -= 1;
-
-            unsafe {
-                if ABORT_SEARCH {
-                    return alpha;
+        if !on_pv && !on_extend && !in_check && !eval::is_in_endgame(state) {
+            if depth <= RAZOR_DEPTH {
+                if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
+                    return self.q_search(state, alpha, beta, ply);
                 }
             }
 
-            if scout_score >= beta && scout_score < eval::TERM_VAL {
-                return scout_score;
+            if depth < FP_DEPTH {
+                if static_eval - FP_MARGIN * depth as i32 >= beta {
+                    return static_eval;
+                }
+            }
+
+            if depth >= NM_DEPTH && static_eval >= beta {
+                let depth_reduction = if depth > NM_DEPTH {
+                    NM_R + 1
+                } else {
+                    NM_R
+                };
+
+                self.null_mov_count += 1;
+
+                state.do_null_mov();
+                let scout_score = -self.ab_search(state, false, false, -beta, -beta+1, depth - depth_reduction - 1, ply + 1);
+                state.undo_null_mov();
+
+                self.null_mov_count -= 1;
+
+                unsafe {
+                    if ABORT_SEARCH {
+                        return alpha;
+                    }
+                }
+
+                if scout_score >= beta && scout_score < eval::TERM_VAL {
+                    return scout_score;
+                }
             }
         }
 
@@ -389,7 +428,7 @@ impl SearchEngine {
                     self.update_counter_mov_table(state, hash_mov);
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, static_eval, hash_mov);
+                self.set_hash(state, depth, ply, HASH_TYPE_BETA, score, static_eval, hash_mov);
 
                 return score
             }
@@ -588,7 +627,7 @@ impl SearchEngine {
                     }
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, static_eval, mov);
+                self.set_hash(state, depth, ply, HASH_TYPE_BETA, score, static_eval, mov);
 
                 return score;
             }
@@ -633,13 +672,13 @@ impl SearchEngine {
                     self.update_counter_mov_table(state, hash_mov);
                 }
 
-                self.set_hash(state, depth, HASH_TYPE_BETA, score, static_eval, hash_mov);
+                self.set_hash(state, depth, ply, HASH_TYPE_BETA, score, static_eval, hash_mov);
 
                 return score;
             }
 
             if score > alpha {
-                self.set_hash(state, depth, HASH_TYPE_EXACT, score, static_eval, hash_mov);
+                self.set_hash(state, depth, ply, HASH_TYPE_EXACT, score, static_eval, hash_mov);
                 return score;
             }
 
@@ -650,9 +689,9 @@ impl SearchEngine {
         }
 
         if alpha > original_alpha {
-            self.set_hash(state, depth, HASH_TYPE_EXACT, alpha, static_eval, best_mov);
+            self.set_hash(state, depth, ply, HASH_TYPE_EXACT, alpha, static_eval, best_mov);
         } else {
-            self.set_hash(state, depth, HASH_TYPE_ALPHA, best_score, static_eval, best_mov);
+            self.set_hash(state, depth, ply, HASH_TYPE_ALPHA, best_score, static_eval, best_mov);
         }
 
         alpha
@@ -675,11 +714,11 @@ impl SearchEngine {
 
         let mut hash_mov = 0;
 
-        let static_score;
+        let static_eval;
 
         match self.get_hash(state) {
             Some(entry) => {
-                static_score = entry.eval;
+                static_eval = entry.eval;
 
                 let (_from, to, _tp, _promo) = util::decode_u32_mov(entry.mov);
 
@@ -687,25 +726,29 @@ impl SearchEngine {
                     hash_mov = entry.mov;
                 }
 
-                if !on_pv {
-                    let hash_score = entry.score;
+                let mut hash_score = entry.score;
 
-                    match entry.flag {
-                        HASH_TYPE_EXACT => {
+                if hash_score > eval::TERM_VAL {
+                    hash_score -= ply as i32;
+                } else if hash_score < -eval::TERM_VAL {
+                    hash_score += ply as i32;
+                }
+
+                match entry.flag {
+                    HASH_TYPE_EXACT => {
+                        return hash_score;
+                    },
+                    HASH_TYPE_BETA => {
+                        if !on_pv && hash_score >= beta {
                             return hash_score;
-                        },
-                        HASH_TYPE_BETA => {
-                            if hash_score >= beta {
-                                return hash_score;
-                            }
-                        },
-                        HASH_TYPE_ALPHA => {
-                            if hash_score <= alpha {
-                                return hash_score;
-                            }
-                        },
-                        _ => {},
-                    }
+                        }
+                    },
+                    HASH_TYPE_ALPHA => {
+                        if !on_pv && hash_score <= alpha {
+                            return hash_score;
+                        }
+                    },
+                    _ => {},
                 }
             },
             _ => {
@@ -715,8 +758,12 @@ impl SearchEngine {
                     return 0;
                 }
 
-                static_score = eval::eval_state(state, material_score);
+                static_eval = eval::eval_state(state, material_score);
             },
+        }
+
+        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
+            return eval::MATE_VAL - ply as i32;
         }
 
         if mov_table::is_in_check(state, state.player) {
@@ -724,22 +771,21 @@ impl SearchEngine {
         }
 
         if !on_pv {
-            if static_score >= beta {
-                return static_score;
+            if static_eval >= beta {
+                return static_eval;
             }
-    
-            if static_score > alpha {
-                alpha = static_score;
+
+            if static_eval > alpha {
+                alpha = static_eval;
             }
         }
 
         let in_endgame = eval::is_in_endgame(state);
 
-        if !in_endgame && static_score + BIG_DELTA_MARGIN < alpha {
-            return alpha;
-        }
+        let original_alpha = alpha;
 
-        let mut best_score = static_score;
+        let mut best_score = static_eval;
+        let mut best_mov = 0;
 
         if hash_mov != 0 {
             let (from, to, tp, promo) = util::decode_u32_mov(hash_mov);
@@ -755,7 +801,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                self.set_hash(state, 0, HASH_TYPE_BETA, score, static_score, hash_mov);
+                self.set_hash(state, 0, ply, HASH_TYPE_BETA, score, static_eval, hash_mov);
                 return score;
             }
 
@@ -765,6 +811,7 @@ impl SearchEngine {
 
             if score > best_score {
                 best_score = score;
+                best_mov = hash_mov;
             }
         }
 
@@ -772,7 +819,7 @@ impl SearchEngine {
         mov_table::gen_capture_list(state, &mut cap_list);
 
         if cap_list[0] == 0 {
-            return static_score;
+            return static_eval;
         }
 
         let mut scored_cap_list = Vec::new();
@@ -790,14 +837,10 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(cap);
 
-            if def::is_k(state.squares[to]) {
-                return eval::MATE_VAL - ply as i32;
-            }
-
             if !in_endgame {
                 let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
 
-                if static_score + gain + DELTA_MARGIN < alpha {
+                if static_eval + gain + DELTA_MARGIN < alpha {
                     continue;
                 }
             }
@@ -809,7 +852,7 @@ impl SearchEngine {
         }
 
         if scored_cap_list.is_empty() {
-            return static_score;
+            return static_eval;
         }
 
         scored_cap_list.sort_by(|ordered_cap_a, ordered_cap_b| {
@@ -831,7 +874,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                self.set_hash(state, 0, HASH_TYPE_BETA, score, static_score, cap);
+                self.set_hash(state, 0, ply, HASH_TYPE_BETA, score, static_eval, cap);
                 return score;
             }
 
@@ -841,7 +884,14 @@ impl SearchEngine {
 
             if score > best_score {
                 best_score = score;
+                best_mov = cap;
             }
+        }
+
+        if alpha > original_alpha {
+            self.set_hash(state, 0, ply, HASH_TYPE_EXACT, alpha, static_eval, best_mov);
+        } else {
+            self.set_hash(state, 0, ply, HASH_TYPE_ALPHA, best_score, static_eval, best_mov);
         }
 
         best_score
@@ -888,7 +938,13 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn set_hash(&mut self, state: &State, depth: u8, hash_flag: u8, score: i32, eval: i32, mov: u32) {
+    fn set_hash(&mut self, state: &State, depth: u8, ply: u8, hash_flag: u8, mut score: i32, eval: i32, mov: u32) {
+        if score > eval::TERM_VAL {
+            score += ply as i32;
+        } else if score < -eval::TERM_VAL {
+            score -= ply as i32;
+        }
+
         self.depth_preferred_hash_table.set(get_hash_key(state), state.hash_key, depth, self.root_full_mov_count, hash_flag, score, eval, mov);
     }
 
