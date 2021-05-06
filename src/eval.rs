@@ -54,10 +54,12 @@ const EG_PHASE: i32 = 32;
 
 const TEMPO_VAL: i32 = 10;
 
+const P_MOB_SCORE: i32 = 5;
 const N_MOB_SCORE: [i32; 9] = [-50, -20, -5, 0, 5, 10, 15, 20, 25];
 const B_MOB_SCORE: [i32; 14] = [-50, -20, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 const R_MOB_SCORE: [i32; 15] = [-50, -10, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30];
 const Q_MOB_SCORE: [i32; 28] = [-30, -20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
+const K_MOB_SCORE: [i32; 9] = [-50, -10, 0, 5, 5, 5, 10, 10, 10];
 
 const SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -239,6 +241,7 @@ pub struct FeatureMap {
     behind_pawn_count: i32,
 
     mobility: i32,
+    eg_mobility: i32,
 
     strong_king_attack_count: i32,
     weak_king_attack_count: i32,
@@ -257,6 +260,7 @@ impl FeatureMap {
             behind_pawn_count: 0,
 
             mobility: 0,
+            eg_mobility: 0,
 
             strong_king_attack_count: 0,
             weak_king_attack_count: 0,
@@ -516,9 +520,11 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         w_features_map.eg_sqr_point
         + w_features_map.passed_pawn_point
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
+        + w_features_map.eg_mobility
         - b_features_map.eg_sqr_point
         - b_features_map.passed_pawn_point
-        - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL;
+        - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
+        - b_features_map.eg_mobility;
 
     let shared_positional_score =
         w_features_map.mobility
@@ -610,6 +616,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                             w_feature_map.controlled_passed_pawn_count += 1;
                         }
                     }
+
+                    if bitmask.index_masks[index+def::DIM_SIZE] & occupy_mask == 0 {
+                        w_feature_map.eg_mobility += P_MOB_SCORE;
+                    }
                 } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.b_pawn).count_ones() == 1 && bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
                     w_feature_map.passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
                 }
@@ -653,6 +663,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                         if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.bk_index] != 0 {
                             b_feature_map.controlled_passed_pawn_count += 1;
                         }
+                    }
+
+                    if bitmask.index_masks[index-def::DIM_SIZE] & occupy_mask == 0 {
+                        b_feature_map.eg_mobility += P_MOB_SCORE;
                     }
                 } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.w_pawn).count_ones() == 1 && bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
                     b_feature_map.passed_pawn_point += CANDIDATE_PASS_PAWN_VAL[rank as usize];
@@ -945,6 +959,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
+
+    w_feature_map.eg_mobility += K_MOB_SCORE[(wk_ring_mask &!bitboard.w_all & !b_attack_mask).count_ones() as usize];
+    b_feature_map.eg_mobility += K_MOB_SCORE[(bk_ring_mask &!bitboard.b_all & !w_attack_mask).count_ones() as usize];
 
     for index in start_index..end_index {
         let piece = squares[index];
