@@ -39,10 +39,13 @@ const IID_DEPTH_R: u8 = 2;
 const DELTA_MARGIN: i32 = 200;
 
 const FP_DEPTH: u8 = 7;
-const FP_MARGIN: i32 = 200;
+const FP_BASE_MARGIN: i32 = 400;
+const FP_MARGIN: i32 = 100;
 
 const RAZOR_DEPTH: u8 = 2;
-const RAZOR_MARGIN: i32 = 400;
+const RAZOR_MARGIN: i32 = 600;
+
+const SE_MARGIN: i32 = 50;
 
 const TIME_CHECK_INTEVAL: u64 = 1024;
 
@@ -326,16 +329,16 @@ impl SearchEngine {
             },
         }
 
-        if !on_pv && !on_extend && !in_check && !eval::is_in_endgame(state) {
+        if !on_pv && !on_extend && !in_check {
             if depth <= RAZOR_DEPTH {
                 if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
                     return self.q_search(state, alpha, beta, ply);
                 }
             }
 
-            if depth < FP_DEPTH {
-                if static_eval - FP_MARGIN * depth as i32 >= beta {
-                    return static_eval;
+            if depth <= FP_DEPTH {
+                if static_eval - FP_BASE_MARGIN - FP_MARGIN * depth as i32 >= beta {
+                    return beta;
                 }
             }
 
@@ -361,7 +364,7 @@ impl SearchEngine {
                 }
 
                 if scout_score >= beta && scout_score < eval::TERM_VAL {
-                    return scout_score;
+                    return beta;
                 }
             }
         }
@@ -441,7 +444,9 @@ impl SearchEngine {
             if score > alpha {
                 alpha = score;
                 pv_found = true;
-            } else {
+            }
+
+            if score - SE_MARGIN < alpha {
                 is_singular_mov = false;
             }
         }
@@ -545,7 +550,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !gives_check && !in_check && ordered_mov.allow_lmr {
+            let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
