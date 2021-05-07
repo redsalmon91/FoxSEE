@@ -1,6 +1,5 @@
 UCI chess engine written in Rust!
 
-[![Build Status](https://travis-ci.com/redsalmon91/FoxSEE.svg?branch=master)](https://travis-ci.com/redsalmon91/FoxSEE)
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)
 ![License](https://img.shields.io/github/license/redsalmon91/FoxSEE)
 
@@ -20,7 +19,7 @@ UCI chess engine written in Rust!
 - Null-Move Pruning
 - Delta Pruning
 - Reversed Futility Pruning
-- Time Pruning
+- Time Pruning ([wiki](https://github.com/redsalmon91/FoxSEE/wiki/Time-Pruning))
 - Razoring
 - Check Extensions
 - Singular Extensions
