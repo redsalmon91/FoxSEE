@@ -363,7 +363,7 @@ impl SearchEngine {
                     }
                 }
 
-                if scout_score >= beta && scout_score < eval::TERM_VAL {
+                if scout_score >= beta && scout_score != 0 && scout_score < eval::TERM_VAL {
                     return beta;
                 }
             }
