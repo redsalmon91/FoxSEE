@@ -232,6 +232,9 @@ const SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
 const WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
 const BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
 
+const W_PAWN_PROMO_RANK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
+const B_PAWN_PROMO_RANK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
+
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     mg_sqr_point: i32,
@@ -342,6 +345,14 @@ pub fn get_square_val_diff(state: &State, moving_piece: u8, from_index: usize, t
 
 pub fn is_in_endgame(state: &State) -> bool {
     get_phase(state) <= EG_PHASE
+}
+
+pub fn has_promoting_pawn(state: &State, player: u8) -> bool {
+    if player == def::PLAYER_W {
+        state.bitboard.w_pawn & W_PAWN_PROMO_RANK != 0
+    } else {
+        state.bitboard.b_pawn & B_PAWN_PROMO_RANK != 0
+    }
 }
 
 pub fn eval_materials(state: &State) -> (i32, bool) {

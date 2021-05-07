@@ -364,7 +364,7 @@ impl SearchEngine {
             }
 
             if !under_mate_threat && alpha < eval::TERM_VAL && beta > -eval::TERM_VAL {
-                if depth <= RAZOR_DEPTH {
+                if depth <= RAZOR_DEPTH && !eval::has_promoting_pawn(state, state.player) {
                     if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
                         return self.q_search(state, alpha, beta, ply);
                     }
