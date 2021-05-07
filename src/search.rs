@@ -298,7 +298,9 @@ impl SearchEngine {
 
                     match entry.flag {
                         HASH_TYPE_EXACT => {
-                            return hash_score;
+                            if depth == entry.depth || (hash_score != 0 && hash_score > -eval::TERM_VAL && hash_score < eval::TERM_VAL) {
+                                return hash_score;
+                            }
                         },
                         HASH_TYPE_BETA => {
                             if !on_pv && hash_score >= beta {
