@@ -329,18 +329,9 @@ impl SearchEngine {
             },
         }
 
-        if !on_pv && !on_extend && !in_check {
-            if depth <= RAZOR_DEPTH {
-                if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
-                    return self.q_search(state, alpha, beta, ply);
-                }
-            }
+        let mut under_mate_threat = false;
 
-            if depth <= FP_DEPTH {
-                if static_eval - FP_BASE_MARGIN - FP_MARGIN * depth as i32 >= beta {
-                    return beta;
-                }
-            }
+        if !on_pv && !on_extend && !in_check {
 
             if depth >= NM_DEPTH && static_eval >= beta {
                 let depth_reduction = if depth > NM_DEPTH {
@@ -365,6 +356,22 @@ impl SearchEngine {
 
                 if scout_score >= beta && scout_score != 0 && scout_score < eval::TERM_VAL {
                     return beta;
+                } else if scout_score < -eval::TERM_VAL {
+                    under_mate_threat = true;
+                }
+            }
+
+            if !under_mate_threat {
+                if depth <= RAZOR_DEPTH {
+                    if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
+                        return self.q_search(state, alpha, beta, ply);
+                    }
+                }
+    
+                if depth <= FP_DEPTH {
+                    if static_eval - FP_BASE_MARGIN - FP_MARGIN * depth as i32 >= beta {
+                        return beta;
+                    }
                 }
             }
         }
@@ -409,7 +416,7 @@ impl SearchEngine {
 
             let mut depth = depth;
 
-            if gives_check {
+            if gives_check || under_mate_threat {
                 depth += 1;
                 pv_extended = true;
             }
@@ -545,7 +552,7 @@ impl SearchEngine {
             let mut depth = depth;
             let mut extended = false;
 
-            if gives_check {
+            if gives_check || under_mate_threat {
                 depth += 1;
                 extended = true;
             }

@@ -23,6 +23,7 @@ UCI chess engine written in Rust!
 - Razoring
 - Check Extensions
 - Singular Extensions
+- Mate-Threat Extensions
 - Late-Move Reductions
 - Killer Heuristic
 - Relative History Heuristic
