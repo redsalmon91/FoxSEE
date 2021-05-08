@@ -288,7 +288,7 @@ impl SearchEngine {
                 hash_mov = entry.mov;
                 static_eval = entry.eval;
 
-                if entry.depth >= depth {
+                if !on_pv && entry.depth >= depth {
                     let mut hash_score = entry.score;
 
                     if hash_score > eval::TERM_VAL {
@@ -299,17 +299,15 @@ impl SearchEngine {
 
                     match entry.flag {
                         HASH_TYPE_EXACT => {
-                            if depth == entry.depth || (hash_score != 0 && hash_score > -eval::TERM_VAL && hash_score < eval::TERM_VAL) {
-                                return hash_score;
-                            }
+                            return hash_score;
                         },
                         HASH_TYPE_BETA => {
-                            if !on_pv && hash_score >= beta {
+                            if hash_score >= beta {
                                 return hash_score;
                             }
                         },
                         HASH_TYPE_ALPHA => {
-                            if !on_pv && hash_score <= alpha {
+                            if hash_score <= alpha {
                                 return hash_score;
                             }
                         },
@@ -324,7 +322,7 @@ impl SearchEngine {
             _ => {
                 let (material_score, is_draw) = eval::eval_materials(state);
 
-                if is_draw {
+                if is_draw && ply > 0 {
                     return 0;
                 }
 
@@ -743,29 +741,31 @@ impl SearchEngine {
                     hash_mov = entry.mov;
                 }
 
-                let mut hash_score = entry.score;
+                if !on_pv {
+                    let mut hash_score = entry.score;
 
-                if hash_score > eval::TERM_VAL {
-                    hash_score -= ply as i32;
-                } else if hash_score < -eval::TERM_VAL {
-                    hash_score += ply as i32;
-                }
+                    if hash_score > eval::TERM_VAL {
+                        hash_score -= ply as i32;
+                    } else if hash_score < -eval::TERM_VAL {
+                        hash_score += ply as i32;
+                    }
 
-                match entry.flag {
-                    HASH_TYPE_EXACT => {
-                        return hash_score;
-                    },
-                    HASH_TYPE_BETA => {
-                        if !on_pv && hash_score >= beta {
+                    match entry.flag {
+                        HASH_TYPE_EXACT => {
                             return hash_score;
-                        }
-                    },
-                    HASH_TYPE_ALPHA => {
-                        if !on_pv && hash_score <= alpha {
-                            return hash_score;
-                        }
-                    },
-                    _ => {},
+                        },
+                        HASH_TYPE_BETA => {
+                            if hash_score >= beta {
+                                return hash_score;
+                            }
+                        },
+                        HASH_TYPE_ALPHA => {
+                            if hash_score <= alpha {
+                                return hash_score;
+                            }
+                        },
+                        _ => {},
+                    }
                 }
             },
             _ => {
