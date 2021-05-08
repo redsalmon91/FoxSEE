@@ -195,6 +195,7 @@ impl SearchEngine {
                 unsafe {
                     let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
                     let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
+                    let hashfull_permill = self.depth_preferred_hash_table.get_utilization_permill();
 
                     if checkmate {
                         let mate_score = if score > 0 {
@@ -203,9 +204,9 @@ impl SearchEngine {
                             (-eval::MATE_VAL - score - 1) / 2
                         };
 
-                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} time {} pv {}", mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} hashfull {} time {} pv {}",mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, hashfull_permill, total_time_taken, util::format_pv(&pv_table));
                     } else {
-                        println!("info score cp {} depth {} seldepth {} nodes {} nps {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, total_time_taken, util::format_pv(&pv_table));
+                        println!("info score cp {} depth {} seldepth {} nodes {} nps {} hashfull {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, hashfull_permill, total_time_taken, util::format_pv(&pv_table));
                     }
                 }
 

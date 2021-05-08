@@ -44,6 +44,7 @@ pub struct LookupResult {
 pub struct DepthPreferredHashTable {
     mod_base: u64,
     table: Vec<TableEntry>,
+    utilization_count: u64,
 }
 
 impl DepthPreferredHashTable {
@@ -51,6 +52,7 @@ impl DepthPreferredHashTable {
         DepthPreferredHashTable {
             mod_base: (size - 1) as u64,
             table: vec![TableEntry::empty(); size],
+            utilization_count: 0,
         }
     }
 
@@ -73,6 +75,10 @@ impl DepthPreferredHashTable {
     pub fn set(&mut self, key: u64, safe_check: u64, depth: u8, age: u16, flag: u8, score: i32, eval: i32, mov: u32) {        
         let entry = &mut self.table[(key & self.mod_base) as usize];
 
+        if entry.flag == 0 {
+            self.utilization_count += 1;
+        }
+
         if (depth as u16 + age) >= (entry.depth as u16 + entry.age) {
             self.table[(key & self.mod_base) as usize] = TableEntry {
                 key,
@@ -87,7 +93,12 @@ impl DepthPreferredHashTable {
         }
     }
 
+    pub fn get_utilization_permill(&self) -> u64 {
+        self.utilization_count * 1000 / (self.mod_base + 1)
+    }
+
     pub fn clear(&mut self) {
         self.table = vec![TableEntry::empty(); self.mod_base as usize + 1];
+        self.utilization_count = 0;
     }
 }
