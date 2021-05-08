@@ -49,9 +49,6 @@ const SE_MARGIN: i32 = 50;
 
 const TIME_CHECK_INTEVAL: u64 = 1024;
 
-static mut NODE_COUNT: u64 = 0;
-static mut SEL_DEPTH: u8 = 0;
-
 pub static mut ABORT_SEARCH: bool = false;
 
 use std::time::Instant;
@@ -80,6 +77,8 @@ pub struct SearchEngine {
     root_half_mov_count: u16,
     time_tracker: Instant,
     max_time_millis: u128,
+    node_count: u64,
+    seldepth: u8,
 }
 
 impl SearchEngine {
@@ -96,6 +95,8 @@ impl SearchEngine {
             root_half_mov_count: 0,
             time_tracker: Instant::now(),
             max_time_millis: 0,
+            node_count: 0,
+            seldepth: 0,
         }
     }
 
@@ -155,6 +156,9 @@ impl SearchEngine {
         self.root_full_mov_count = state.full_mov_count;
         self.root_half_mov_count = state.non_cap_mov_count;
 
+        self.node_count = 0;
+        self.seldepth = 0;
+
         unsafe {
             ABORT_SEARCH = false;
         }
@@ -169,11 +173,6 @@ impl SearchEngine {
         let mut accumulated_time_taken = 0;
 
         loop {
-            unsafe {
-                NODE_COUNT = 0;
-                SEL_DEPTH = 0;
-            }
-
             let score = self.ab_search(state, in_check, false, alpha, beta, depth, 0);
 
             unsafe {
@@ -192,22 +191,20 @@ impl SearchEngine {
             if pv_table[0] != 0 {
                 best_mov = pv_table[0];
 
-                unsafe {
-                    let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
-                    let nps = NODE_COUNT as u128 / (iter_time_taken_millis / 1000).max(1);
-                    let hashfull_permill = self.depth_preferred_hash_table.get_utilization_permill();
+                let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
+                let nps = self.node_count as u128 / (iter_time_taken_millis / 1000).max(1);
+                let hashfull_permill = self.depth_preferred_hash_table.get_utilization_permill();
 
-                    if checkmate {
-                        let mate_score = if score > 0 {
-                            (eval::MATE_VAL - score + 1) / 2
-                        } else {
-                            (-eval::MATE_VAL - score - 1) / 2
-                        };
-
-                        println!("info score mate {} depth {} seldepth {} nodes {} nps {} hashfull {} time {} pv {}",mate_score, depth, SEL_DEPTH, NODE_COUNT, nps, hashfull_permill, total_time_taken, util::format_pv(&pv_table));
+                if checkmate {
+                    let mate_score = if score > 0 {
+                        (eval::MATE_VAL - score + 1) / 2
                     } else {
-                        println!("info score cp {} depth {} seldepth {} nodes {} nps {} hashfull {} time {} pv {}", score, depth, SEL_DEPTH, NODE_COUNT, nps, hashfull_permill, total_time_taken, util::format_pv(&pv_table));
-                    }
+                        (-eval::MATE_VAL - score - 1) / 2
+                    };
+
+                    println!("info score mate {} depth {} seldepth {} nodes {} nps {} hashfull {} time {} pv {}",mate_score, depth, self.seldepth, self.node_count, nps, hashfull_permill, total_time_taken, util::format_pv(&pv_table));
+                } else {
+                    println!("info score cp {} depth {} seldepth {} nodes {} nps {} hashfull {} time {} pv {}", score, depth, self.seldepth, self.node_count, nps, hashfull_permill, total_time_taken, util::format_pv(&pv_table));
                 }
 
                 if checkmate {
@@ -231,18 +228,11 @@ impl SearchEngine {
     }
 
     fn ab_search(&mut self, state: &mut State, in_check: bool, on_extend: bool, mut alpha: i32, beta: i32, depth: u8, ply: u8) -> i32 {
-        unsafe {
-            if ABORT_SEARCH {
-                return alpha
-            }
-        }
-
-        unsafe {
-            NODE_COUNT += 1;
-
-            if (NODE_COUNT & TIME_CHECK_INTEVAL == 0) && self.time_tracker.elapsed().as_millis() > self.max_time_millis {
+        self.node_count += 1;
+        if (self.node_count & TIME_CHECK_INTEVAL == 0) && self.time_tracker.elapsed().as_millis() > self.max_time_millis {
+            unsafe {
                 ABORT_SEARCH = true;
-                return alpha
+                return alpha;
             }
         }
 
@@ -713,16 +703,16 @@ impl SearchEngine {
     }
 
     fn q_search(&mut self, state: &mut State, mut alpha: i32, beta: i32, ply: u8) -> i32 {
-        unsafe {
-            if ABORT_SEARCH {
-                return alpha
+        self.node_count += 1;
+        if (self.node_count & TIME_CHECK_INTEVAL == 0) && self.time_tracker.elapsed().as_millis() > self.max_time_millis {
+            unsafe {
+                ABORT_SEARCH = true;
+                return alpha;
             }
+        }
 
-            NODE_COUNT += 1;
-
-            if ply > SEL_DEPTH {
-                SEL_DEPTH = ply;
-            }
+        if ply > self.seldepth {
+            self.seldepth = ply;
         }
 
         let on_pv = beta - alpha > 1;
