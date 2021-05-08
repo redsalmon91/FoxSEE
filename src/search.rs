@@ -465,10 +465,6 @@ impl SearchEngine {
 
         mov_table::gen_reg_mov_list(state, &mut mov_list);
 
-        if !in_check && self.in_stale_mate(state, &mov_list) {
-            return 0;
-        }
-
         let (primary_killer, secondary_killer) = self.get_killer_mov(ply);
         let counter_mov = self.get_counter_mov(state);
 
@@ -700,6 +696,12 @@ impl SearchEngine {
             if score > best_score {
                 best_score = score;
                 best_mov = hash_mov;
+            }
+        }
+
+        if best_score < -eval::TERM_VAL {
+            if !in_check && self.in_stale_mate(state, &mov_list) {
+                return 0;
             }
         }
 
