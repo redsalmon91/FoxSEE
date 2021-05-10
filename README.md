@@ -20,6 +20,7 @@ UCI chess engine written in Rust!
 - Delta Pruning
 - Reversed Futility Pruning
 - Time Pruning ([wiki](https://github.com/redsalmon91/FoxSEE/wiki/Time-Pruning))
+- Multi-Cut Pruning
 - Razoring
 - Check Extensions
 - Singular Extensions

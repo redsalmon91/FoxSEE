@@ -33,6 +33,11 @@ const SORTING_HALF_P_VAL: i32 = 60;
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
+const MULTICUT_DEPTH: u8 = 8;
+const MULTICUT_R: u8 = 6;
+const MULTICUT_MOV_COUNT: u8 = 6;
+const MULTICUT_CUT_COUNT: u8 = 3;
+
 const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
 
@@ -47,7 +52,7 @@ const RAZOR_MARGIN: i32 = 600;
 
 const SE_MARGIN: i32 = 50;
 
-const TIME_CHECK_INTEVAL: u64 = 1024;
+const TIME_CHECK_INTEVAL: u64 = 1023;
 
 pub static mut ABORT_SEARCH: bool = false;
 
@@ -323,7 +328,6 @@ impl SearchEngine {
         let mut under_mate_threat = false;
 
         if !on_pv && !on_extend && !in_check {
-
             if depth >= NM_DEPTH && static_eval >= beta {
                 let depth_reduction = if depth > NM_DEPTH {
                     NM_R + 1
@@ -524,6 +528,42 @@ impl SearchEngine {
             ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
+        if !on_pv && !on_extend && !in_check && depth >= MULTICUT_DEPTH {
+            let mut cut_mov_count = 0;
+            let mut cut_count = 0;
+
+            for ordered_mov in &ordered_mov_list {
+                cut_mov_count += 1;
+
+                if cut_mov_count > MULTICUT_MOV_COUNT {
+                    break;
+                }
+
+                let mov = ordered_mov.mov;
+                let gives_check = ordered_mov.gives_check;
+
+                let (from, to, tp, promo) = util::decode_u32_mov(mov);
+
+                state.do_mov(from, to, tp, promo);
+                let scout_score = -self.ab_search(state, gives_check, false, -beta, -beta+1, depth - MULTICUT_R - 1, ply + 1);
+                state.undo_mov(from, to, tp);
+
+                unsafe {
+                    if ABORT_SEARCH {
+                        return alpha;
+                    }
+                }
+
+                if scout_score >= beta {
+                    cut_count += 1;
+
+                    if cut_count >= MULTICUT_CUT_COUNT {
+                        return beta;
+                    }
+                }
+            }
+        }
+
         for ordered_mov in &ordered_mov_list {
             mov_count += 1;
 
@@ -544,8 +584,8 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 1 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth), ply + 1);
+            let score = if depth > 2 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
@@ -777,14 +817,12 @@ impl SearchEngine {
             return self.ab_search(state, true, false, alpha, beta, 1, ply);
         }
 
-        if !on_pv {
-            if static_eval >= beta {
-                return static_eval;
-            }
+        if static_eval >= beta {
+            return static_eval;
+        }
 
-            if static_eval > alpha {
-                alpha = static_eval;
-            }
+        if static_eval > alpha {
+            alpha = static_eval;
         }
 
         let in_endgame = eval::is_in_endgame(state);
@@ -852,14 +890,20 @@ impl SearchEngine {
                 }
             }
 
+            let see_score = see(state, from, to, tp, promo);
+
+            if see_score < 0 {
+                continue;
+            }
+
             scored_cap_list.push(OrderedCap {
                 cap,
-                sort_score: see(state, from, to, tp, promo),
+                sort_score: see_score,
             });
         }
 
         if scored_cap_list.is_empty() {
-            return static_eval;
+            return best_score;
         }
 
         scored_cap_list.sort_by(|ordered_cap_a, ordered_cap_b| {
@@ -1226,6 +1270,26 @@ mod tests {
     }
 
     #[test]
+    fn test_search_0() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("r1bq1rk1/5p2/pb1p1n1p/npp1p3/4P1pB/2PP4/PPB2PPP/RN1QNRK1 w - - 0 15");
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 55500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("f2"));
+        assert_eq!(to, util::map_sqr_notation_to_index("f4"));
+    }
+
+    #[test]
     fn test_search_1() {
         zob_keys::init();
         bitmask::init();
@@ -1383,5 +1447,25 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("b3"));
         assert_eq!(to, util::map_sqr_notation_to_index("b4"));
+    }
+
+    #[test]
+    fn test_search_9() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbq1rk1/pp1p1pbp/5np1/3Pp3/2P5/2NB1N2/PP3PPP/R1BQK2R b KQ - 1 8");
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 55500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("e5"));
+        assert_eq!(to, util::map_sqr_notation_to_index("e4"));
     }
 }
