@@ -245,7 +245,7 @@ impl SearchEngine {
             return eval::MATE_VAL - ply as i32
         }
 
-        if ply > 0 && self.null_mov_count == 0 && state.is_draw() {
+        if ply > 0 && self.null_mov_count == 0 && state.is_draw(ply) {
             return 0;
         }
 

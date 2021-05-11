@@ -233,7 +233,7 @@ impl State {
         }
     }
 
-    pub fn is_draw(&self) -> bool {
+    pub fn is_draw(&self, ply: u8) -> bool {
         let history_len = self.history_pos_stack.len();
         let check_range = history_len.min(self.half_mov_count as usize + 1);
 
@@ -245,9 +245,19 @@ impl State {
             return true
         }
 
+        let mut rep_count = 0;
+
         for check_index in REP_POS_START_INDEX..=check_range {
             let (pos_hash, player) = self.history_pos_stack[history_len-check_index];
             if pos_hash == self.hash_key && player == self.player {
+                if ply > 2 {
+                    return true;
+                }
+
+                rep_count += 1;
+            }
+
+            if rep_count > 1 {
                 return true;
             }
         }
