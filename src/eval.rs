@@ -24,7 +24,7 @@ const EG_B_VAL: i32 = 20;
 const EG_N_VAL: i32 =-10;
 const EG_P_VAL: i32 = 10;
 
-const EG_PAWN_ESSENTIAL_VAL: i32 = 90;
+const EG_PAWN_ESSENTIAL_VAL: i32 = 190;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 
 const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
