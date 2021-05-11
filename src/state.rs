@@ -241,7 +241,7 @@ impl State {
             return false;
         }
 
-        if check_range >= MAX_NON_CAP_MOV_COUNT {
+        if check_range >= MAX_NON_CAP_MOV_COUNT && ply > 2 {
             return true
         }
 
