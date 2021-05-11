@@ -54,7 +54,8 @@ pub struct State {
     pub player: u8,
     pub cas_rights: u8,
     pub enp_square: usize,
-    pub non_cap_mov_count: u16,
+    pub half_mov_count: u16,
+    pub full_mov_count: u16,
     pub hash_key: u64,
 
     pub wk_index: usize,
@@ -80,10 +81,8 @@ pub struct State {
     pub cas_rights_stack: Vec<u8>,
     pub history_pos_stack: Vec<(u64, u8)>,
     pub history_mov_stack: Vec<(u8, usize, usize)>,
-    pub non_cap_mov_count_stack: Vec<u16>,
+    pub half_mov_count_stack: Vec<u16>,
     pub king_index_stack: Vec<(usize, usize)>,
-
-    pub full_mov_count: u16,
 }
 
 impl State {
@@ -92,7 +91,7 @@ impl State {
         let player = get_player_from_fen(fen_segment_list[FEN_PLAYER_INDEX]);
         let cas_rights = get_cas_rights_from_fen(fen_segment_list[FEN_CAS_RIGHTS_INDEX]);
         let enp_square = get_enp_sqr_from_fen(fen_segment_list[FEN_ENP_SQR_INDEX]);
-        let non_cap_mov_count = fen_segment_list[FEN_HALF_MOV_INDEX].parse::<u16>().unwrap();
+        let half_mov_count = fen_segment_list[FEN_HALF_MOV_INDEX].parse::<u16>().unwrap();
         let full_mov_count = fen_segment_list[FEN_FULL_MOV_INDEX].parse::<u16>().unwrap();
 
         let bitmask = bitmask::get_bitmask();
@@ -202,7 +201,7 @@ impl State {
             player,
             cas_rights,
             enp_square,
-            non_cap_mov_count,
+            half_mov_count,
             hash_key,
 
             wk_index,
@@ -227,7 +226,7 @@ impl State {
             cas_rights_stack: Vec::new(),
             history_pos_stack: Vec::new(),
             history_mov_stack: Vec::new(),
-            non_cap_mov_count_stack: Vec::new(),
+            half_mov_count_stack: Vec::new(),
             king_index_stack: Vec::new(),
 
             full_mov_count,
@@ -236,7 +235,7 @@ impl State {
 
     pub fn is_draw(&self) -> bool {
         let history_len = self.history_pos_stack.len();
-        let check_range = history_len.min(self.non_cap_mov_count as usize + 1);
+        let check_range = history_len.min(self.half_mov_count as usize + 1);
 
         if check_range < REP_POS_START_INDEX {
             return false;
@@ -272,7 +271,7 @@ impl State {
         self.enp_sqr_stack.push(self.enp_square);
         self.history_pos_stack.push((self.hash_key, self.player));
         self.history_mov_stack.push((self.player, from, to));
-        self.non_cap_mov_count_stack.push(self.non_cap_mov_count);
+        self.half_mov_count_stack.push(self.half_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
         self.enp_square = 0;
         self.full_mov_count += 1;
@@ -294,7 +293,7 @@ impl State {
         self.cas_rights = self.cas_rights_stack.pop().unwrap();
         self.enp_square = self.enp_sqr_stack.pop().unwrap();
         self.history_mov_stack.pop();
-        self.non_cap_mov_count = self.non_cap_mov_count_stack.pop().unwrap();
+        self.half_mov_count = self.half_mov_count_stack.pop().unwrap();
         let (wk_index, bk_index) = self.king_index_stack.pop().unwrap();
         self.wk_index = wk_index;
         self.bk_index = bk_index;
@@ -388,12 +387,12 @@ impl State {
 
         if taken_piece == 0 {
             if def::is_p(moving_piece) {
-                self.non_cap_mov_count = 0;
+                self.half_mov_count = 0;
             } else {
-                self.non_cap_mov_count += 1;
+                self.half_mov_count += 1;
             }
         } else {
-            self.non_cap_mov_count = 0;
+            self.half_mov_count = 0;
             self.hash_key ^= zob_keys::get_board_zob_key(to, taken_piece);
 
             if def::on_same_side(def::PLAYER_W, taken_piece) {
@@ -663,7 +662,7 @@ impl State {
         self.squares[to] = promo;
         self.squares[from] = 0;
 
-        self.non_cap_mov_count = 0;
+        self.half_mov_count = 0;
     }
 
     fn undo_promo_mov(&mut self, from: usize, to: usize) {
@@ -776,7 +775,7 @@ impl State {
     }
 
     fn do_cas_mov(&mut self, to: usize) {
-        self.non_cap_mov_count = 0;
+        self.half_mov_count = 0;
 
         if to == def::CAS_SQUARE_WK {
             self.cas_rights &= 0b0011;
@@ -863,7 +862,7 @@ impl State {
             to + 8
         };
 
-        self.non_cap_mov_count = 0;
+        self.half_mov_count = 0;
 
         let moving_piece = self.squares[from];
         let taken_piece = self.squares[taken_index];
@@ -958,7 +957,7 @@ impl State {
             to + 8
         };
 
-        self.non_cap_mov_count = 0;
+        self.half_mov_count = 0;
 
         let moving_piece = self.squares[from];
         let move_index_mask = bitmask::get_bitmask().index_masks[from] ^ bitmask::get_bitmask().index_masks[to];

@@ -159,7 +159,7 @@ impl SearchEngine {
         self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
 
         self.root_full_mov_count = state.full_mov_count;
-        self.root_half_mov_count = state.non_cap_mov_count;
+        self.root_half_mov_count = state.half_mov_count;
 
         self.node_count = 0;
         self.seldepth = 0;
@@ -258,7 +258,9 @@ impl SearchEngine {
                 return score;
             }
 
-            let time_discount = state.full_mov_count as i32 - self.root_full_mov_count as i32;
+            let full_mov_count_discount = state.full_mov_count as i32 - self.root_full_mov_count as i32;
+            let half_mov_count_discount = state.half_mov_count as i32 - self.root_half_mov_count as i32;
+            let time_discount = full_mov_count_discount + half_mov_count_discount;
 
             if score > time_discount {
                 score -= time_discount;
