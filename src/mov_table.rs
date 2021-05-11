@@ -407,12 +407,13 @@ pub fn gen_reg_mov_list(state: &State, mov_list: &mut [u32; def::MAX_MOV_COUNT])
     }
 }
 
-pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT]) {
+pub fn gen_capture_and_promo_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT]) {
     let player = state.player;
     let bitboard = state.bitboard;
     let bitmask = bitmask::get_bitmask();
 
     let occupy_mask = bitboard.w_all | bitboard.b_all;
+    let empty_mask = !occupy_mask;
 
     let mut cap_count = 0;
 
@@ -439,6 +440,16 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
 
         if def::is_p(moving_piece) {
             if player == def::PLAYER_W {
+                if bitmask.wp_mov_masks[from_index] & empty_mask != 0 {
+                    let to_index = from_index + 8;
+                    if to_index > 55 {
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::WQ);
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::WR);
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::WB);
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::WN);
+                    }
+                }
+
                 let enp_square_index = state.enp_square;
                 let mut attack_mask = bitmask.wp_attack_masks[from_index] & (bitboard.b_all | bitmask.index_masks[enp_square_index]);
 
@@ -468,6 +479,16 @@ pub fn gen_capture_list(state: &State, cap_list: &mut [u32; def::MAX_CAP_COUNT])
                     }
                 }
             } else {
+                if bitmask.bp_mov_masks[from_index] & empty_mask != 0 {
+                    let to_index = from_index - 8;
+                    if to_index < 8 {
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::BQ);
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::BR);
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::BB);
+                        add_cap(from_index, to_index, def::MOV_PROMO, def::BN);
+                    }
+                }
+
                 let enp_square_index = state.enp_square;
                 let mut attack_mask = bitmask.bp_attack_masks[from_index] & (bitboard.w_all | (bitmask.index_masks[enp_square_index] & ENP_SQRS_MASK));
 

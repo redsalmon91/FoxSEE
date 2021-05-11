@@ -65,8 +65,8 @@ struct OrderedMov {
     allow_lmr: bool,
 }
 
-struct OrderedCap {
-    cap: u32,
+struct OrderedQMov {
+    mov: u32,
     sort_score: i32,
 }
 
@@ -767,9 +767,9 @@ impl SearchEngine {
             Some(entry) => {
                 static_eval = entry.eval;
 
-                let (_from, to, _tp, _promo) = util::decode_u32_mov(entry.mov);
+                let (_from, to, _tp, promo) = util::decode_u32_mov(entry.mov);
 
-                if state.squares[to] != 0 {
+                if promo != 0 || state.squares[to] != 0 {
                     hash_mov = entry.mov;
                 }
 
@@ -862,27 +862,27 @@ impl SearchEngine {
             }
         }
 
-        let mut cap_list = [0; def::MAX_CAP_COUNT];
-        mov_table::gen_capture_list(state, &mut cap_list);
+        let mut mov_list = [0; def::MAX_CAP_COUNT];
+        mov_table::gen_capture_and_promo_list(state, &mut mov_list);
 
-        if cap_list[0] == 0 {
+        if mov_list[0] == 0 {
             return static_eval;
         }
 
-        let mut scored_cap_list = Vec::new();
+        let mut scored_mov_list = Vec::new();
 
         for mov_index in 0..def::MAX_CAP_COUNT {
-            let cap = cap_list[mov_index];
+            let mov = mov_list[mov_index];
 
-            if cap == 0 {
+            if mov == 0 {
                 break;
             }
 
-            if cap == hash_mov {
+            if mov == hash_mov {
                 continue;
             }
 
-            let (from, to, tp, promo) = util::decode_u32_mov(cap);
+            let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             if !in_endgame {
                 let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
@@ -898,23 +898,23 @@ impl SearchEngine {
                 continue;
             }
 
-            scored_cap_list.push(OrderedCap {
-                cap,
+            scored_mov_list.push(OrderedQMov {
+                mov,
                 sort_score: see_score,
             });
         }
 
-        if scored_cap_list.is_empty() {
+        if scored_mov_list.is_empty() {
             return best_score;
         }
 
-        scored_cap_list.sort_by(|ordered_cap_a, ordered_cap_b| {
-            ordered_cap_b.sort_score.partial_cmp(&ordered_cap_a.sort_score).unwrap()
+        scored_mov_list.sort_by(|ordered_mov_a, ordered_mov_b| {
+            ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
-        for ordered_cap in scored_cap_list {
-            let cap = ordered_cap.cap;
-            let (from, to, tp, promo) = util::decode_u32_mov(cap);
+        for ordered_mov in scored_mov_list {
+            let mov = ordered_mov.mov;
+            let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             state.do_mov(from, to, tp, promo);
             let score = -self.q_search(state, -beta, -alpha, ply + 1);
@@ -927,7 +927,7 @@ impl SearchEngine {
             }
 
             if score >= beta {
-                self.set_hash(state, 0, ply, HASH_TYPE_BETA, score, static_eval, cap);
+                self.set_hash(state, 0, ply, HASH_TYPE_BETA, score, static_eval, mov);
                 return score;
             }
 
@@ -937,7 +937,7 @@ impl SearchEngine {
 
             if score > best_score {
                 best_score = score;
-                best_mov = cap;
+                best_mov = mov;
             }
         }
 
