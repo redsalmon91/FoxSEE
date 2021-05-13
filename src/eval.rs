@@ -46,9 +46,9 @@ const KING_EXPO_PEN: i32 = -20;
 const KING_COMPLETE_EXPO_PEN: i32 = -90;
 const KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
 
-const ROOK_OPEN_BONUS: i32 = 20;
+const ROOK_OPEN_BONUS: i32 = 10;
 
-const THREAT_FACTOR: i32 = 5;
+const THREAT_FACTOR: i32 = 10;
 
 const TOTAL_PHASE: i32 = 96;
 const Q_PHASE_WEIGHT: i32 = 16;

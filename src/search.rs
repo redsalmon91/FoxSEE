@@ -259,7 +259,12 @@ impl SearchEngine {
             }
 
             let full_mov_count_discount = state.full_mov_count as i32 - self.root_full_mov_count as i32;
-            let half_mov_count_discount = state.half_mov_count as i32 - self.root_half_mov_count as i32;
+            let mut half_mov_count_discount = state.half_mov_count as i32 - self.root_half_mov_count as i32;
+
+            if half_mov_count_discount < 0 {
+                half_mov_count_discount = 0;
+            }
+
             let time_discount = full_mov_count_discount + half_mov_count_discount;
 
             if score > time_discount {
