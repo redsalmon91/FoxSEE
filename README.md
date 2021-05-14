@@ -18,7 +18,7 @@ UCI chess engine written in Rust!
 - Static Exchange Evalution (SEE)
 - Null-Move Pruning
 - Delta Pruning
-- Reversed Futility Pruning
+- Futility Pruning
 - Time Pruning ([wiki](https://github.com/redsalmon91/FoxSEE/wiki/Time-Pruning))
 - Multi-Cut Pruning
 - Razoring

@@ -44,8 +44,7 @@ const IID_DEPTH_R: u8 = 2;
 const DELTA_MARGIN: i32 = 200;
 
 const FP_DEPTH: u8 = 7;
-const FP_BASE_MARGIN: i32 = 400;
-const FP_MARGIN: i32 = 100;
+const FP_MARGIN: i32 = 120;
 
 const RAZOR_DEPTH: u8 = 2;
 const RAZOR_MARGIN: i32 = 600;
@@ -62,6 +61,7 @@ struct OrderedMov {
     mov: u32,
     sort_score: i32,
     gives_check: bool,
+    is_passer: bool,
     allow_lmr: bool,
 }
 
@@ -335,6 +335,12 @@ impl SearchEngine {
         let mut under_mate_threat = false;
 
         if !on_pv && !on_extend && !in_check {
+            if depth <= RAZOR_DEPTH && !eval::has_promoting_pawn(state, state.player) {
+                if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
+                    return self.q_search(state, alpha, beta, ply);
+                }
+            }
+
             if depth >= NM_DEPTH && static_eval >= beta {
                 let depth_reduction = if depth > NM_DEPTH {
                     NM_R + 1
@@ -360,20 +366,6 @@ impl SearchEngine {
                     return beta;
                 } else if scout_score < -eval::TERM_VAL {
                     under_mate_threat = true;
-                }
-            }
-
-            if !under_mate_threat && alpha < eval::TERM_VAL && beta > -eval::TERM_VAL {
-                if depth <= RAZOR_DEPTH && !eval::has_promoting_pawn(state, state.player) {
-                    if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
-                        return self.q_search(state, alpha, beta, ply);
-                    }
-                }
-    
-                if depth <= FP_DEPTH {
-                    if static_eval - FP_BASE_MARGIN - FP_MARGIN * depth as i32 >= beta {
-                        return beta;
-                    }
                 }
             }
         }
@@ -492,6 +484,7 @@ impl SearchEngine {
             let mut ordered_mov = OrderedMov {
                 mov,
                 gives_check,
+                is_passer,
                 sort_score: 0,
                 allow_lmr: false,
             };
@@ -576,10 +569,17 @@ impl SearchEngine {
 
             let mov = ordered_mov.mov;
             let gives_check = ordered_mov.gives_check;
+            let is_passer = ordered_mov.is_passer;
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
             let is_capture = state.squares[to] != 0;
+
+            if mov_count > 1 && !gives_check && !in_check && !under_mate_threat && !is_passer && depth <= FP_DEPTH {
+                if static_eval + eval::val_of(state.squares[to]) + eval::val_of(promo) + FP_MARGIN * depth as i32 <= alpha {
+                    continue;
+                }
+            }
 
             state.do_mov(from, to, tp, promo);
 
