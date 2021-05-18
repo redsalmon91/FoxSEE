@@ -33,10 +33,13 @@ const SORTING_HALF_P_VAL: i32 = 60;
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
 
-const MULTICUT_DEPTH: u8 = 8;
-const MULTICUT_R: u8 = 6;
-const MULTICUT_MOV_COUNT: u8 = 6;
-const MULTICUT_CUT_COUNT: u8 = 3;
+const MCP_DEPTH: u8 = 8;
+const MCP_R: u8 = 6;
+const MCP_MOV_COUNT: u8 = 6;
+const MCP_CUT_COUNT: u8 = 3;
+
+const HLP_COUNT: i32 = 10;
+const HLP_THRESHOLD: i32 = 0;
 
 const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
@@ -63,6 +66,7 @@ struct OrderedMov {
     gives_check: bool,
     is_passer: bool,
     allow_lmr: bool,
+    history_prune: bool,
 }
 
 struct OrderedQMov {
@@ -487,6 +491,7 @@ impl SearchEngine {
                 is_passer,
                 sort_score: 0,
                 allow_lmr: !(gives_check || is_passer),
+                history_prune: false,
             };
 
             if state.squares[to] != 0 {
@@ -519,13 +524,17 @@ impl SearchEngine {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
+                let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
 
-                if history_score != 0 {
-                    let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                    ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
+                if butterfly_score >= HLP_COUNT && history_score <= HLP_THRESHOLD {
+                    ordered_mov.history_prune = true;
                 } else {
-                    let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
-                    ordered_mov.sort_score = sqr_val_diff;
+                    if history_score != 0 {
+                        ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
+                    } else {
+                        let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
+                        ordered_mov.sort_score = sqr_val_diff;
+                    }
                 }
             }
 
@@ -536,14 +545,14 @@ impl SearchEngine {
             ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
-        if !on_pv && !on_extend && !in_check && depth >= MULTICUT_DEPTH {
+        if !on_pv && !on_extend && !in_check && depth >= MCP_DEPTH {
             let mut cut_mov_count = 0;
             let mut cut_count = 0;
 
             for ordered_mov in &ordered_mov_list {
                 cut_mov_count += 1;
 
-                if cut_mov_count > MULTICUT_MOV_COUNT {
+                if cut_mov_count > MCP_MOV_COUNT {
                     break;
                 }
 
@@ -553,7 +562,7 @@ impl SearchEngine {
                 let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
                 state.do_mov(from, to, tp, promo);
-                let scout_score = -self.ab_search(state, gives_check, false, -beta, -beta+1, depth - MULTICUT_R - 1, ply + 1);
+                let scout_score = -self.ab_search(state, gives_check, false, -beta, -beta+1, depth - MCP_R - 1, ply + 1);
                 state.undo_mov(from, to, tp);
 
                 unsafe {
@@ -565,7 +574,7 @@ impl SearchEngine {
                 if scout_score >= beta {
                     cut_count += 1;
 
-                    if cut_count >= MULTICUT_CUT_COUNT {
+                    if cut_count >= MCP_CUT_COUNT {
                         return beta;
                     }
                 }
@@ -597,6 +606,8 @@ impl SearchEngine {
             if gives_check || under_mate_threat {
                 depth += 1;
                 extended = true;
+            } else if mov_count > 1 && depth > 1 && ordered_mov.history_prune {
+                depth -= 1;
             }
 
             let score = if depth > 2 && mov_count > 1 && !extended && ordered_mov.allow_lmr {

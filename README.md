@@ -21,6 +21,7 @@ UCI chess engine written in Rust!
 - Futility Pruning
 - Time Pruning ([wiki](https://github.com/redsalmon91/FoxSEE/wiki/Time-Pruning))
 - Multi-Cut Pruning
+- History Leaf Pruning
 - Razoring
 - Check Extensions
 - Singular Extensions
