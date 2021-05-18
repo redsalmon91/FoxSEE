@@ -486,7 +486,7 @@ impl SearchEngine {
                 gives_check,
                 is_passer,
                 sort_score: 0,
-                allow_lmr: false,
+                allow_lmr: !(gives_check || is_passer),
             };
 
             if state.squares[to] != 0 {
@@ -497,8 +497,18 @@ impl SearchEngine {
                 } else {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                 }
+
+                if see_score >= 0 {
+                    ordered_mov.allow_lmr = false;
+                }
             } else if promo != 0 {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + eval::val_of(promo);
+                let see_score = see(state, from, to, tp, promo);
+
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
+
+                if see_score >= 0 {
+                    ordered_mov.allow_lmr = false;
+                }
             } else if mov == counter_mov {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL;
             } else if mov == primary_killer {
@@ -517,8 +527,6 @@ impl SearchEngine {
                     let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
                     ordered_mov.sort_score = sqr_val_diff;
                 }
-
-                ordered_mov.allow_lmr = true;
             }
 
             ordered_mov_list.push(ordered_mov);
