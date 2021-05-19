@@ -14,6 +14,7 @@ const DEFAULT_MOVS_TO_GO_NO_INCREMENT: u128 = 60;
 
 pub const FEN_START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+#[derive(Debug)]
 pub struct Rawmov {
     pub from: usize,
     pub to: usize,
@@ -21,12 +22,14 @@ pub struct Rawmov {
     pub origin_mov_str: String,
 }
 
+#[derive(Debug)]
 pub struct TimeInfo {
     pub all_time_millis: u128,
     pub moves_to_go: u128,
     pub increment_millis: u128,
 }
 
+#[derive(Debug)]
 pub enum UciCommand {
     Noop,
     Reset,
@@ -85,17 +88,32 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciCommand {
                 }
             },
             "fen" => {
-                let len = cmd_seq.len();
-                let mut fen_str_vec = vec![""; len-2];
-                fen_str_vec.copy_from_slice(&cmd_seq[2..len]);
-                process_position(&fen_str_vec.join(" "))
+                if cmd_seq.contains(&"moves") {
+                    let mut fen_str_vec = Vec::new();
+
+                    let mut token_index = 2;
+                    loop {
+                        let next_token = cmd_seq[token_index];
+
+                        if next_token == "moves" {
+                            break;
+                        }
+
+                        fen_str_vec.push(next_token);
+                        token_index += 1;
+                    }
+
+                    process_position_with_mov_list(&fen_str_vec.join(" "), cmd_seq.split_off(token_index+1))
+                } else {
+                    let len = cmd_seq.len();
+                    let mut fen_str_vec = vec![""; len-2];
+                    fen_str_vec.copy_from_slice(&cmd_seq[2..len]);
+                    process_position(&fen_str_vec.join(" "))
+                }
             },
-            _ => {
-                eprintln!("only support fen or startpos with mov list");
-                UciCommand::Noop
-            }
+            _ => UciCommand::Noop
         },
-        "go" => process_go_cmd(cmd_seq.split_off(0)),
+        "go" => process_go_cmd(&mut cmd_seq.split_off(0)),
         "perft" => UciCommand::Perft(cmd_seq[1].parse::<u8>().unwrap()),
         "ponderhit" => UciCommand::Noop,
         _ => {
@@ -105,10 +123,11 @@ pub fn process_uci_cmd(uci_cmd: &str) -> UciCommand {
     }
 }
 
-fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciCommand {
+fn process_go_cmd(go_cmd_seq: &mut Vec<&str>) -> UciCommand {
     match go_cmd_seq[1] {
-        "movestogo" => process_time_control_with_movestogo(go_cmd_seq),
-        "wtime" => process_time_control(go_cmd_seq),
+        "movestogo" => process_time_control(go_cmd_seq.split_off(1)),
+        "wtime" => process_time_control(go_cmd_seq.split_off(1)),
+        "btime" => process_time_control(go_cmd_seq.split_off(1)),
         "movetime" => UciCommand::StartSearchWithTime(go_cmd_seq[2].parse::<u128>().unwrap()),
         "depth" => UciCommand::StartSearchToDepth(go_cmd_seq[2].parse::<u8>().unwrap()),
         "infinite" => UciCommand::StartSearchInfinite,
@@ -118,88 +137,60 @@ fn process_go_cmd(go_cmd_seq: Vec<&str>) -> UciCommand {
 }
 
 fn process_time_control(go_cmd_seq: Vec<&str>) -> UciCommand {
-    assert!(go_cmd_seq[1] == "wtime");
-    let wtime = go_cmd_seq[2].parse::<u128>().unwrap();
-
-    assert!(go_cmd_seq[3] == "btime");
-    let btime = go_cmd_seq[4].parse::<u128>().unwrap();
-
-    let movs_to_go;
+    let mut wtime = 0;
+    let mut btime = 0;
     let mut winc = 0;
     let mut binc = 0;
+    let mut movestogo = 0;
 
-    if go_cmd_seq.len() > 5 && go_cmd_seq[5] == "movestogo" {
-        movs_to_go = go_cmd_seq[6].parse::<u128>().unwrap();
-    } else if go_cmd_seq.len() > 9 && go_cmd_seq[9] == "movestogo" {
-        if go_cmd_seq[5] == "winc" {
-            winc = go_cmd_seq[6].parse::<u128>().unwrap();
+    let mut tc_cmd_seq = go_cmd_seq.into_iter();
+
+    loop {
+        let cmd_key = tc_cmd_seq.next();
+
+        if cmd_key.is_none() {
+            break;
         }
 
-        if go_cmd_seq[7] == "binc" {
-            binc = go_cmd_seq[8].parse::<u128>().unwrap()
+        let cmd_key = cmd_key.unwrap();
+
+        match cmd_key {
+            "wtime" => {
+                wtime = tc_cmd_seq.next().unwrap().parse::<u128>().unwrap();
+            },
+            "btime" => {
+                btime = tc_cmd_seq.next().unwrap().parse::<u128>().unwrap();
+            },
+            "winc" => {
+                winc = tc_cmd_seq.next().unwrap().parse::<u128>().unwrap();
+            },
+            "binc" => {
+                binc = tc_cmd_seq.next().unwrap().parse::<u128>().unwrap();
+            },
+            "movestogo" => {
+                movestogo = tc_cmd_seq.next().unwrap().parse::<u128>().unwrap();
+            },
+            _ => {}
         }
+    }
 
-        movs_to_go = go_cmd_seq[10].parse::<u128>().unwrap();
-    } else if go_cmd_seq.len() > 5 {
-        if go_cmd_seq[5] == "winc" {
-            winc = go_cmd_seq[6].parse::<u128>().unwrap();
-        }
-
-        if go_cmd_seq[7] == "binc" {
-            binc = go_cmd_seq[8].parse::<u128>().unwrap()
-        }
-
-        movs_to_go = DEFAULT_MOVS_TO_GO;
-    } else {
-        movs_to_go = DEFAULT_MOVS_TO_GO_NO_INCREMENT;
-    };
-
-    UciCommand::StartSearchWithComplextTimeControl((
-        TimeInfo{
-            all_time_millis: wtime,
-            moves_to_go: movs_to_go,
-            increment_millis: winc,
-        },
-        TimeInfo{
-            all_time_millis: btime,
-            moves_to_go: movs_to_go,
-            increment_millis: binc,
-        }
-    ))
-}
-
-fn process_time_control_with_movestogo(go_cmd_seq: Vec<&str>) -> UciCommand {
-    assert!(go_cmd_seq[1] == "movestogo");
-    let movs_to_go = go_cmd_seq[2].parse::<u128>().unwrap();
-
-    assert!(go_cmd_seq[3] == "wtime");
-    let wtime = go_cmd_seq[4].parse::<u128>().unwrap();
-
-    assert!(go_cmd_seq[5] == "btime");
-    let btime = go_cmd_seq[6].parse::<u128>().unwrap();
-
-    let mut winc = 0;
-    let mut binc = 0;
-
-    if go_cmd_seq.len() > 7 {
-        if go_cmd_seq[7] == "winc" {
-            winc = go_cmd_seq[8].parse::<u128>().unwrap();
-        }
-
-        if go_cmd_seq[9] == "binc" {
-            binc = go_cmd_seq[10].parse::<u128>().unwrap();
+    if movestogo == 0 {
+        if winc == 0 && binc == 0 {
+            movestogo = DEFAULT_MOVS_TO_GO_NO_INCREMENT;
+        } else {
+            movestogo = DEFAULT_MOVS_TO_GO;
         }
     }
 
     UciCommand::StartSearchWithComplextTimeControl((
         TimeInfo{
             all_time_millis: wtime,
-            moves_to_go: movs_to_go,
+            moves_to_go: movestogo,
             increment_millis: winc,
         },
         TimeInfo{
             all_time_millis: btime,
-            moves_to_go: movs_to_go,
+            moves_to_go: movestogo,
             increment_millis: binc,
         }
     ))

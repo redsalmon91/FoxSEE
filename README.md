@@ -38,7 +38,6 @@ Run `cargo build --release`
 
 ## How to use
 This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCIProtocol.html), you can use it with any of the UCI-compatible GUIs (with a few limitations as mentioned in the [Limitations](#limitations) section).  
-Aside from the standard set of UCI commands, `perft x` is also supported.
 
 ## Limitations
 - Search `x` nodes NOT not supported
