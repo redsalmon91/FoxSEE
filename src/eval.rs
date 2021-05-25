@@ -48,8 +48,6 @@ const KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
 
 const ROOK_OPEN_BONUS: i32 = 10;
 
-const THREAT_FACTOR: i32 = 10;
-
 const TOTAL_PHASE: i32 = 96;
 const Q_PHASE_WEIGHT: i32 = 16;
 const R_PHASE_WEIGHT: i32 = 8;
@@ -253,8 +251,6 @@ pub struct FeatureMap {
 
     rook_open_count: i32,
 
-    threat_point: i32,
-
     strong_king_attack_count: i32,
     weak_king_attack_count: i32,
 }
@@ -275,8 +271,6 @@ impl FeatureMap {
             eg_mobility: 0,
 
             rook_open_count: 0,
-
-            threat_point: 0,
 
             strong_king_attack_count: 0,
             weak_king_attack_count: 0,
@@ -551,12 +545,10 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 
     let shared_positional_score =
         w_features_map.mobility
-        + w_features_map.threat_point
         + w_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         + w_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
         - b_features_map.mobility
-        - b_features_map.threat_point
         - b_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         - b_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN;
@@ -1011,8 +1003,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             continue
         }
 
-        let index_mask = bitmask.index_masks[index];
-
         let mov_mask = mov_mask_map[index];
 
         match piece {
@@ -1020,30 +1010,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WP[index];
                 w_feature_map.eg_sqr_point += SQR_TABLE_WP_ENDGAME[index];
 
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & b_attack_mask != 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
-
                 w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
             },
             def::WN => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WN[index];
-
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & b_attack_mask != 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
 
                 let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                 w_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
@@ -1057,17 +1027,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WB => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
 
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & b_attack_mask != 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
-
                 let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                 w_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
 
@@ -1077,17 +1036,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WR => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
 
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & b_attack_mask != 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
-
                 let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                 w_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
 
@@ -1096,15 +1044,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             },
             def::WQ => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
-
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & b_attack_mask != 0 {
-                    w_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
 
                 let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                 w_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
@@ -1120,30 +1059,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
                 b_feature_map.eg_sqr_point += SQR_TABLE_BP_ENDGAME[index];
 
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & w_attack_mask != 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
-
                 b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
             },
             def::BN => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BN[index];
-
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & w_attack_mask != 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
 
                 let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                 b_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
@@ -1157,17 +1076,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BB => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BB[index];
 
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & w_attack_mask != 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
-
                 let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                 b_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
 
@@ -1177,17 +1085,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BR => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
 
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & w_attack_mask != 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
-
                 let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                 b_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
 
@@ -1196,15 +1093,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             },
             def::BQ => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
-
-                let threat_val = val_of(piece) / THREAT_FACTOR;
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
-                    }
-                } else if index_mask & w_attack_mask != 0 {
-                    b_feature_map.threat_point -= (threat_val as f64).sqrt() as i32;
-                }
 
                 let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                 b_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
