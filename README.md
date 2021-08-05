@@ -1,6 +1,6 @@
 UCI chess engine written in Rust!
 
-![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=orange)
+![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=green)
 ![License](https://img.shields.io/github/license/redsalmon91/FoxSEE)
 
 [Lastest CCRL Rankings](https://computerchess.org.uk/ccrl/4040/)
