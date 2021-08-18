@@ -15,21 +15,22 @@ pub const TERM_VAL: i32 = 10000;
 const Q_VAL: i32 = 1200;
 const R_VAL: i32 = 600;
 const B_VAL: i32 = 400;
-const N_VAL: i32 = 400;
+const N_VAL: i32 = 395;
 const P_VAL: i32 = 100;
 
 const EG_Q_VAL: i32 = 90;
 const EG_R_VAL: i32 = 50;
-const EG_B_VAL: i32 = 20;
-const EG_N_VAL: i32 =-10;
 const EG_P_VAL: i32 = 10;
 
 const EG_PAWN_ESSENTIAL_VAL: i32 = 190;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
+const EG_BISHOP_PAIR_BONUS: i32 = 50;
 
 const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
 const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
 const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0, 0];
+
+const KING_IN_PASSER_PATH_BONUS: i32 = 50;
 
 const EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
 
@@ -239,8 +240,8 @@ const BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_0
 const W_PAWN_PROMO_RANK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
 const B_PAWN_PROMO_RANK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
 
-const W_BASE_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_11111111_11111111_11111111;
-const B_BASE_MASK: u64 = 0b11111111_11111111_11111111_11111111_00000000_00000000_00000000_00000000;
+const W_BASE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
+const B_BASE_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
@@ -254,6 +255,8 @@ pub struct FeatureMap {
     behind_pawn_count: i32,
 
     weak_sqr_count: i32,
+
+    king_in_passer_path_count: i32,
 
     mobility: i32,
     eg_mobility: i32,
@@ -279,6 +282,8 @@ impl FeatureMap {
             behind_pawn_count: 0,
 
             weak_sqr_count: 0,
+
+            king_in_passer_path_count: 0,
 
             mobility: 0,
             eg_mobility: 0,
@@ -386,8 +391,6 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     let b_knight_count = state.bn_count;
     let b_pawn_count = state.bp_count;
 
-    let mut is_endgame_with_different_colored_bishop = false;
-
     if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
         if w_bishop_count + w_knight_count < 2 && b_bishop_count + b_knight_count < 2 {
             return (0, true)
@@ -401,6 +404,8 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
             return (0, true)
         }
     }
+
+    let mut is_endgame_with_different_colored_bishop = false;
 
     if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
         if w_bishop_count == 1 && b_bishop_count == 1 {
@@ -446,14 +451,10 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
 
     eg_score += w_queen_count * EG_Q_VAL;
     eg_score += w_rook_count * EG_R_VAL;
-    eg_score += w_bishop_count * EG_B_VAL;
-    eg_score += w_knight_count * EG_N_VAL;
     eg_score += w_pawn_count * EG_P_VAL;
 
     eg_score -= b_queen_count * EG_Q_VAL;
     eg_score -= b_rook_count * EG_R_VAL;
-    eg_score -= b_bishop_count * EG_B_VAL;
-    eg_score -= b_knight_count * EG_N_VAL;
     eg_score -= b_pawn_count * EG_P_VAL;
 
     if material_score > P_VAL && bitboard.w_pawn == 0 {
@@ -469,6 +470,14 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
             eg_score -= EG_DIFFERENT_COLORED_BISHOP_VAL;
         } else if material_score < 0 {
             eg_score += EG_DIFFERENT_COLORED_BISHOP_VAL;
+        }
+    } else {
+        if w_bishop_count > 1 {
+            eg_score += EG_BISHOP_PAIR_BONUS;
+        }
+
+        if b_bishop_count > 1 {
+            eg_score -= EG_BISHOP_PAIR_BONUS;
         }
     }
 
@@ -555,10 +564,12 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.passed_pawn_point
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         + w_features_map.eg_mobility
+        + w_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS
         - b_features_map.eg_sqr_point
         - b_features_map.passed_pawn_point
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
-        - b_features_map.eg_mobility;
+        - b_features_map.eg_mobility
+        - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS;
 
     let shared_positional_score =
         w_features_map.mobility
@@ -642,6 +653,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
                     w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
 
+                    if forward_mask & bitmask.k_attack_masks[state.wk_index] != 0 {
+                        w_feature_map.king_in_passer_path_count += 1;
+                    }
+
+                    if forward_mask & bitmask.k_attack_masks[state.bk_index] != 0 {
+                        b_feature_map.king_in_passer_path_count += 1;
+                    }
+
                     if bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
                         w_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
                     }
@@ -689,6 +708,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
                     b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+
+                    if forward_mask & bitmask.k_attack_masks[state.bk_index] != 0 {
+                        b_feature_map.king_in_passer_path_count += 1;
+                    }
+
+                    if forward_mask & bitmask.k_attack_masks[state.wk_index] != 0 {
+                        w_feature_map.king_in_passer_path_count += 1;
+                    }
 
                     if bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
                         b_feature_map.passed_pawn_point += CONNECTED_PASS_PAWN_BONUS[rank as usize];
@@ -1010,7 +1037,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
 
     w_feature_map.weak_sqr_count = (W_BASE_MASK & !w_attack_mask).count_ones() as i32;
+    w_feature_map.weak_sqr_count += (W_BASE_MASK & b_attack_mask & !w_attack_mask).count_ones() as i32;
     b_feature_map.weak_sqr_count = (B_BASE_MASK & !b_attack_mask).count_ones() as i32;
+    b_feature_map.weak_sqr_count += (B_BASE_MASK & w_attack_mask & !b_attack_mask).count_ones() as i32;
 
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
