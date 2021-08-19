@@ -47,7 +47,7 @@ const STRONG_K_ATTACK_VAL: i32 = 20;
 const MAX_K_COVER_COUNT: i32 = 3;
 const KING_EXPO_PEN: i32 = -20;
 const KING_COMPLETE_EXPO_PEN: i32 = -90;
-const KING_LOST_CAS_RIGHTS_PEN: i32 = -20;
+const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
 const ROOK_OPEN_BONUS: i32 = 10;
 
@@ -1036,10 +1036,8 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index];
     let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
 
-    w_feature_map.weak_sqr_count = (W_BASE_MASK & !w_attack_mask).count_ones() as i32;
-    w_feature_map.weak_sqr_count += (W_BASE_MASK & b_attack_mask & !w_attack_mask).count_ones() as i32;
-    b_feature_map.weak_sqr_count = (B_BASE_MASK & !b_attack_mask).count_ones() as i32;
-    b_feature_map.weak_sqr_count += (B_BASE_MASK & w_attack_mask & !b_attack_mask).count_ones() as i32;
+    w_feature_map.weak_sqr_count = (W_BASE_MASK & b_attack_mask & !w_attack_mask).count_ones() as i32;
+    b_feature_map.weak_sqr_count = (B_BASE_MASK & w_attack_mask & !b_attack_mask).count_ones() as i32;
 
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
