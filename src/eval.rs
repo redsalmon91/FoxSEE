@@ -39,14 +39,23 @@ const DOUBLED_PAWN_PEN: i32 = -20;
 const ISOLATED_PAWN_PEN: i32 = -10;
 const BEHIND_PAWN_PEN: i32 = -10;
 
-const WEAK_SQR_PEN: i32 = -5;
+const WEAK_SQR_PEN: i32 = -10;
 
-const WEAK_K_ATTACK_VAL: i32 = 5;
-const STRONG_K_ATTACK_VAL: i32 = 20;
+const STRONG_K_ATTACK_COUNT_MULTIPLIER: i32 = 5;
 
-const MAX_K_COVER_COUNT: i32 = 3;
-const KING_EXPO_PEN: i32 = -20;
-const KING_COMPLETE_EXPO_PEN: i32 = -90;
+const K_ATTACK_SCORE: [i32; 100] = [
+      0,   0,   5,  10,  20,  30,  40,  50,  60,  70,
+     80,  90, 100, 120, 140, 160, 180, 200, 240, 280,
+    320, 380, 440, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500
+];
+
 const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
 
 const ROOK_OPEN_BONUS: i32 = 10;
@@ -233,9 +242,6 @@ const SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
     -30, 10, 10, 10, 10, 10, 10,-40,
     -50,-40,-30,-30,-30,-30,-40,-50,
 ];
-
-const WK_PAWN_COVER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
-const BK_PAWN_COVER_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
 
 const W_PAWN_PROMO_RANK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
 const B_PAWN_PROMO_RANK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
@@ -508,16 +514,17 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
 
     let (w_features_map, b_features_map) = extract_features(state);
 
+    let w_king_attack_count = w_features_map.weak_king_attack_count + w_features_map.strong_king_attack_count * STRONG_K_ATTACK_COUNT_MULTIPLIER;
+    let b_king_attack_count = b_features_map.weak_king_attack_count + b_features_map.strong_king_attack_count * STRONG_K_ATTACK_COUNT_MULTIPLIER;
+
     let mut midgame_positional_score =
         w_features_map.mg_sqr_point
         + w_features_map.rook_open_count * ROOK_OPEN_BONUS
-        + w_features_map.strong_king_attack_count * w_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
-        + w_features_map.weak_king_attack_count * WEAK_K_ATTACK_VAL
+        + K_ATTACK_SCORE[w_king_attack_count as usize]
         + w_features_map.weak_sqr_count * WEAK_SQR_PEN
         - b_features_map.mg_sqr_point
         - b_features_map.rook_open_count * ROOK_OPEN_BONUS
-        - b_features_map.strong_king_attack_count * b_features_map.strong_king_attack_count * STRONG_K_ATTACK_VAL
-        - b_features_map.weak_king_attack_count * WEAK_K_ATTACK_VAL
+        - K_ATTACK_SCORE[b_king_attack_count as usize]
         - b_features_map.weak_sqr_count * WEAK_SQR_PEN;
 
     if state.bitboard.b_queen != 0 {
@@ -529,33 +536,6 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     if state.bitboard.w_queen != 0 {
         if (state.cas_rights | state.cas_history) & 0b0011 == 0 {
             midgame_positional_score -= KING_LOST_CAS_RIGHTS_PEN;
-        }
-    }
-
-    let bitmask = bitmask::get_bitmask();
-    let bitboard = state.bitboard;
-
-    let wk_cover_mask = bitmask.wk_attack_zone_masks[state.wk_index] & (bitboard.w_pawn | bitboard.w_knight | bitboard.w_bishop) & WK_PAWN_COVER_MASK;
-
-    if wk_cover_mask == 0 {
-        midgame_positional_score += KING_COMPLETE_EXPO_PEN;
-    } else {
-        let king_cover_count = wk_cover_mask.count_ones() as i32;
-
-        if king_cover_count < MAX_K_COVER_COUNT {
-            midgame_positional_score += (MAX_K_COVER_COUNT - king_cover_count) * KING_EXPO_PEN;
-        }
-    }
-
-    let bk_cover_mask = bitmask.bk_attack_zone_masks[state.bk_index] & (bitboard.b_pawn | bitboard.b_knight | bitboard.b_bishop) & BK_PAWN_COVER_MASK;
-
-    if bk_cover_mask == 0 {
-        midgame_positional_score -= KING_COMPLETE_EXPO_PEN;
-    } else {
-        let king_cover_count = bk_cover_mask.count_ones() as i32;
-
-        if king_cover_count < MAX_K_COVER_COUNT {
-            midgame_positional_score -= (MAX_K_COVER_COUNT - king_cover_count) * KING_EXPO_PEN;
         }
     }
 
