@@ -12,10 +12,10 @@ use crate::{
 pub const MATE_VAL: i32 = 20000;
 pub const TERM_VAL: i32 = 10000;
 
-const Q_VAL: i32 = 1200;
-const R_VAL: i32 = 600;
-const B_VAL: i32 = 400;
-const N_VAL: i32 = 395;
+const Q_VAL: i32 = 1000;
+const R_VAL: i32 = 525;
+const B_VAL: i32 = 350;
+const N_VAL: i32 = 345;
 const P_VAL: i32 = 100;
 
 const EG_Q_VAL: i32 = 90;
@@ -25,6 +25,7 @@ const EG_P_VAL: i32 = 10;
 const EG_PAWN_ESSENTIAL_VAL: i32 = 190;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 const EG_BISHOP_PAIR_BONUS: i32 = 50;
+const EG_RN_KNIGHT_PROTECTED_BONUS: i32 = 100;
 
 const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
 const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
@@ -411,29 +412,6 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
         }
     }
 
-    let mut is_endgame_with_different_colored_bishop = false;
-
-    if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-        if w_bishop_count == 1 && b_bishop_count == 1 {
-            let mut wb_reachable_mask = 0;
-            let mut bb_reachable_mask = 0;
-
-            for index in 0..def::BOARD_SIZE {
-                match state.squares[index] {
-                    def::WB => {
-                        wb_reachable_mask = bitmask.b_attack_masks[index];
-                    },
-                    def::BB => {
-                        bb_reachable_mask = bitmask.b_attack_masks[index]
-                    },
-                    _ => {}
-                }
-            }
-
-            is_endgame_with_different_colored_bishop = wb_reachable_mask & bb_reachable_mask == 0;
-        }
-    }
-
     let material_score = w_queen_count * Q_VAL
     + w_rook_count * R_VAL
     + w_bishop_count * B_VAL
@@ -469,6 +447,29 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
 
     if material_score < -P_VAL && bitboard.b_pawn == 0 {
         eg_score += EG_PAWN_ESSENTIAL_VAL;
+    }
+
+    let mut is_endgame_with_different_colored_bishop = false;
+
+    if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
+        if w_bishop_count == 1 && b_bishop_count == 1 {
+            let mut wb_reachable_mask = 0;
+            let mut bb_reachable_mask = 0;
+
+            for index in 0..def::BOARD_SIZE {
+                match state.squares[index] {
+                    def::WB => {
+                        wb_reachable_mask = bitmask.b_attack_masks[index];
+                    },
+                    def::BB => {
+                        bb_reachable_mask = bitmask.b_attack_masks[index]
+                    },
+                    _ => {}
+                }
+            }
+
+            is_endgame_with_different_colored_bishop = wb_reachable_mask & bb_reachable_mask == 0;
+        }
     }
 
     if is_endgame_with_different_colored_bishop {
@@ -539,7 +540,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         }
     }
 
-    let endgame_positional_score =
+    let mut endgame_positional_score =
         w_features_map.eg_sqr_point
         + w_features_map.passed_pawn_point
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
@@ -550,6 +551,25 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.eg_mobility
         - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS;
+
+    let bitboard = state.bitboard;
+    let bitmask = bitmask::get_bitmask();
+
+    if bitboard.w_queen | bitboard.b_queen | bitboard.w_bishop | bitboard.b_bishop | bitboard.w_pawn | bitboard.b_pawn == 0 {
+        if bitboard.w_rook | bitboard.b_knight == 0 {
+            if bitboard.b_rook.count_ones() == 1 && bitboard.w_knight.count_ones() == 1 {
+                if bitmask.k_attack_masks[state.wk_index] & bitboard.w_knight != 0 {
+                    endgame_positional_score += EG_RN_KNIGHT_PROTECTED_BONUS;
+                }
+            }
+        } else if bitboard.b_rook | bitboard.w_knight == 0 {
+            if bitboard.w_rook.count_ones() == 1 && bitboard.b_knight.count_ones() == 1 {
+                if bitmask.k_attack_masks[state.bk_index] & bitboard.b_knight != 0 {
+                    endgame_positional_score -= EG_RN_KNIGHT_PROTECTED_BONUS;
+                }
+            }
+        }
+    }
 
     let shared_positional_score =
         w_features_map.mobility

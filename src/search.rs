@@ -26,9 +26,8 @@ const PV_PRINT_LENGTH: usize = 16;
 const SORTING_CAP_BASE_VAL: i32 = 10000000;
 const SORTING_HISTORY_BASE_VAL: i32 = 10000;
 
-const SORTING_Q_VAL: i32 = 1340;
-const SORTING_P_VAL: i32 = 120;
-const SORTING_HALF_P_VAL: i32 = 60;
+const SORTING_P_VAL: i32 = 100;
+const SORTING_HALF_P_VAL: i32 = 50;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -47,7 +46,7 @@ const FP_DEPTH: u8 = 7;
 const FP_MARGIN: i32 = 120;
 
 const RAZOR_DEPTH: u8 = 2;
-const RAZOR_MARGIN: i32 = 600;
+const RAZOR_MARGIN: i32 = 500;
 
 const SE_MARGIN: i32 = 50;
 
@@ -525,13 +524,13 @@ impl SearchEngine {
                     ordered_mov.allow_lmr = false;
                 }
             } else if mov == counter_mov {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL;
             } else if mov == primary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_HALF_P_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_HALF_P_VAL;
             } else if mov == secondary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_P_VAL;
             } else if gives_check || is_passer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_Q_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
