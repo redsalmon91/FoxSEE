@@ -44,7 +44,7 @@ const WEAK_SQR_PEN: i32 = -10;
 
 const STRONG_K_ATTACK_COUNT_MULTIPLIER: i32 = 5;
 
-const K_ATTACK_SCORE: [i32; 100] = [
+const K_ATTACK_SCORE: [i32; 200] = [
       0,   0,   5,  10,  20,  30,  40,  50,  60,  70,
      80,  90, 100, 120, 140, 160, 180, 200, 240, 280,
     320, 380, 440, 500, 500, 500, 500, 500, 500, 500,
@@ -54,7 +54,17 @@ const K_ATTACK_SCORE: [i32; 100] = [
     500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
     500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
     500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-    500, 500, 500, 500, 500, 500, 500, 500, 500, 500
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
 ];
 
 const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
@@ -856,10 +866,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if file_masks[index] & bitboard.w_pawn == 0 {
                     w_feature_map.rook_open_count += 1;
-                }
 
-                if file_masks[index] & bitboard.b_pawn == 0 {
-                    w_feature_map.rook_open_count += 1;
+                    if file_masks[index] & bitboard.b_pawn == 0 {
+                        w_feature_map.rook_open_count += 1;
+                    }
                 }
             },
             def::BR => {
@@ -898,10 +908,10 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 if file_masks[index] & bitboard.b_pawn == 0 {
                     b_feature_map.rook_open_count += 1;
-                }
 
-                if file_masks[index] & bitboard.w_pawn == 0 {
-                    b_feature_map.rook_open_count += 1;
+                    if file_masks[index] & bitboard.w_pawn == 0 {
+                        b_feature_map.rook_open_count += 1;
+                    }
                 }
             },
 

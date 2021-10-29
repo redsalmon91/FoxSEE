@@ -14,7 +14,6 @@ UCI chess engine written in Rust!
 - Quiescence Search
 - Iterative Deepening
 - Internal Iterative Deepening
-- Aspiration Window
 - Bitboards
 - Zobrist Hashing
 - Transposition Table

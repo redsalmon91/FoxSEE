@@ -503,7 +503,7 @@ impl SearchEngine {
                 allow_lmr: !(gives_check || is_passer),
             };
 
-            if state.squares[to] != 0 {
+            if state.squares[to] != 0 || promo != 0 {
                 let see_score = see(state, from, to, tp, promo);
 
                 if gives_check {
@@ -511,14 +511,6 @@ impl SearchEngine {
                 } else {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                 }
-
-                if see_score >= 0 {
-                    ordered_mov.allow_lmr = false;
-                }
-            } else if promo != 0 {
-                let see_score = see(state, from, to, tp, promo);
-
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
 
                 if see_score >= 0 {
                     ordered_mov.allow_lmr = false;
