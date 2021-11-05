@@ -850,7 +850,7 @@ pub fn is_under_attack(state: &State, index: usize, player: u8) -> bool {
     false
 }
 
-pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, usize) {
+pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, u8, usize) {
     let bitmask = bitmask::get_bitmask();
     let bitboard = state.bitboard;
     let player = state.player;
@@ -863,9 +863,13 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
                 if index > 55 {
-                    return (def::WP, def::MOV_PROMO, def::WQ, attack_index)
+                    if is_valid_attacker(state, attack_index) {
+                        return (def::WP, def::MOV_PROMO, def::WQ, attack_index)
+                    }
                 } else {
-                    return (def::WP, def::MOV_REG, 0, attack_index)
+                    if is_valid_attacker(state, attack_index) {
+                        return (def::WP, def::MOV_REG, 0, attack_index)
+                    }
                 }
             }
 
@@ -879,7 +883,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::WN, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::WN, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -933,7 +939,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::WB, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::WB, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -987,7 +995,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::WR, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::WR, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -998,7 +1008,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::WQ, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::WQ, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -1016,9 +1028,13 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
                 if index < 8 {
-                    return (def::BP, def::MOV_PROMO, def::BQ, attack_index)
+                    if is_valid_attacker(state, attack_index) {
+                        return (def::BP, def::MOV_PROMO, def::BQ, attack_index)
+                    }
                 } else {
-                    return (def::BP, def::MOV_REG, 0, attack_index)
+                    if is_valid_attacker(state, attack_index) {
+                        return (def::BP, def::MOV_REG, 0, attack_index)
+                    }
                 }
             }
 
@@ -1032,7 +1048,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::BN, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::BN, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -1086,7 +1104,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::BB, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::BB, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -1140,7 +1160,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::BR, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::BR, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -1151,7 +1173,9 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                return (def::BQ, def::MOV_REG, 0, attack_index)
+                if is_valid_attacker(state, attack_index) {
+                    return (def::BQ, def::MOV_REG, 0, attack_index)
+                }
             }
 
             attack_mask >>= 1;
@@ -1166,6 +1190,32 @@ pub fn get_smallest_attacker_index(state: &State, index: usize) -> (u8, u8, u8, 
     }
 
     (0, 0, 0, 0)
+}
+
+fn is_valid_attacker(state: &mut State, from_index: usize) -> bool {
+    let bitmask = bitmask::get_bitmask();
+
+    if state.player == def::PLAYER_W {
+        state.bitboard.w_all ^= bitmask.index_masks[from_index];
+
+        if is_in_check(state, state.player) {
+            state.bitboard.w_all ^= bitmask.index_masks[from_index];
+            return false;
+        } else {
+            state.bitboard.w_all ^= bitmask.index_masks[from_index];
+            return true;
+        }
+    } else {
+        state.bitboard.b_all ^= bitmask.index_masks[from_index];
+
+        if is_in_check(state, state.player) {
+            state.bitboard.b_all ^= bitmask.index_masks[from_index];
+            return false;
+        } else {
+            state.bitboard.b_all ^= bitmask.index_masks[from_index];
+            return true;
+        }
+    }
 }
 
 #[cfg(test)]

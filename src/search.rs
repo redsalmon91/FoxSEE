@@ -500,7 +500,7 @@ impl SearchEngine {
                 gives_check,
                 is_passer,
                 sort_score: 0,
-                allow_lmr: !(gives_check || is_passer),
+                allow_lmr: true,
             };
 
             if state.squares[to] != 0 || promo != 0 {
@@ -523,6 +523,11 @@ impl SearchEngine {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_P_VAL;
             } else if gives_check || is_passer {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
+
+                let see_score = see(state, from, to, tp, promo);
+                if see_score >= 0 {
+                    ordered_mov.allow_lmr = false;
+                }
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
@@ -542,7 +547,7 @@ impl SearchEngine {
             ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
-        if !on_pv && !on_extend && !in_check && depth >= MCP_DEPTH {
+        if !on_pv && !on_extend && !in_check && !under_mate_threat && depth >= MCP_DEPTH {
             let mut cut_mov_count = 0;
             let mut cut_count = 0;
 
@@ -605,7 +610,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 2 && mov_count > 1 && !extended && ordered_mov.allow_lmr {
+            let score = if depth > 2 && mov_count > 1 && ordered_mov.allow_lmr {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
@@ -1171,6 +1176,11 @@ fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
     let initial_gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
 
     state.do_mov(from, to, tp, promo);
+
+    if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
+        state.undo_mov(from, to, tp);
+        return -eval::MATE_VAL;
+    }
 
     let score = initial_gain - see_exchange(state, to, state.squares[to]);
 
