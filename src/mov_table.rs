@@ -863,11 +863,11 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
                 if index > 55 {
-                    if is_valid_attacker(state, attack_index) {
+                    if is_valid_attacker(state, attack_index, index) {
                         return (def::WP, def::MOV_PROMO, def::WQ, attack_index)
                     }
                 } else {
-                    if is_valid_attacker(state, attack_index) {
+                    if is_valid_attacker(state, attack_index, index) {
                         return (def::WP, def::MOV_REG, 0, attack_index)
                     }
                 }
@@ -883,7 +883,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::WN, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -939,7 +939,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::WB, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -995,7 +995,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::WR, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -1008,7 +1008,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::WQ, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -1028,11 +1028,11 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
                 if index < 8 {
-                    if is_valid_attacker(state, attack_index) {
+                    if is_valid_attacker(state, attack_index, index) {
                         return (def::BP, def::MOV_PROMO, def::BQ, attack_index)
                     }
                 } else {
-                    if is_valid_attacker(state, attack_index) {
+                    if is_valid_attacker(state, attack_index, index) {
                         return (def::BP, def::MOV_REG, 0, attack_index)
                     }
                 }
@@ -1048,7 +1048,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::BN, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -1104,7 +1104,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::BB, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -1160,7 +1160,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::BR, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -1173,7 +1173,7 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
         let mut attack_index = 0;
         while attack_mask != 0 {
             if attack_mask & 1u64 != 0 {
-                if is_valid_attacker(state, attack_index) {
+                if is_valid_attacker(state, attack_index, index) {
                     return (def::BQ, def::MOV_REG, 0, attack_index)
                 }
             }
@@ -1192,27 +1192,23 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
     (0, 0, 0, 0)
 }
 
-fn is_valid_attacker(state: &mut State, from_index: usize) -> bool {
-    let bitmask = bitmask::get_bitmask();
+fn is_valid_attacker(state: &mut State, from_index: usize, to_index: usize) -> bool {
+    state.do_mov(from_index, to_index, def::MOV_REG, 0);
 
     if state.player == def::PLAYER_W {
-        state.bitboard.w_all ^= bitmask.index_masks[from_index];
-
-        if is_in_check(state, state.player) {
-            state.bitboard.w_all ^= bitmask.index_masks[from_index];
+        if is_in_check(state, def::PLAYER_B) {
+            state.undo_mov(from_index, to_index, def::MOV_REG);
             return false;
         } else {
-            state.bitboard.w_all ^= bitmask.index_masks[from_index];
+            state.undo_mov(from_index, to_index, def::MOV_REG);
             return true;
         }
     } else {
-        state.bitboard.b_all ^= bitmask.index_masks[from_index];
-
-        if is_in_check(state, state.player) {
-            state.bitboard.b_all ^= bitmask.index_masks[from_index];
+        if is_in_check(state, def::PLAYER_W) {
+            state.undo_mov(from_index, to_index, def::MOV_REG);
             return false;
         } else {
-            state.bitboard.b_all ^= bitmask.index_masks[from_index];
+            state.undo_mov(from_index, to_index, def::MOV_REG);
             return true;
         }
     }
@@ -1466,5 +1462,30 @@ mod tests {
 
         assert!(is_in_check(&state, def::PLAYER_W));
         assert!(is_in_check(&state, def::PLAYER_B));
+    }
+
+    #[test]
+    fn test_is_valid_attacker() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("3r2k1/2pq2p1/p3npnp/8/2BBPPb1/1P3N2/P5PP/r1QKRR2 b - - 0 1");
+
+        assert!(!is_valid_attacker(&mut state, util::map_sqr_notation_to_index("e6"), util::map_sqr_notation_to_index("d4")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("d7"), util::map_sqr_notation_to_index("d4")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("g4"), util::map_sqr_notation_to_index("f3")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("g6"), util::map_sqr_notation_to_index("f4")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("a1"), util::map_sqr_notation_to_index("a2")));
+
+        state.player = def::get_opposite_player(state.player);
+        assert!(!is_valid_attacker(&mut state, util::map_sqr_notation_to_index("f3"), util::map_sqr_notation_to_index("g5")));
+        assert!(!is_valid_attacker(&mut state, util::map_sqr_notation_to_index("d4"), util::map_sqr_notation_to_index("f6")));
+        assert!(!is_valid_attacker(&mut state, util::map_sqr_notation_to_index("c1"), util::map_sqr_notation_to_index("c2")));
+        assert!(!is_valid_attacker(&mut state, util::map_sqr_notation_to_index("c1"), util::map_sqr_notation_to_index("d2")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("c1"), util::map_sqr_notation_to_index("a1")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("c1"), util::map_sqr_notation_to_index("b1")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("c4"), util::map_sqr_notation_to_index("e6")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("e1"), util::map_sqr_notation_to_index("e3")));
+        assert!(is_valid_attacker(&mut state, util::map_sqr_notation_to_index("f1"), util::map_sqr_notation_to_index("f2")));
     }
 }

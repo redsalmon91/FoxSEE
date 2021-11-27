@@ -23,11 +23,9 @@ use crate::{
 const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 
-const SORTING_CAP_BASE_VAL: i32 = 10000000;
-const SORTING_HISTORY_BASE_VAL: i32 = 10000;
-
-const SORTING_P_VAL: i32 = 100;
-const SORTING_HALF_P_VAL: i32 = 50;
+const SORTING_CAP_BASE_VAL: i32 = 100000000;
+const SORTING_HISTORY_BASE_VAL: i32 = 100000;
+const SORTING_CHECK_BONUS: i32 = 50;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -63,7 +61,6 @@ struct OrderedMov {
     sort_score: i32,
     gives_check: bool,
     is_passer: bool,
-    allow_lmr: bool,
 }
 
 struct OrderedQMov {
@@ -491,6 +488,7 @@ impl SearchEngine {
             state.do_mov(from, to, tp, promo);
 
             let gives_check = mov_table::is_in_check(state, state.player);
+            let illegal_mov = mov_table::is_in_check(state, def::get_opposite_player(state.player));
             let is_passer = is_passed_pawn(state, state.squares[to], to);
 
             state.undo_mov(from, to, tp);
@@ -500,34 +498,26 @@ impl SearchEngine {
                 gives_check,
                 is_passer,
                 sort_score: 0,
-                allow_lmr: true,
             };
 
-            if state.squares[to] != 0 || promo != 0 {
+            if illegal_mov {
+                ordered_mov.sort_score = -eval::MATE_VAL;
+            } else if state.squares[to] != 0 || promo != 0 {
                 let see_score = see(state, from, to, tp, promo);
 
                 if gives_check {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_HALF_P_VAL + see_score;
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score + SORTING_CHECK_BONUS;
                 } else {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                 }
-
-                if see_score >= 0 {
-                    ordered_mov.allow_lmr = false;
-                }
             } else if mov == counter_mov {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + 1;
             } else if mov == primary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_HALF_P_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - 1;
             } else if mov == secondary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_P_VAL;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - 2;
             } else if gives_check || is_passer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - SORTING_P_VAL - SORTING_HALF_P_VAL;
-
-                let see_score = see(state, from, to, tp, promo);
-                if see_score >= 0 {
-                    ordered_mov.allow_lmr = false;
-                }
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - 3;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
@@ -610,7 +600,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 2 && mov_count > 1 && ordered_mov.allow_lmr {
+            let score = if depth > 2 && mov_count > 1 && !extended {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
@@ -1176,11 +1166,6 @@ fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
     let initial_gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
 
     state.do_mov(from, to, tp, promo);
-
-    if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
-        state.undo_mov(from, to, tp);
-        return -eval::MATE_VAL;
-    }
 
     let score = initial_gain - see_exchange(state, to, state.squares[to]);
 
