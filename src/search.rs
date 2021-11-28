@@ -61,6 +61,7 @@ struct OrderedMov {
     sort_score: i32,
     gives_check: bool,
     is_passer: bool,
+    is_good_capture: bool,
 }
 
 struct OrderedQMov {
@@ -497,6 +498,7 @@ impl SearchEngine {
                 mov,
                 gives_check,
                 is_passer,
+                is_good_capture: false,
                 sort_score: 0,
             };
 
@@ -509,6 +511,10 @@ impl SearchEngine {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score + SORTING_CHECK_BONUS;
                 } else {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
+                }
+
+                if see_score >= 0 {
+                    ordered_mov.is_good_capture = true;
                 }
             } else if mov == counter_mov {
                 ordered_mov.sort_score = SORTING_CAP_BASE_VAL + 1;
@@ -579,6 +585,7 @@ impl SearchEngine {
             let mov = ordered_mov.mov;
             let gives_check = ordered_mov.gives_check;
             let is_passer = ordered_mov.is_passer;
+            let is_good_capture = ordered_mov.is_good_capture;
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
@@ -600,7 +607,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 2 && mov_count > 1 && !extended {
+            let score = if depth > 2 && mov_count > 1 && !extended && !is_passer && !is_good_capture {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
