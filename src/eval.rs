@@ -12,10 +12,12 @@ use crate::{
 pub const MATE_VAL: i32 = 20000;
 pub const TERM_VAL: i32 = 10000;
 
+pub const EQUAL_EXCHANGE: i32 = -20;
+
 const Q_VAL: i32 = 1000;
 const R_VAL: i32 = 525;
 const B_VAL: i32 = 350;
-const N_VAL: i32 = 350;
+const N_VAL: i32 = 345;
 const P_VAL: i32 = 100;
 
 const EG_Q_VAL: i32 = 90;
@@ -25,7 +27,7 @@ const EG_P_VAL: i32 = 10;
 const EG_PAWN_ESSENTIAL_VAL: i32 = 190;
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
 const EG_BISHOP_PAIR_BONUS: i32 = 50;
-const EG_RN_KNIGHT_PROTECTED_BONUS: i32 = 100;
+const EG_RN_KNIGHT_PROTECTED_BONUS: i32 = 50;
 
 const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
 const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
@@ -1073,8 +1075,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -1089,8 +1089,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -1114,8 +1112,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -1136,8 +1132,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -1189,8 +1183,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
@@ -1205,8 +1197,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
@@ -1230,8 +1220,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
@@ -1252,8 +1240,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
                 let threat_val = val_of(piece);
                 if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / THREAT_DISCOUNT_FACTOR;
-
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
