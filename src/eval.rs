@@ -42,8 +42,6 @@ const DOUBLED_PAWN_PEN: i32 = -20;
 const ISOLATED_PAWN_PEN: i32 = -10;
 const BEHIND_PAWN_PEN: i32 = -10;
 
-const WEAK_SQR_PEN: i32 = -10;
-
 const STRONG_K_ATTACK_COUNT_MULTIPLIER: i32 = 5;
 
 const K_ATTACK_SCORE: [i32; 200] = [
@@ -260,9 +258,6 @@ const SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
 const W_PAWN_PROMO_RANK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
 const B_PAWN_PROMO_RANK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
 
-const W_BASE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_00000000;
-const B_BASE_MASK: u64 = 0b00000000_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
-
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     mg_sqr_point: i32,
@@ -273,8 +268,6 @@ pub struct FeatureMap {
     doubled_pawn_count: i32,
     isolated_pawn_count: i32,
     behind_pawn_count: i32,
-
-    weak_sqr_count: i32,
 
     king_in_passer_path_count: i32,
 
@@ -300,8 +293,6 @@ impl FeatureMap {
             doubled_pawn_count: 0,
             isolated_pawn_count: 0,
             behind_pawn_count: 0,
-
-            weak_sqr_count: 0,
 
             king_in_passer_path_count: 0,
 
@@ -535,11 +526,9 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         w_features_map.mg_sqr_point
         + w_features_map.rook_open_count * ROOK_OPEN_BONUS
         + K_ATTACK_SCORE[w_king_attack_count as usize]
-        + w_features_map.weak_sqr_count * WEAK_SQR_PEN
         - b_features_map.mg_sqr_point
         - b_features_map.rook_open_count * ROOK_OPEN_BONUS
-        - K_ATTACK_SCORE[b_king_attack_count as usize]
-        - b_features_map.weak_sqr_count * WEAK_SQR_PEN;
+        - K_ATTACK_SCORE[b_king_attack_count as usize];
 
     if state.bitboard.b_queen != 0 {
         if (state.cas_rights | state.cas_history) & 0b1100 == 0 {
@@ -1048,9 +1037,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
     let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index];
     let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
-
-    w_feature_map.weak_sqr_count = (W_BASE_MASK & b_attack_mask & !w_attack_mask).count_ones() as i32;
-    b_feature_map.weak_sqr_count = (B_BASE_MASK & w_attack_mask & !b_attack_mask).count_ones() as i32;
 
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
