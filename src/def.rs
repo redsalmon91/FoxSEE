@@ -3,7 +3,7 @@
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "7.32.0";
+pub static VERSION: &str = "7.32.1";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 128;

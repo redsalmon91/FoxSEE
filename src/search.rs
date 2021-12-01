@@ -26,6 +26,10 @@ const PV_PRINT_LENGTH: usize = 16;
 const SORTING_CAP_BASE_VAL: i32 = 100000000;
 const SORTING_HISTORY_BASE_VAL: i32 = 100000;
 const SORTING_CHECK_BONUS: i32 = 50;
+const SORTING_COUNTER_MOV_VAL: i32 = 30;
+const SORTING_PRIMARY_KILLER_VAL: i32 = 20;
+const SORTING_SECONDARY_KILLER_VAL: i32 = 10;
+const SORTING_CHECK_OR_PASSER_VAL: i32 = -10;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -511,13 +515,13 @@ impl SearchEngine {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                 }
             } else if mov == counter_mov {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + 1;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_COUNTER_MOV_VAL;
             } else if mov == primary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - 1;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PRIMARY_KILLER_VAL;
             } else if mov == secondary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - 2;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_SECONDARY_KILLER_VAL;
             } else if gives_check || is_passer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL - 3;
+                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECK_OR_PASSER_VAL;
             } else {
                 let history_score = self.history_table[state.player as usize - 1][from][to];
 
@@ -600,7 +604,7 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 2 && mov_count > 1 && !extended && !is_passer {
+            let score = if depth > 2 && mov_count > 1 && !extended {
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
@@ -908,7 +912,7 @@ impl SearchEngine {
 
             let see_score = see(state, from, to, tp, promo);
 
-            if mov_index > 0 && see_score < eval::EQUAL_EXCHANGE {
+            if see_score <= eval::EQUAL_EXCHANGE {
                 continue;
             }
 
