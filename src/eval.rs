@@ -14,10 +14,10 @@ pub const TERM_VAL: i32 = 10000;
 
 pub const EQUAL_EXCHANGE: i32 = -20;
 
-const Q_VAL: i32 = 1000;
-const R_VAL: i32 = 525;
-const B_VAL: i32 = 350;
-const N_VAL: i32 = 345;
+const Q_VAL: i32 = 1200;
+const R_VAL: i32 = 600;
+const B_VAL: i32 = 400;
+const N_VAL: i32 = 395;
 const P_VAL: i32 = 100;
 
 const EG_Q_VAL: i32 = 90;
@@ -25,7 +25,8 @@ const EG_R_VAL: i32 = 50;
 const EG_P_VAL: i32 = 10;
 
 const EG_PAWN_ESSENTIAL_VAL: i32 = 190;
-const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 50;
+const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
+const EG_DIFFERENT_COLORED_BISHOP_WITH_ROOK_VAL: i32 = 50;
 const EG_BISHOP_PAIR_BONUS: i32 = 50;
 const EG_RN_KNIGHT_PROTECTED_BONUS: i32 = 50;
 
@@ -455,7 +456,7 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
 
     let mut is_endgame_with_different_colored_bishop = false;
 
-    if bitboard.w_knight | bitboard.b_knight | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
+    if bitboard.w_knight | bitboard.b_knight | bitboard.w_queen | bitboard.b_queen == 0 {
         if w_bishop_count == 1 && b_bishop_count == 1 {
             let mut wb_reachable_mask = 0;
             let mut bb_reachable_mask = 0;
@@ -477,10 +478,18 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     }
 
     if is_endgame_with_different_colored_bishop {
-        if material_score > 0  {
-            eg_score -= EG_DIFFERENT_COLORED_BISHOP_VAL;
-        } else if material_score < 0 {
-            eg_score += EG_DIFFERENT_COLORED_BISHOP_VAL;
+        if bitboard.w_rook | bitboard.b_rook == 0 {
+            if material_score > 0  {
+                eg_score -= EG_DIFFERENT_COLORED_BISHOP_VAL;
+            } else if material_score < 0 {
+                eg_score += EG_DIFFERENT_COLORED_BISHOP_VAL;
+            }
+        } else {
+            if material_score > 0  {
+                eg_score -= EG_DIFFERENT_COLORED_BISHOP_WITH_ROOK_VAL;
+            } else if material_score < 0 {
+                eg_score += EG_DIFFERENT_COLORED_BISHOP_WITH_ROOK_VAL;
+            }
         }
     } else {
         if w_bishop_count > 1 {
