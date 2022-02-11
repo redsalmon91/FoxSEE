@@ -241,23 +241,17 @@ impl State {
             return false;
         }
 
-        if check_range >= MAX_NON_CAP_MOV_COUNT && ply > 2 {
-            return true
+        if ply < 2 {
+            return false;
         }
 
-        let mut rep_count = 0;
+        if check_range >= MAX_NON_CAP_MOV_COUNT {
+            return true
+        }
 
         for check_index in REP_POS_START_INDEX..=check_range {
             let (pos_hash, player) = self.history_pos_stack[history_len-check_index];
             if pos_hash == self.hash_key && player == self.player {
-                if ply > 2 {
-                    return true;
-                }
-
-                rep_count += 1;
-            }
-
-            if rep_count > 1 {
                 return true;
             }
         }
