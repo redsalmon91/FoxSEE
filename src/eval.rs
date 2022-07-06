@@ -14,11 +14,11 @@ pub const TERM_VAL: i32 = 10000;
 
 pub const EQUAL_EXCHANGE: i32 = -20;
 
-const Q_VAL: i32 = 1200;
-const R_VAL: i32 = 600;
-const B_VAL: i32 = 400;
-const N_VAL: i32 = 395;
-const P_VAL: i32 = 100;
+const Q_VAL: i32 = 1400;
+const R_VAL: i32 = 700;
+const B_VAL: i32 = 500;
+const N_VAL: i32 = 490;
+const P_VAL: i32 = 125;
 
 const EG_Q_VAL: i32 = 90;
 const EG_R_VAL: i32 = 50;
@@ -82,7 +82,7 @@ const B_PHASE_WEIGHT: i32 = 4;
 const N_PHASE_WEIGHT: i32 = 4;
 const EG_PHASE: i32 = 32;
 
-const TEMPO_VAL: i32 = 10;
+const TEMPO_VAL: i32 = 20;
 
 const P_MOB_SCORE: i32 = 5;
 const N_MOB_SCORE: [i32; 9] = [-50, -20, -5, 0, 5, 10, 15, 20, 25];
@@ -118,7 +118,7 @@ const SQR_TABLE_WP: [i32; def::BOARD_SIZE] = [
      10, 10,  0,  0,  0,  0, 10, 10,
      10, 10,  0,  0,  0,  0, 10, 10,
       0,  0,  0, 20, 20,  0,  0,  0,
-      0,  0,  5, 25, 25,  0,  0,  0,
+      0,  0,  0, 25, 25,  0,  0,  0,
      10, 20, 20, 30, 30, 20, 20, 10,
      15, 30, 30, 30, 30, 30, 30, 15,
       0,  0,  0,  0,  0,  0,  0,  0,

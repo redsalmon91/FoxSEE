@@ -45,14 +45,14 @@ const IID_DEPTH_R: u8 = 2;
 const DELTA_MARGIN: i32 = 200;
 
 const FP_DEPTH: u8 = 7;
-const FP_MARGIN: i32 = 120;
+const FP_MARGIN: i32 = 100;
 
 const RAZOR_DEPTH: u8 = 2;
-const RAZOR_MARGIN: i32 = 500;
+const RAZOR_MARGIN: i32 = 600;
 
-const SE_MARGIN: i32 = 50;
+const SE_MARGIN: i32 = 120;
 
-const WD_SIZE: i32 = 25;
+const WD_SIZE: i32 = 50;
 
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
