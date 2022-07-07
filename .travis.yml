@@ -1,8 +1,0 @@
-os: windows
-language: rust
-rust:
-  - stable
-
-script:
-  - cargo build --release
-  - cargo test --release -- --test-threads=1
