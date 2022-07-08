@@ -208,8 +208,7 @@ impl SearchEngine {
             if pv_table[0] != 0 {
                 best_mov = pv_table[0];
 
-                let iter_time_taken_millis = total_time_taken - accumulated_time_taken;
-                let nps = self.node_count as u128 / (iter_time_taken_millis / 1000).max(1);
+                let nps = self.node_count as u128 / (total_time_taken / 1000).max(1);
                 let hashfull_permill = self.depth_preferred_hash_table.get_utilization_permill();
 
                 if checkmate {
