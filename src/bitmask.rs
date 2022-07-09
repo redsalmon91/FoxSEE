@@ -38,9 +38,8 @@ pub struct BitMask {
     pub n_attack_masks: [u64; def::BOARD_SIZE],
     pub k_attack_masks: [u64; def::BOARD_SIZE],
 
-    pub up_attack_masks: [u64; def::BOARD_SIZE],
-    pub down_attack_masks: [u64; def::BOARD_SIZE],
-
+    up_attack_masks: [u64; def::BOARD_SIZE],
+    down_attack_masks: [u64; def::BOARD_SIZE],
     left_attack_masks: [u64; def::BOARD_SIZE],
     right_attack_masks: [u64; def::BOARD_SIZE],
 
@@ -50,6 +49,7 @@ pub struct BitMask {
     down_right_attack_masks: [u64; def::BOARD_SIZE],
 
     pub horizontal_attack_masks: [[u64; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
+    pub vertical_attack_masks: [[u64; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
     pub diag_up_attack_masks: [[u64; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
     pub diag_down_attack_masks: [[u64; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
 
@@ -101,6 +101,7 @@ impl BitMask {
             down_right_attack_masks: [0; def::BOARD_SIZE],
 
             horizontal_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
+            vertical_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
             diag_up_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
             diag_down_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
 
@@ -126,6 +127,7 @@ impl BitMask {
         bitmask.init_right_masks();
 
         bitmask.init_horizontal_attack_masks();
+        bitmask.init_vertical_attack_masks();
         bitmask.init_diag_up_attack_masks();
         bitmask.init_diag_down_attack_masks();
 
@@ -384,6 +386,41 @@ impl BitMask {
         }
     }
 
+    fn init_vertical_attack_masks(&mut self) {
+        let vertical_masks = util::gen_all_perms_1st_file();
+
+        for rank in 0..def::DIM_SIZE {
+            let index = rank * def::DIM_SIZE;
+            let up_attack_mask = self.up_attack_masks[index];
+            let down_attack_mask = self.down_attack_masks[index];
+
+            for occupy_mask in &vertical_masks {
+                let mut up_mov_mask = 0;
+                let mut down_mov_mask = 0;
+
+                up_mov_mask ^= up_attack_mask;
+                if up_attack_mask & occupy_mask != 0 {
+                    let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
+                    up_mov_mask &= !self.up_attack_masks[lowest_blocker_index];
+                }
+
+                down_mov_mask ^= down_attack_mask;
+                if down_attack_mask & occupy_mask != 0 {
+                    let highest_blocker_index = get_highest_index(down_attack_mask & occupy_mask);
+                    down_mov_mask &= !self.down_attack_masks[highest_blocker_index];
+                }
+
+                let mov_mask = up_mov_mask | down_mov_mask;
+                let mapped_mask = util::kindergarten_transform_file(*occupy_mask, index);
+                self.vertical_attack_masks[index][mapped_mask as usize] = mov_mask;
+
+                for file in 1..def::DIM_SIZE {
+                    self.vertical_attack_masks[index + file][mapped_mask as usize] = mov_mask << file;
+                }
+            }
+        }
+    }
+
     fn init_diag_up_attack_masks(&mut self) {
         let diag_up_masks = util::gen_all_perms_diag_up();
 
@@ -413,7 +450,7 @@ impl BitMask {
                 }
 
                 let mov_mask = down_left_mov_mask | up_right_mov_mask;
-                let mapped_mask = util::kindergarten_transform(*occupy_mask);
+                let mapped_mask = util::kindergarten_transform_rank_diag(*occupy_mask);
                 self.diag_up_attack_masks[index][mapped_mask as usize] = mov_mask;
 
                 for up in 1..def::DIM_SIZE {
@@ -421,7 +458,7 @@ impl BitMask {
                         continue;
                     }
 
-                    let mapped_mask = util::kindergarten_transform(*occupy_mask << up * def::DIM_SIZE);
+                    let mapped_mask = util::kindergarten_transform_rank_diag(*occupy_mask << up * def::DIM_SIZE);
                     self.diag_up_attack_masks[index + up * def::DIM_SIZE][mapped_mask as usize] = mov_mask << up * def::DIM_SIZE;
                 }
 
@@ -430,7 +467,7 @@ impl BitMask {
                         continue;
                     }
 
-                    let mapped_mask = util::kindergarten_transform(*occupy_mask >> down * def::DIM_SIZE);
+                    let mapped_mask = util::kindergarten_transform_rank_diag(*occupy_mask >> down * def::DIM_SIZE);
                     self.diag_up_attack_masks[index - down * def::DIM_SIZE][mapped_mask as usize] = mov_mask >> down * def::DIM_SIZE;
                 }
             }
@@ -468,7 +505,7 @@ impl BitMask {
                 }
 
                 let mov_mask = up_left_mov_mask | down_right_mov_mask;
-                let mapped_mask = util::kindergarten_transform(*occupy_mask);
+                let mapped_mask = util::kindergarten_transform_rank_diag(*occupy_mask);
                 self.diag_down_attack_masks[index][mapped_mask as usize] = mov_mask;
 
                 for up in 1..def::DIM_SIZE {
@@ -476,7 +513,7 @@ impl BitMask {
                         continue;
                     }
 
-                    let mapped_mask = util::kindergarten_transform(*occupy_mask << up * def::DIM_SIZE);
+                    let mapped_mask = util::kindergarten_transform_rank_diag(*occupy_mask << up * def::DIM_SIZE);
                     self.diag_down_attack_masks[index + up * def::DIM_SIZE][mapped_mask as usize] = mov_mask << up * def::DIM_SIZE;
                 }
 
@@ -485,7 +522,7 @@ impl BitMask {
                         continue;
                     }
 
-                    let mapped_mask = util::kindergarten_transform(*occupy_mask >> down * def::DIM_SIZE);
+                    let mapped_mask = util::kindergarten_transform_rank_diag(*occupy_mask >> down * def::DIM_SIZE);
                     self.diag_down_attack_masks[index - down * def::DIM_SIZE][mapped_mask as usize] = mov_mask >> down * def::DIM_SIZE;
                 }
             }
@@ -709,6 +746,7 @@ static mut BITMASK: BitMask = BitMask {
     down_right_attack_masks: [0; def::BOARD_SIZE],
 
     horizontal_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
+    vertical_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
     diag_up_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
     diag_down_attack_masks: [[0; SLIDE_ATTACK_PERM_COUNT]; def::BOARD_SIZE],
 
@@ -747,7 +785,7 @@ mod tests {
         let occupy_mask = 0b00000010_00000001_00000000_00000000_01001100_00000000_00000000_00000001 & rank_mask;
         
         assert_eq!(0b00000000_00000000_00000000_00000000_01101000_00000000_00000000_00000000,
-            bitmask.horizontal_attack_masks[index][util::kindergarten_transform(occupy_mask) as usize]);
+            bitmask.horizontal_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask) as usize]);
     }
 
     #[test]
@@ -759,7 +797,7 @@ mod tests {
         let occupy_mask = 0b00000010_00000001_00000000_00010000_00001000_00000000_00000010_00000010 & diag_up_mask;
 
         assert_eq!(0b00000000_00000000_00000000_00010000_00000000_00000100_00000010_00000000,
-            bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask) as usize]);
+            bitmask.diag_up_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask) as usize]);
     }
 
     #[test]
@@ -771,7 +809,7 @@ mod tests {
         let occupy_mask = 0b00000000_00000000_10000000_00000000_00100000_00010000_00000000_00000000 & diag_up_mask;
 
         assert_eq!(0b00000000_00000000_10000000_01000000_00000000_00010000_00000000_00000000,
-            bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask) as usize]);
+            bitmask.diag_up_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask) as usize]);
     }
 
     #[test]
@@ -783,7 +821,7 @@ mod tests {
         let occupy_mask = 0b00000000_00000100_00000000_00000001_00000000_00000000_00000000_00000000 & diag_up_mask;
 
         assert_eq!(0b00000000_00000100_00000010_00000000_00000000_00000000_00000000_00000000,
-            bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask) as usize]);
+            bitmask.diag_up_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask) as usize]);
     }
 
     #[test]
@@ -795,6 +833,28 @@ mod tests {
         let occupy_mask = 0b00000000_00000000_00000000_00000000_00010000_00000000_01000000_00000000 & diag_down_mask;
 
         assert_eq!(0b00000000_00000000_00000000_00000000_00010000_00100000_00000000_10000000,
-            bitmask.diag_down_attack_masks[index][util::kindergarten_transform(occupy_mask) as usize]);
+            bitmask.diag_down_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask) as usize]);
+    }
+
+    #[test]
+    fn test_vertical_masks() {
+        init();
+        let bitmask = get_bitmask();
+        let index = util::map_sqr_notation_to_index("e4");
+        let occupy_mask = 0b00000000_00000000_00010000_00000000_00010000_00000000_00000000_00010000;
+
+        assert_eq!(0b00000000_00000000_00010000_00010000_00000000_00010000_00010000_00010000,
+            bitmask.vertical_attack_masks[index][util::kindergarten_transform_file(occupy_mask, index) as usize]);
+    }
+
+    #[test]
+    fn test_vertical_masks1() {
+        init();
+        let bitmask = get_bitmask();
+        let index = util::map_sqr_notation_to_index("h2");
+        let occupy_mask = 0b00000000_00000000_00000000_00000000_10000000_00000000_10000000_00000000;
+
+        assert_eq!(0b00000000_00000000_00000000_00000000_10000000_10000000_00000000_10000000,
+            bitmask.vertical_attack_masks[index][util::kindergarten_transform_file(occupy_mask, index) as usize]);
     }
 }

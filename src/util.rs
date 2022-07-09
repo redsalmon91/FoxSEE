@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Zixiao Han
+ * Copyright (C) 2020-2022 Zixiao Han
  */
 
 use crate::def;
@@ -186,9 +186,13 @@ pub fn get_highest_index(mask: u64) -> usize {
     63 - mask.leading_zeros() as usize
 }
 
-pub fn kindergarten_transform(bitboard: u64) -> u64 {
-    let transform_board: u64 = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001;
-    (bitboard * transform_board) >> 56
+#[inline]
+pub fn kindergarten_transform_rank_diag(bitboard: u64) -> u64 {
+    (bitboard * 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001) >> 56
+}
+
+pub fn kindergarten_transform_file(bitboard: u64, index: usize) -> u64 {
+    ((bitboard >> (index & 7)) * 0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001) >> 56
 }
 
 pub fn gen_all_perms_1st_rank() -> Vec<u64> {
@@ -285,7 +289,7 @@ mod tests {
     #[allow(arithmetic_overflow)]
     fn test_kindergarten_ranks() {
         let original_board: u64 = 0b00000000_00000000_00000000_10000011_00000000_00000000_00000000_00000000;
-        let kindergarten_board = kindergarten_transform(original_board);
+        let kindergarten_board = kindergarten_transform_rank_diag(original_board);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000011, kindergarten_board);
     }
 
@@ -293,7 +297,7 @@ mod tests {
     #[allow(arithmetic_overflow)]
     fn test_kindergarten_up_diagnol() {
         let original_board: u64 = 0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001;
-        let kindergarten_board = kindergarten_transform(original_board);
+        let kindergarten_board = kindergarten_transform_rank_diag(original_board);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, kindergarten_board);
     }
 
@@ -301,7 +305,7 @@ mod tests {
     #[allow(arithmetic_overflow)]
     fn test_kindergarten_down_diagnol() {
         let original_board: u64 = 0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_10000000;
-        let kindergarten_board = kindergarten_transform(original_board);
+        let kindergarten_board = kindergarten_transform_rank_diag(original_board);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, kindergarten_board);
     }
 
@@ -309,9 +313,16 @@ mod tests {
     #[allow(arithmetic_overflow)]
     fn test_kindergarten_down_diagnol1() {
         let original_board: u64 = 0b00000010_00000100_00001000_00010000_00100000_01000000_10000000_00000000;
-        let kindergarten_board = kindergarten_transform(original_board);
-        print_bitboard(kindergarten_board);
+        let kindergarten_board = kindergarten_transform_rank_diag(original_board);
         assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111110, kindergarten_board);
+    }
+
+    #[test]
+    #[allow(arithmetic_overflow)]
+    fn test_kindergarten_file() {
+        let original_board: u64 = 0b00000010_00000000_00000000_00000000_00000000_00000000_00000010_00000010;
+        let kindergarten_board = kindergarten_transform_file(original_board, util::map_sqr_notation_to_index("b2"));
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11000001, kindergarten_board);
     }
 
     #[test]

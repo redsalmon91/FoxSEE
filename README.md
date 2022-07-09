@@ -15,7 +15,7 @@ UCI chess engine written in Rust!
 - Quiescence Search
 - Iterative Deepening
 - Internal Iterative Deepening
-- Kindergarten (3/4) Bitboards
+- Kindergarten Bitboards
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
