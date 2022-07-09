@@ -186,6 +186,79 @@ pub fn get_highest_index(mask: u64) -> usize {
     63 - mask.leading_zeros() as usize
 }
 
+pub fn kindergarten_transform(bitboard: u64) -> u64 {
+    let transform_board: u64 = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001;
+    (bitboard * transform_board) >> 56
+}
+
+pub fn gen_all_perms_1st_rank() -> Vec<u64> {
+    let mut perms = Vec::new();
+    gen_rank_perms(0, 0, &mut perms);
+    return perms;
+}
+
+fn gen_rank_perms(mask: u64, index: usize, perms: &mut Vec<u64>) {
+    if index == def::DIM_SIZE - 1 {
+        perms.push(mask);
+        perms.push(mask | 0b1 << index);
+        return;
+    }
+
+    gen_rank_perms(mask, index + 1, perms);
+    gen_rank_perms(mask | 0b1 << index, index + 1, perms);
+}
+
+pub fn gen_all_perms_1st_file() -> Vec<u64> {
+    let mut perms = Vec::new();
+    gen_file_perms(0, 0, &mut perms);
+    return perms;
+}
+
+fn gen_file_perms(mask: u64, index: usize, perms: &mut Vec<u64>) {
+    if index == def::BOARD_SIZE - def::DIM_SIZE {
+        perms.push(mask);
+        perms.push(mask | 0b1 << index);
+        return;
+    }
+
+    gen_file_perms(mask, index + def::DIM_SIZE, perms);
+    gen_file_perms(mask | 0b1 << index, index + def::DIM_SIZE, perms);
+}
+
+pub fn gen_all_perms_diag_up() -> Vec<u64> {
+    let mut perms = Vec::new();
+    gen_diag_up_perms(0, 0, &mut perms);
+    return perms;
+}
+
+fn gen_diag_up_perms(mask: u64, index: usize, perms: &mut Vec<u64>) {
+    if index == def::BOARD_SIZE - 1 {
+        perms.push(mask);
+        perms.push(mask | 0b1 << index);
+        return;
+    }
+
+    gen_diag_up_perms(mask, index + def::DIM_SIZE + 1, perms);
+    gen_diag_up_perms(mask | 0b1 << index, index + def::DIM_SIZE + 1, perms);
+}
+
+pub fn gen_all_perms_diag_down() -> Vec<u64> {
+    let mut perms = Vec::new();
+    gen_diag_down_perms(0, 7, &mut perms);
+    return perms;
+}
+
+fn gen_diag_down_perms(mask: u64, index: usize, perms: &mut Vec<u64>) {
+    if index == def::BOARD_SIZE - def::DIM_SIZE {
+        perms.push(mask);
+        perms.push(mask | 0b1 << index);
+        return;
+    }
+
+    gen_diag_down_perms(mask, index + def::DIM_SIZE - 1, perms);
+    gen_diag_down_perms(mask | 0b1 << index, index + def::DIM_SIZE - 1, perms);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,6 +266,68 @@ mod tests {
         def,
         util,
     };
+
+    #[test]
+    fn test_rank_shift() {
+        let original_board: u64 = 0b00000000_10110111_00000000_00000000_00000000_00000000_00000000_00000000;
+        let shifted_board = original_board >> 6 * 8;
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10110111, shifted_board);
+    }
+
+    #[test]
+    fn test_file_shift() {
+        let original_board: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000001_00000001_00000001;
+        let shifted_board = original_board << 1;
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000010_00000010_00000010, shifted_board);
+    }
+
+    #[test]
+    #[allow(arithmetic_overflow)]
+    fn test_kindergarten_ranks() {
+        let original_board: u64 = 0b00000000_00000000_00000000_10000011_00000000_00000000_00000000_00000000;
+        let kindergarten_board = kindergarten_transform(original_board);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000011, kindergarten_board);
+    }
+
+    #[test]
+    #[allow(arithmetic_overflow)]
+    fn test_kindergarten_up_diagnol() {
+        let original_board: u64 = 0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001;
+        let kindergarten_board = kindergarten_transform(original_board);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, kindergarten_board);
+    }
+
+    #[test]
+    #[allow(arithmetic_overflow)]
+    fn test_kindergarten_down_diagnol() {
+        let original_board: u64 = 0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_10000000;
+        let kindergarten_board = kindergarten_transform(original_board);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111, kindergarten_board);
+    }
+
+    #[test]
+    #[allow(arithmetic_overflow)]
+    fn test_kindergarten_down_diagnol1() {
+        let original_board: u64 = 0b00000010_00000100_00001000_00010000_00100000_01000000_10000000_00000000;
+        let kindergarten_board = kindergarten_transform(original_board);
+        print_bitboard(kindergarten_board);
+        assert_eq!(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111110, kindergarten_board);
+    }
+
+    #[test]
+    fn test_gen_perms() {
+        let rank_perms = gen_all_perms_1st_rank();
+        assert_eq!(256, rank_perms.len());
+
+        let file_perms = gen_all_perms_1st_file();
+        assert_eq!(256, file_perms.len());
+
+        let diag_up_perms = gen_all_perms_diag_up();
+        assert_eq!(256, diag_up_perms.len());
+
+        let diag_down_perms = gen_all_perms_diag_down();
+        assert_eq!(256, diag_down_perms.len());
+    }
 
     #[test]
     fn test_map_sqr_notation_to_index() {

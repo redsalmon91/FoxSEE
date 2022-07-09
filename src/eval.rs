@@ -6,7 +6,7 @@ use crate::{
     bitmask,
     def,
     state::State,
-    util::{get_lowest_index, get_highest_index}
+    util::{self, get_lowest_index, get_highest_index}
 };
 
 pub const MATE_VAL: i32 = 20000;
@@ -464,10 +464,10 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
             for index in 0..def::BOARD_SIZE {
                 match state.squares[index] {
                     def::WB => {
-                        wb_reachable_mask = bitmask.b_attack_masks[index];
+                        wb_reachable_mask = bitmask.b_cover_masks[index];
                     },
                     def::BB => {
-                        bb_reachable_mask = bitmask.b_attack_masks[index]
+                        bb_reachable_mask = bitmask.b_cover_masks[index]
                     },
                     _ => {}
                 }
@@ -764,68 +764,16 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
 
             def::WB => {
                 let mut mov_mask = 0;
-
-                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-                mov_mask ^= up_left_attack_mask;
-                if up_left_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
-                }
-
-                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-                mov_mask ^= up_right_attack_mask;
-                if up_right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-                mov_mask ^= down_left_attack_mask;
-                if down_left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
-                }
-
-                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-                mov_mask ^= down_right_attack_mask;
-                if down_right_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
-                }
+                mov_mask |= bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_up_masks[index]) as usize];
+                mov_mask |= bitmask.diag_down_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_down_masks[index]) as usize];
 
                 wb_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
             },
             def::BB => {
                 let mut mov_mask = 0;
-
-                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-                mov_mask ^= up_left_attack_mask;
-                if up_left_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
-                }
-
-                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-                mov_mask ^= up_right_attack_mask;
-                if up_right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-                mov_mask ^= down_left_attack_mask;
-                if down_left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
-                }
-
-                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-                mov_mask ^= down_right_attack_mask;
-                if down_right_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
-                }
+                mov_mask |= bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_up_masks[index]) as usize];
+                mov_mask |= bitmask.diag_down_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_down_masks[index]) as usize];
 
                 bb_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
@@ -841,13 +789,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
                 }
 
-                let right_attack_mask = bitmask.right_attack_masks[index];
-                mov_mask ^= right_attack_mask;
-                if right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
-                }
-
                 let down_attack_mask = bitmask.down_attack_masks[index];
                 mov_mask ^= down_attack_mask;
                 if down_attack_mask & occupy_mask != 0 {
@@ -855,12 +796,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let left_attack_mask = bitmask.left_attack_masks[index];
-                mov_mask ^= left_attack_mask;
-                if left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
-                }
+                mov_mask |= bitmask.horizontal_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.rank_masks[index]) as usize];
 
                 wr_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
@@ -883,13 +819,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
                 }
 
-                let right_attack_mask = bitmask.right_attack_masks[index];
-                mov_mask ^= right_attack_mask;
-                if right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
-                }
-
                 let down_attack_mask = bitmask.down_attack_masks[index];
                 mov_mask ^= down_attack_mask;
                 if down_attack_mask & occupy_mask != 0 {
@@ -897,12 +826,7 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let left_attack_mask = bitmask.left_attack_masks[index];
-                mov_mask ^= left_attack_mask;
-                if left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
-                }
+                mov_mask |= bitmask.horizontal_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.rank_masks[index]) as usize];
 
                 br_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
@@ -919,46 +843,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WQ => {
                 let mut mov_mask = 0;
 
-                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-                mov_mask ^= up_left_attack_mask;
-                if up_left_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
-                }
-
-                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-                mov_mask ^= up_right_attack_mask;
-                if up_right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-                mov_mask ^= down_left_attack_mask;
-                if down_left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
-                }
-
-                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-                mov_mask ^= down_right_attack_mask;
-                if down_right_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
-                }
-
                 let up_attack_mask = bitmask.up_attack_masks[index];
                 mov_mask ^= up_attack_mask;
                 if up_attack_mask & occupy_mask != 0 {
                     let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
                     mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
-                }
-
-                let right_attack_mask = bitmask.right_attack_masks[index];
-                mov_mask ^= right_attack_mask;
-                if right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
                 }
 
                 let down_attack_mask = bitmask.down_attack_masks[index];
@@ -968,12 +857,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let left_attack_mask = bitmask.left_attack_masks[index];
-                mov_mask ^= left_attack_mask;
-                if left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
-                }
+                mov_mask |= bitmask.horizontal_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.rank_masks[index]) as usize];
+                mov_mask |= bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_up_masks[index]) as usize];
+                mov_mask |= bitmask.diag_down_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_down_masks[index]) as usize];
 
                 wq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;
@@ -981,46 +867,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BQ => {
                 let mut mov_mask = 0;
 
-                let up_left_attack_mask = bitmask.up_left_attack_masks[index];
-                mov_mask ^= up_left_attack_mask;
-                if up_left_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_left_attack_masks[lowest_blocker_index];
-                }
-
-                let up_right_attack_mask = bitmask.up_right_attack_masks[index];
-                mov_mask ^= up_right_attack_mask;
-                if up_right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(up_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.up_right_attack_masks[lowest_blocker_index];
-                }
-
-                let down_left_attack_mask = bitmask.down_left_attack_masks[index];
-                mov_mask ^= down_left_attack_mask;
-                if down_left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_left_attack_masks[highest_blocker_index];
-                }
-
-                let down_right_attack_mask = bitmask.down_right_attack_masks[index];
-                mov_mask ^= down_right_attack_mask;
-                if down_right_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(down_right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.down_right_attack_masks[highest_blocker_index];
-                }
-
                 let up_attack_mask = bitmask.up_attack_masks[index];
                 mov_mask ^= up_attack_mask;
                 if up_attack_mask & occupy_mask != 0 {
                     let lowest_blocker_index = get_lowest_index(up_attack_mask & occupy_mask);
                     mov_mask &= !bitmask.up_attack_masks[lowest_blocker_index];
-                }
-
-                let right_attack_mask = bitmask.right_attack_masks[index];
-                mov_mask ^= right_attack_mask;
-                if right_attack_mask & occupy_mask != 0 {
-                    let lowest_blocker_index = get_lowest_index(right_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.right_attack_masks[lowest_blocker_index];
                 }
 
                 let down_attack_mask = bitmask.down_attack_masks[index];
@@ -1030,12 +881,9 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                     mov_mask &= !bitmask.down_attack_masks[highest_blocker_index];
                 }
 
-                let left_attack_mask = bitmask.left_attack_masks[index];
-                mov_mask ^= left_attack_mask;
-                if left_attack_mask & occupy_mask != 0 {
-                    let highest_blocker_index = get_highest_index(left_attack_mask & occupy_mask);
-                    mov_mask &= !bitmask.left_attack_masks[highest_blocker_index];
-                }
+                mov_mask |= bitmask.horizontal_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.rank_masks[index]) as usize];
+                mov_mask |= bitmask.diag_up_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_up_masks[index]) as usize];
+                mov_mask |= bitmask.diag_down_attack_masks[index][util::kindergarten_transform(occupy_mask & bitmask.diag_down_masks[index]) as usize];
 
                 bq_attack_mask |= mov_mask;
                 mov_mask_map[index] = mov_mask;

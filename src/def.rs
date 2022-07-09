@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2020-2021 Zixiao Han
+ * Copyright (C) 2020-2022 Zixiao Han
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "7.36.0";
+pub static VERSION: &str = "8.0.0";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 128;

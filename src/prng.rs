@@ -20,6 +20,7 @@ impl XorshiftPrng {
         }
     }
 
+    #[allow(arithmetic_overflow)]
     pub fn gen_rand(&mut self) -> u64 {
         let s0 = self.state[0];
         let mut s1 = self.state[1];
