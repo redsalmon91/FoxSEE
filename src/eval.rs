@@ -5,6 +5,7 @@
 use crate::{
     bitmask,
     def,
+    mov_table,
     state::State,
     util,
 };
@@ -69,11 +70,11 @@ const K_ATTACK_SCORE: [i32; 200] = [
 ];
 
 const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
+const PIN_PEN: i32 = -20;
 
 const ROOK_OPEN_BONUS: i32 = 10;
 
 const THREAT_DISCOUNT_FACTOR: i32 = 10;
-const POTENTIAL_THREAT_DISCOUNT_FACTOR: i32 = 5;
 
 const TOTAL_PHASE: i32 = 96;
 const Q_PHASE_WEIGHT: i32 = 16;
@@ -278,6 +279,7 @@ pub struct FeatureMap {
     rook_open_count: i32,
 
     threat_point: i32,
+    pin_count: i32,
 
     strong_king_attack_count: i32,
     weak_king_attack_count: i32,
@@ -303,6 +305,7 @@ impl FeatureMap {
             rook_open_count: 0,
 
             threat_point: 0,
+            pin_count: 0,
 
             strong_king_attack_count: 0,
             weak_king_attack_count: 0,
@@ -331,7 +334,7 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
-pub fn get_square_val_diff(state: &State, moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
+pub fn get_square_val_diff(state: &mut State, moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
     match moving_piece {
         def::WP => {
             if is_in_endgame(state) {
@@ -375,7 +378,7 @@ pub fn get_square_val_diff(state: &State, moving_piece: u8, from_index: usize, t
     }
 }
 
-pub fn is_in_endgame(state: &State) -> bool {
+pub fn is_in_endgame(state: &mut State) -> bool {
     get_phase(state) <= EG_PHASE
 }
 
@@ -387,7 +390,7 @@ pub fn has_promoting_pawn(state: &State, player: u8) -> bool {
     }
 }
 
-pub fn eval_materials(state: &State) -> (i32, bool) {
+pub fn eval_materials(state: &mut State) -> (i32, bool) {
     let bitboard = state.bitboard;
     let bitmask = bitmask::get_bitmask();
 
@@ -512,14 +515,14 @@ pub fn eval_materials(state: &State) -> (i32, bool) {
     ((material_score + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE) * score_sign, false)
 }
 
-pub fn get_phase(state: &State) -> i32 {
+pub fn get_phase(state: &mut State) -> i32 {
     (state.wq_count + state.bq_count) * Q_PHASE_WEIGHT
     + (state.wr_count + state.br_count) * R_PHASE_WEIGHT
     + (state.wb_count + state.bb_count) * B_PHASE_WEIGHT
     + (state.wn_count + state.bn_count) * N_PHASE_WEIGHT
 }
 
-pub fn eval_state(state: &State, material_score: i32) -> i32 {
+pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
     let score_sign = if state.player == def::PLAYER_W {
         1
     } else {
@@ -557,11 +560,13 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         + w_features_map.eg_mobility
         + w_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS
+        + w_features_map.pin_count * PIN_PEN
         - b_features_map.eg_sqr_point
         - b_features_map.passed_pawn_point
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.eg_mobility
-        - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS;
+        - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS
+        - b_features_map.pin_count * PIN_PEN;
 
     let bitboard = state.bitboard;
     let bitmask = bitmask::get_bitmask();
@@ -601,7 +606,7 @@ pub fn eval_state(state: &State, material_score: i32) -> i32 {
     material_score + extra_score * score_sign + TEMPO_VAL
 }
 
-fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
+fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
     let squares = state.squares;
     let bitboard = state.bitboard;
     let bitmask = bitmask::get_bitmask();
@@ -853,11 +858,11 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
         let piece = squares[index];
 
         if piece == 0 {
-            continue
+            continue;
         }
 
+        let threat_val = val_of(piece);
         let index_mask = bitmask.index_masks[index];
-
         let mov_mask = mov_mask_map[index];
 
         match piece {
@@ -865,7 +870,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WP[index];
                 w_feature_map.eg_sqr_point += SQR_TABLE_WP_ENDGAME[index];
 
-                let threat_val = val_of(piece);
                 if index_mask & w_attack_mask == 0 {
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
@@ -877,10 +881,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WN => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WN[index];
 
-                let threat_val = val_of(piece);
-                if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / POTENTIAL_THREAT_DISCOUNT_FACTOR;
+                state.bitboard.w_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_W);
+                state.bitboard.w_all ^= index_mask;
 
+                if in_check {
+                    w_feature_map.pin_count += 1;
+                }
+
+                if index_mask & w_attack_mask == 0 {
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -900,10 +909,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WB => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
 
-                let threat_val = val_of(piece);
-                if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / POTENTIAL_THREAT_DISCOUNT_FACTOR;
+                state.bitboard.w_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_W);
+                state.bitboard.w_all ^= index_mask;
 
+                if in_check {
+                    w_feature_map.pin_count += 1;
+                }
+
+                if index_mask & w_attack_mask == 0 {
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -920,10 +934,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WR => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
 
-                let threat_val = val_of(piece);
-                if index_mask & w_attack_mask == 0 {
-                    w_feature_map.threat_point -= threat_val / POTENTIAL_THREAT_DISCOUNT_FACTOR;
+                state.bitboard.w_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_W);
+                state.bitboard.w_all ^= index_mask;
 
+                if in_check {
+                    w_feature_map.pin_count += 1;
+                }
+
+                if index_mask & w_attack_mask == 0 {
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
                     }
@@ -942,7 +961,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::WQ => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
 
-                let threat_val = val_of(piece);
+                state.bitboard.w_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_W);
+                state.bitboard.w_all ^= index_mask;
+
+                if in_check {
+                    w_feature_map.pin_count += 1;
+                }
+
                 if index_mask & w_attack_mask == 0 {
                     if index_mask & b_attack_mask != 0 {
                         w_feature_map.threat_point -= threat_val;
@@ -969,7 +995,6 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
                 b_feature_map.eg_sqr_point += SQR_TABLE_BP_ENDGAME[index];
 
-                let threat_val = val_of(piece);
                 if index_mask & b_attack_mask == 0 {
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
@@ -981,10 +1006,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BN => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BN[index];
 
-                let threat_val = val_of(piece);
-                if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / POTENTIAL_THREAT_DISCOUNT_FACTOR;
+                state.bitboard.b_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_B);
+                state.bitboard.b_all ^= index_mask;
 
+                if in_check {
+                    b_feature_map.pin_count += 1;
+                }
+
+                if index_mask & b_attack_mask == 0 {
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
@@ -1004,10 +1034,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BB => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BB[index];
 
-                let threat_val = val_of(piece);
-                if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / POTENTIAL_THREAT_DISCOUNT_FACTOR;
+                state.bitboard.b_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_B);
+                state.bitboard.b_all ^= index_mask;
 
+                if in_check {
+                    b_feature_map.pin_count += 1;
+                }
+
+                if index_mask & b_attack_mask == 0 {
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
@@ -1024,10 +1059,15 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BR => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
 
-                let threat_val = val_of(piece);
-                if index_mask & b_attack_mask == 0 {
-                    b_feature_map.threat_point -= threat_val / POTENTIAL_THREAT_DISCOUNT_FACTOR;
+                state.bitboard.b_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_B);
+                state.bitboard.b_all ^= index_mask;
 
+                if in_check {
+                    b_feature_map.pin_count += 1;
+                }
+
+                if index_mask & b_attack_mask == 0 {
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
                     }
@@ -1046,7 +1086,14 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
             def::BQ => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
 
-                let threat_val = val_of(piece);
+                state.bitboard.b_all ^= index_mask;
+                let in_check = mov_table::is_in_check(state, def::PLAYER_B);
+                state.bitboard.b_all ^= index_mask;
+
+                if in_check {
+                    b_feature_map.pin_count += 1;
+                }
+
                 if index_mask & b_attack_mask == 0 {
                     if index_mask & w_attack_mask != 0 {
                         b_feature_map.threat_point -= threat_val;
@@ -1074,43 +1121,4 @@ fn extract_features(state: &State) -> (FeatureMap, FeatureMap) {
     }
 
     (w_feature_map, b_feature_map)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        bitmask,
-        state::State,
-        zob_keys,
-    };
-
-    #[test]
-    fn test_eval_passer() {
-        zob_keys::init();
-        bitmask::init();
-
-        let state = State::new("8/p2P2k1/2P3pp/1P6/P3pP2/8/2K5/8 w - - 0 1");
-        let (w_features_map, b_features_map) = extract_features(&state);
-
-        assert_eq!(100 + 60 + 80 + 40 + 40, w_features_map.passed_pawn_point);
-        assert_eq!(60 + 20 + 10 + 10, b_features_map.passed_pawn_point);
-    }
-
-    #[test]
-    fn test_eval_pawns() {
-        zob_keys::init();
-        bitmask::init();
-
-        let state = State::new("8/1p2k2p/p1p5/2p1p3/2PpP3/3P2P1/P5P1/5K2 w - - 0 1");
-        let (w_features_map, b_features_map) = extract_features(&state);
-
-        assert_eq!(2, w_features_map.doubled_pawn_count);
-        assert_eq!(1, w_features_map.behind_pawn_count);
-        assert_eq!(5, w_features_map.isolated_pawn_count);
-
-        assert_eq!(2, b_features_map.doubled_pawn_count);
-        assert_eq!(3, b_features_map.behind_pawn_count);
-        assert_eq!(2, b_features_map.isolated_pawn_count);
-    }
 }

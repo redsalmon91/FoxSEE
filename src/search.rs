@@ -755,7 +755,7 @@ impl SearchEngine {
         if alpha > original_alpha {
             self.set_hash(state, depth, ply, HASH_TYPE_EXACT, alpha, static_eval, best_mov);
         } else {
-            self.set_hash(state, depth, ply, HASH_TYPE_ALPHA, best_score, static_eval, best_mov);
+            self.set_hash(state, depth, ply, HASH_TYPE_ALPHA, alpha, static_eval, best_mov);
         }
 
         alpha
@@ -922,7 +922,7 @@ impl SearchEngine {
         }
 
         if scored_mov_list.is_empty() {
-            return best_score;
+            return alpha;
         }
 
         scored_mov_list.sort_by(|ordered_mov_a, ordered_mov_b| {
@@ -961,10 +961,10 @@ impl SearchEngine {
         if alpha > original_alpha {
             self.set_hash(state, 0, ply, HASH_TYPE_EXACT, alpha, static_eval, best_mov);
         } else {
-            self.set_hash(state, 0, ply, HASH_TYPE_ALPHA, best_score, static_eval, best_mov);
+            self.set_hash(state, 0, ply, HASH_TYPE_ALPHA, alpha, static_eval, best_mov);
         }
 
-        best_score
+        alpha
     }
 
     fn retrieve_pv(&self, state: &mut State, pv_table: &mut [u32], mov_index: usize) {
