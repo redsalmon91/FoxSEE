@@ -70,11 +70,11 @@ const K_ATTACK_SCORE: [i32; 200] = [
 ];
 
 const KING_LOST_CAS_RIGHTS_PEN: i32 = -50;
-const PIN_PEN: i32 = -20;
+const PIN_PEN: i32 = -10;
 
 const ROOK_OPEN_BONUS: i32 = 10;
 
-const THREAT_DISCOUNT_FACTOR: i32 = 10;
+const THREAT_DISCOUNT_FACTOR: i32 = 12;
 
 const TOTAL_PHASE: i32 = 96;
 const Q_PHASE_WEIGHT: i32 = 16;
@@ -536,9 +536,11 @@ pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
 
     let mut midgame_positional_score =
         w_features_map.mg_sqr_point
+        + w_features_map.pin_count * PIN_PEN
         + w_features_map.rook_open_count * ROOK_OPEN_BONUS
         + K_ATTACK_SCORE[w_king_attack_count as usize]
         - b_features_map.mg_sqr_point
+        - b_features_map.pin_count * PIN_PEN
         - b_features_map.rook_open_count * ROOK_OPEN_BONUS
         - K_ATTACK_SCORE[b_king_attack_count as usize];
 
@@ -560,13 +562,11 @@ pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         + w_features_map.eg_mobility
         + w_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS
-        + w_features_map.pin_count * PIN_PEN
         - b_features_map.eg_sqr_point
         - b_features_map.passed_pawn_point
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.eg_mobility
-        - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS
-        - b_features_map.pin_count * PIN_PEN;
+        - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS;
 
     let bitboard = state.bitboard;
     let bitmask = bitmask::get_bitmask();
@@ -845,8 +845,11 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         }
     }
 
-    let w_attack_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask | bitmask.k_attack_masks[state.wk_index];
-    let b_attack_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask | bitmask.k_attack_masks[state.bk_index];
+    let w_attack_without_king_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask;
+    let w_attack_mask = w_attack_without_king_mask | bitmask.k_attack_masks[state.wk_index];
+
+    let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
+    let b_attack_mask = b_attack_without_king_mask | bitmask.k_attack_masks[state.bk_index];
 
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
@@ -887,6 +890,10 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 if in_check {
                     w_feature_map.pin_count += 1;
+
+                    if w_attack_without_king_mask & index_mask == 0 {
+                        w_feature_map.pin_count += 1;
+                    }
                 }
 
                 if index_mask & w_attack_mask == 0 {
@@ -915,6 +922,10 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 if in_check {
                     w_feature_map.pin_count += 1;
+
+                    if w_attack_without_king_mask & index_mask == 0 {
+                        w_feature_map.pin_count += 1;
+                    }
                 }
 
                 if index_mask & w_attack_mask == 0 {
@@ -940,6 +951,10 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 if in_check {
                     w_feature_map.pin_count += 1;
+
+                    if w_attack_without_king_mask & index_mask == 0 {
+                        w_feature_map.pin_count += 1;
+                    }
                 }
 
                 if index_mask & w_attack_mask == 0 {
@@ -960,14 +975,6 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
             },
             def::WQ => {
                 w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
-
-                state.bitboard.w_all ^= index_mask;
-                let in_check = mov_table::is_in_check(state, def::PLAYER_W);
-                state.bitboard.w_all ^= index_mask;
-
-                if in_check {
-                    w_feature_map.pin_count += 1;
-                }
 
                 if index_mask & w_attack_mask == 0 {
                     if index_mask & b_attack_mask != 0 {
@@ -1012,6 +1019,10 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 if in_check {
                     b_feature_map.pin_count += 1;
+
+                    if b_attack_without_king_mask & index_mask == 0 {
+                        b_feature_map.pin_count += 1;
+                    }
                 }
 
                 if index_mask & b_attack_mask == 0 {
@@ -1040,6 +1051,10 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 if in_check {
                     b_feature_map.pin_count += 1;
+
+                    if b_attack_without_king_mask & index_mask == 0 {
+                        b_feature_map.pin_count += 1;
+                    }
                 }
 
                 if index_mask & b_attack_mask == 0 {
@@ -1065,6 +1080,10 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 if in_check {
                     b_feature_map.pin_count += 1;
+
+                    if b_attack_without_king_mask & index_mask == 0 {
+                        b_feature_map.pin_count += 1;
+                    }
                 }
 
                 if index_mask & b_attack_mask == 0 {
@@ -1085,14 +1104,6 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
             },
             def::BQ => {
                 b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
-
-                state.bitboard.b_all ^= index_mask;
-                let in_check = mov_table::is_in_check(state, def::PLAYER_B);
-                state.bitboard.b_all ^= index_mask;
-
-                if in_check {
-                    b_feature_map.pin_count += 1;
-                }
 
                 if index_mask & b_attack_mask == 0 {
                     if index_mask & w_attack_mask != 0 {

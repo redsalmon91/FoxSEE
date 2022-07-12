@@ -10,7 +10,7 @@ pub struct TimeCapacity {
 }
 
 pub fn calculate_time_capacity(total_time_millis: u128, moves_to_go: u128, increment: u128) -> TimeCapacity {
-    let main_time_millis = total_time_millis / (1 + moves_to_go * 8 / 10) + increment / 2;
+    let main_time_millis = total_time_millis / (1 + moves_to_go * 5 / 10) + increment / 2;
 
     let extra_time_millis = if total_time_millis > main_time_millis {
         (total_time_millis - main_time_millis) / moves_to_go
