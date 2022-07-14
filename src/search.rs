@@ -58,6 +58,8 @@ const TIME_CHECK_INTEVAL: u64 = 1023;
 
 pub static mut ABORT_SEARCH: bool = false;
 
+static mut ONLY_LEGAL_MOV: bool = false;
+
 use std::time::Instant;
 
 struct OrderedMov {
@@ -168,6 +170,7 @@ impl SearchEngine {
 
         unsafe {
             ABORT_SEARCH = false;
+            ONLY_LEGAL_MOV = false;
         }
 
         let in_check = mov_table::is_in_check(state, state.player);
@@ -184,7 +187,7 @@ impl SearchEngine {
 
             unsafe {
                 if ABORT_SEARCH {
-                    break
+                    break;
                 }
             }
 
@@ -230,6 +233,12 @@ impl SearchEngine {
                 if total_time_taken - accumulated_time_taken > self.max_time_millis / 2 {
                     break
                 }
+
+                unsafe {
+                    if ONLY_LEGAL_MOV {
+                        break;
+                    }
+                }
             }
 
             alpha = score - WD_SIZE;
@@ -253,10 +262,6 @@ impl SearchEngine {
                 ABORT_SEARCH = true;
                 return alpha;
             }
-        }
-
-        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
-            return eval::MATE_VAL - ply as i32
         }
 
         if ply > 0 && self.null_mov_count == 0 && state.is_draw(ply) {
@@ -406,13 +411,14 @@ impl SearchEngine {
         }
 
         let mut mov_count = 0;
-        let mut best_score = -eval::MATE_VAL;
         let mut best_mov = hash_mov;
         let mut pv_found = false;
         let mut pv_extended = false;
+        let mut legal_mov_count = 0;
 
         if hash_mov != 0 {
             mov_count += 1;
+            legal_mov_count += 1;
 
             let (from, to, tp, promo) = util::decode_u32_mov(hash_mov);
 
@@ -451,13 +457,9 @@ impl SearchEngine {
                 return score
             }
 
-            if score > best_score {
-                best_score = score;
-                best_mov = hash_mov;
-            }
-
             if score > alpha {
                 alpha = score;
+                best_mov = hash_mov;
                 pv_found = true;
             }
 
@@ -496,44 +498,62 @@ impl SearchEngine {
 
             state.undo_mov(from, to, tp);
 
-            let mut ordered_mov = OrderedMov {
-                mov,
-                gives_check,
-                is_passer,
-                sort_score: 0,
-            };
+            if !illegal_mov {
+                legal_mov_count += 1;
 
-            if illegal_mov {
-                ordered_mov.sort_score = -eval::MATE_VAL;
-            } else if state.squares[to] != 0 || promo != 0 {
-                let see_score = see(state, from, to, tp, promo);
-
-                if gives_check {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score + SORTING_CHECK_BONUS;
+                let mut ordered_mov = OrderedMov {
+                    mov,
+                    gives_check,
+                    is_passer,
+                    sort_score: 0,
+                };
+    
+                if state.squares[to] != 0 || promo != 0 {
+                    let see_score = see(state, from, to, tp, promo);
+    
+                    if gives_check {
+                        ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score + SORTING_CHECK_BONUS;
+                    } else {
+                        ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
+                    }
+                } else if mov == counter_mov {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_COUNTER_MOV_VAL;
+                } else if mov == primary_killer {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PRIMARY_KILLER_VAL;
+                } else if mov == secondary_killer {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_SECONDARY_KILLER_VAL;
+                } else if gives_check || is_passer {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECK_OR_PASSER_VAL;
                 } else {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
+                    let history_score = self.history_table[state.player as usize - 1][from][to];
+    
+                    if history_score != 0 {
+                        let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
+                        ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
+                    } else {
+                        let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
+                        ordered_mov.sort_score = sqr_val_diff;
+                    }
                 }
-            } else if mov == counter_mov {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_COUNTER_MOV_VAL;
-            } else if mov == primary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PRIMARY_KILLER_VAL;
-            } else if mov == secondary_killer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_SECONDARY_KILLER_VAL;
-            } else if gives_check || is_passer {
-                ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECK_OR_PASSER_VAL;
-            } else {
-                let history_score = self.history_table[state.player as usize - 1][from][to];
+    
+                ordered_mov_list.push(ordered_mov);
+            }
+        }
 
-                if history_score != 0 {
-                    let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                    ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
-                } else {
-                    let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
-                    ordered_mov.sort_score = sqr_val_diff;
-                }
+        if legal_mov_count == 0 {
+            if !in_check {
+                return 0;
             }
 
-            ordered_mov_list.push(ordered_mov);
+            return -eval::MATE_VAL + ply as i32;
+        } else if legal_mov_count == 1 && ply == 0 {
+            if hash_mov != 0 {
+                unsafe {
+                    ONLY_LEGAL_MOV = true;
+                }
+    
+                return alpha;
+            }
         }
 
         ordered_mov_list.sort_by(|ordered_mov_a, ordered_mov_b| {
@@ -690,14 +710,10 @@ impl SearchEngine {
                 return score;
             }
 
-            if score > best_score {
-                best_score = score;
-                best_mov = mov;
-            }
-
             if score > alpha {
                 alpha = score;
                 pv_found = true;
+                best_mov = mov;
                 is_singular_mov = false;
             }
         }
@@ -738,17 +754,6 @@ impl SearchEngine {
             if score > alpha {
                 self.set_hash(state, depth, ply, HASH_TYPE_EXACT, score, static_eval, hash_mov);
                 return score;
-            }
-
-            if score > best_score {
-                best_score = score;
-                best_mov = hash_mov;
-            }
-        }
-
-        if best_score < -eval::TERM_VAL {
-            if !in_check && self.in_stale_mate(state, &mov_list) {
-                return 0;
             }
         }
 
@@ -828,10 +833,6 @@ impl SearchEngine {
             },
         }
 
-        if mov_table::is_in_check(state, def::get_opposite_player(state.player)) {
-            return eval::MATE_VAL - ply as i32;
-        }
-
         if mov_table::is_in_check(state, state.player) {
             return self.ab_search(state, true, false, alpha, beta, 1, ply);
         }
@@ -901,24 +902,30 @@ impl SearchEngine {
 
             let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
-            if !in_endgame {
-                let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
+            state.do_mov(from, to, tp, promo);
+            let illegal_mov = mov_table::is_in_check(state, def::get_opposite_player(state.player));
+            state.undo_mov(from, to, tp);
 
-                if static_eval + gain + DELTA_MARGIN < alpha {
+            if !illegal_mov {
+                if !in_endgame {
+                    let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
+    
+                    if static_eval + gain + DELTA_MARGIN < alpha {
+                        continue;
+                    }
+                }
+    
+                let see_score = see(state, from, to, tp, promo);
+    
+                if see_score <= eval::EQUAL_EXCHANGE {
                     continue;
                 }
+    
+                scored_mov_list.push(OrderedQMov {
+                    mov,
+                    sort_score: see_score,
+                });
             }
-
-            let see_score = see(state, from, to, tp, promo);
-
-            if see_score <= eval::EQUAL_EXCHANGE {
-                continue;
-            }
-
-            scored_mov_list.push(OrderedQMov {
-                mov,
-                sort_score: see_score,
-            });
         }
 
         if scored_mov_list.is_empty() {
@@ -1107,31 +1114,6 @@ impl SearchEngine {
     fn update_butterfly_table(&mut self, player: u8, from: usize, to: usize) {
         let butterfly_score = self.butterfly_table[player as usize - 1][from][to];
         self.butterfly_table[player as usize - 1][from][to] = butterfly_score + 1;
-    }
-
-    #[inline]
-    fn in_stale_mate(&self, state: &mut State, mov_list: &[u32]) -> bool {
-        let player = state.player;
-
-        for mov_index in 0..def::MAX_CAP_COUNT {
-            let mov = mov_list[mov_index];
-
-            if mov == 0 {
-                break
-            }
-
-            let (from, to, tp, promo) = util::decode_u32_mov(mov);
-            state.do_mov(from, to, tp, promo);
-
-            if !mov_table::is_in_check(state, player) {
-                state.undo_mov(from, to, tp);
-                return false
-            }
-
-            state.undo_mov(from, to, tp);
-        }
-
-        true
     }
 }
 
@@ -1486,5 +1468,25 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("e5"));
         assert_eq!(to, util::map_sqr_notation_to_index("e4"));
+    }
+
+    #[test]
+    fn test_search_x() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbqkbnr/pppppppp/8/8/8/3PPpPN/PPPQKP1P/R2NBB1R w kq - 0 1");
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 55500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("e2"));
+        assert_eq!(to, util::map_sqr_notation_to_index("f3"));
     }
 }
