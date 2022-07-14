@@ -44,6 +44,7 @@ const DOUBLED_PAWN_PEN: i32 = -20;
 const ISOLATED_PAWN_PEN: i32 = -10;
 const BEHIND_PAWN_PEN: i32 = -10;
 
+const KING_EXPOSURE_PEN: i32 = -20;
 const STRONG_K_ATTACK_COUNT_MULTIPLIER: i32 = 5;
 
 const K_ATTACK_SCORE: [i32; 200] = [
@@ -75,6 +76,8 @@ const PIN_PEN: i32 = -10;
 const ROOK_OPEN_BONUS: i32 = 10;
 
 const THREAT_DISCOUNT_FACTOR: i32 = 12;
+
+const WEAK_SQR_PEN: i32 = -5;
 
 const TOTAL_PHASE: i32 = 96;
 const Q_PHASE_WEIGHT: i32 = 16;
@@ -260,6 +263,14 @@ const SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
 const W_PAWN_PROMO_RANK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
 const B_PAWN_PROMO_RANK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
 
+const WK_K_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11100000_11100000_11100000;
+const WK_Q_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000111_00000111_00000111;
+const BK_K_SIDE_MASK: u64 = 0b11100000_11100000_11100000_00000000_00000000_00000000_00000000_00000000;
+const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000000_00000000_00000000;
+
+const W_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000;
+const B_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
+
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     mg_sqr_point: i32,
@@ -281,8 +292,12 @@ pub struct FeatureMap {
     threat_point: i32,
     pin_count: i32,
 
+    weak_sqr_count: i32,
+
     strong_king_attack_count: i32,
     weak_king_attack_count: i32,
+
+    king_exposure_count: i32,
 }
 
 impl FeatureMap {
@@ -307,8 +322,12 @@ impl FeatureMap {
             threat_point: 0,
             pin_count: 0,
 
+            weak_sqr_count: 0,
+
             strong_king_attack_count: 0,
             weak_king_attack_count: 0,
+
+            king_exposure_count: 0,
         }
     }
 }
@@ -538,10 +557,14 @@ pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
         w_features_map.mg_sqr_point
         + w_features_map.pin_count * PIN_PEN
         + w_features_map.rook_open_count * ROOK_OPEN_BONUS
+        + w_features_map.weak_sqr_count * WEAK_SQR_PEN
+        + w_features_map.king_exposure_count * KING_EXPOSURE_PEN
         + K_ATTACK_SCORE[w_king_attack_count as usize]
         - b_features_map.mg_sqr_point
         - b_features_map.pin_count * PIN_PEN
         - b_features_map.rook_open_count * ROOK_OPEN_BONUS
+        - b_features_map.weak_sqr_count * WEAK_SQR_PEN
+        - b_features_map.king_exposure_count * KING_EXPOSURE_PEN
         - K_ATTACK_SCORE[b_king_attack_count as usize];
 
     if state.bitboard.b_queen != 0 {
@@ -639,7 +662,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         let moving_piece = squares[index];
 
         if moving_piece == 0 {
-            continue
+            continue;
         }
 
         match moving_piece {
@@ -845,17 +868,119 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         }
     }
 
-    let w_attack_without_king_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask;
-    let w_attack_mask = w_attack_without_king_mask | bitmask.k_attack_masks[state.wk_index];
-
-    let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
-    let b_attack_mask = b_attack_without_king_mask | bitmask.k_attack_masks[state.bk_index];
+    w_feature_map.weak_sqr_count = (W_CRITICAL_RANK_MASK & !wp_attack_mask).count_ones() as i32;
+    b_feature_map.weak_sqr_count = (B_CRITICAL_RANK_MASK & !bp_attack_mask).count_ones() as i32;
 
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
 
+    let w_attack_without_king_mask = wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask;
+    let w_attack_mask = w_attack_without_king_mask | wk_ring_mask;
+
+    let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
+    let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
+
     w_feature_map.eg_mobility += K_MOB_SCORE[(wk_ring_mask &!bitboard.w_all & !b_attack_mask).count_ones() as usize];
     b_feature_map.eg_mobility += K_MOB_SCORE[(bk_ring_mask &!bitboard.b_all & !w_attack_mask).count_ones() as usize];
+
+    if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
+        w_feature_map.weak_sqr_count += (W_CRITICAL_RANK_MASK & WK_K_SIDE_MASK & !w_attack_without_king_mask).count_ones() as i32;
+
+        let protecting_pawn_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones();
+
+        if protecting_pawn_count < 3 {
+            w_feature_map.king_exposure_count += 1;
+
+            if protecting_pawn_count < 2 {
+                w_feature_map.king_exposure_count += 1;
+
+                if protecting_pawn_count == 0 {
+                    w_feature_map.king_exposure_count += 1;
+                }
+            }
+        }
+
+        if bitboard.w_pawn & bitmask.file_masks[6] == 0 {
+            w_feature_map.king_exposure_count += 1;
+        }
+
+        if bitboard.w_pawn & bitmask.file_masks[7] == 0 {
+            w_feature_map.king_exposure_count += 1;
+        }
+    } else if bitmask.index_masks[state.wk_index] & WK_Q_SIDE_MASK != 0 {
+        w_feature_map.weak_sqr_count += (W_CRITICAL_RANK_MASK & WK_Q_SIDE_MASK & !w_attack_without_king_mask).count_ones() as i32;
+
+        let protecting_pawn_count = (bitboard.w_pawn & WK_Q_SIDE_MASK).count_ones();
+        if protecting_pawn_count < 3 {
+            w_feature_map.king_exposure_count += 1;
+
+            if protecting_pawn_count < 2 {
+                w_feature_map.king_exposure_count += 1;
+
+                if protecting_pawn_count == 0 {
+                    w_feature_map.king_exposure_count += 1;
+                }
+            }
+        }
+
+        if bitboard.w_pawn & bitmask.file_masks[0] == 0 {
+            w_feature_map.king_exposure_count += 1;
+        }
+
+        if bitboard.w_pawn & bitmask.file_masks[1] == 0 {
+            w_feature_map.king_exposure_count += 1;
+        }
+    }
+
+    if bitmask.index_masks[state.bk_index] & BK_K_SIDE_MASK != 0 {
+        b_feature_map.weak_sqr_count += (B_CRITICAL_RANK_MASK & BK_K_SIDE_MASK & !b_attack_without_king_mask).count_ones() as i32;
+
+        let protecting_pawn_count = (bitboard.b_pawn & BK_K_SIDE_MASK).count_ones();
+    
+        if protecting_pawn_count < 3 {
+            b_feature_map.king_exposure_count += 1;
+
+            if protecting_pawn_count < 2 {
+                b_feature_map.king_exposure_count += 1;
+
+                if protecting_pawn_count == 0 {
+                    b_feature_map.king_exposure_count += 1;
+                }
+            }
+        }
+
+        if bitboard.b_pawn & bitmask.file_masks[6] == 0 {
+            b_feature_map.king_exposure_count += 1;
+        }
+
+        if bitboard.b_pawn & bitmask.file_masks[7] == 0 {
+            b_feature_map.king_exposure_count += 1;
+        }
+    } else if bitmask.index_masks[state.bk_index] & BK_Q_SIDE_MASK != 0 {
+        b_feature_map.weak_sqr_count += (B_CRITICAL_RANK_MASK & BK_Q_SIDE_MASK & !b_attack_without_king_mask).count_ones() as i32;
+
+        let protecting_pawn_count = (bitboard.b_pawn & BK_Q_SIDE_MASK).count_ones();
+
+        if protecting_pawn_count < 3 {
+            b_feature_map.king_exposure_count += 1;
+
+            if protecting_pawn_count < 2 {
+                b_feature_map.king_exposure_count += 1;
+
+                if protecting_pawn_count == 0 {
+                    b_feature_map.king_exposure_count += 1;
+                }
+            }
+        }
+
+        if bitboard.b_pawn & bitmask.file_masks[0] == 0 {
+            b_feature_map.king_exposure_count += 1;
+        }
+
+        if bitboard.b_pawn & bitmask.file_masks[1] == 0 {
+            b_feature_map.king_exposure_count += 1;
+        }
+    }
 
     for index in start_index..end_index {
         let piece = squares[index];
@@ -1132,4 +1257,51 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
     }
 
     (w_feature_map, b_feature_map)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        zob_keys,
+        bitmask,
+        state::State,
+    };
+
+    #[test]
+    fn test_find_weak_sqrs() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbqkbnr/ppp1pppp/8/3p4/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 1");
+        let (w_features, b_features) = extract_features(&mut state);
+
+        assert_eq!(0, w_features.weak_sqr_count);
+        assert_eq!(0, b_features.weak_sqr_count);
+    }
+
+    #[test]
+    fn test_find_weak_sqrs1() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbqkbnr/p1p1p1p1/1p3p1p/3p4/8/4P1P1/PPPP1P1P/RNBQKBNR w KQkq - 0 1");
+        let (w_features, b_features) = extract_features(&mut state);
+
+        assert_eq!(2, w_features.weak_sqr_count);
+        assert_eq!(4, b_features.weak_sqr_count);
+    }
+
+    #[test]
+    fn test_find_weak_sqrs2() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbq1rk1/ppppppbp/6p1/8/4P3/6P1/PPPP1P1P/RNBQ1RK1 w Qq - 0 1");
+        let (w_features, b_features) = extract_features(&mut state);
+
+        assert_eq!(3, w_features.weak_sqr_count);
+        assert_eq!(1, b_features.weak_sqr_count);
+    }
 }
