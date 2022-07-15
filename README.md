@@ -8,6 +8,9 @@ UCI chess engine written in Rust!
 [CCRL Blitz](https://ccrl.chessdom.com/ccrl/404/)  
 [BRUCE Bullet](https://e4e6.com/)
 
+## Play with me on lichess
+[Lichess Profile](https://lichess.org/@/FoxSEE-Bot)
+
 ## Features
 
 - Negamax Search with Alpha-Beta Pruning
@@ -42,8 +45,8 @@ Run `cargo build --release`
 This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCIProtocol.html), you can use it with any of the UCI-compatible GUIs (with a few limitations as mentioned in the [Limitations](#limitations) section).  
 
 ## Limitations
-- Search `x` nodes NOT not supported
-- Search `mate` in `x` moves NOT not supported
+- Search `x` nodes is NOT supported
+- Search `mate` in `x` moves is NOT supported
 - Search specific moves under a given position is NOT supported
 - `ponder` is currently NOT supported
 - Big-endian systems are NOT supported
