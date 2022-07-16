@@ -51,6 +51,9 @@ This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCI
 - `ponder` is currently NOT supported
 - Big-endian systems are NOT supported
 
+## Credits
+The logo shown on this page is created by @PabloDenial0. Many thanks.
+
 ## References
 [Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
 [Mediocre Chess Guides](http://mediocrechess.sourceforge.net/guides.html)  
