@@ -1,4 +1,7 @@
+![Logo](https://github.com/redsalmon91/FoxSEE/blob/master/resources/logo.jpg "Logo")
+
 UCI chess engine written in Rust!
+
 
 ![Release Version](https://img.shields.io/github/v/release/redsalmon91/FoxSEE?color=green)
 ![License](https://img.shields.io/github/license/redsalmon91/FoxSEE)
@@ -52,7 +55,7 @@ This program complies with the [UCI protocol](http://wbec-ridderkerk.nl/html/UCI
 - Big-endian systems are NOT supported
 
 ## Credits
-The logo shown on this page is created by @PabloDenial0. Many thanks.
+The logo shown on this page is created by [@PabloDenial0](https://github.com/PabloDaniel0). Many thanks.
 
 ## References
 [Chess Programming by François Dominic Laramée](http://archive.gamedev.net/archive/reference/articles/article1014.html)  
