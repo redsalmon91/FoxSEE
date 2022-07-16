@@ -31,7 +31,7 @@ const EG_DIFFERENT_COLORED_BISHOP_WITH_ROOK_VAL: i32 = 50;
 const EG_BISHOP_PAIR_BONUS: i32 = 50;
 const EG_RN_KNIGHT_PROTECTED_BONUS: i32 = 50;
 
-const PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
+static mut PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 50, 50, 80, 100, 150, 190, 0];
 const CONNECTED_PASS_PAWN_BONUS: [i32; def::DIM_SIZE] = [0, 20, 20, 40, 60, 80, 100, 0];
 const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0, 0];
 
@@ -271,6 +271,12 @@ const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000
 
 const W_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000;
 const B_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
+
+pub fn set_test_val(test_val: i32) {
+    unsafe {
+        PASS_PAWN_VAL[6] = test_val;
+    }
+}
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
@@ -698,7 +704,9 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
                 }
 
                 if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
-                    w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    unsafe {
+                        w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    }
 
                     if forward_mask & bitmask.k_attack_masks[state.wk_index] != 0 {
                         w_feature_map.king_in_passer_path_count += 1;
@@ -754,7 +762,9 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
                 }
 
                 if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
-                    b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    unsafe {
+                        b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    }
 
                     if forward_mask & bitmask.k_attack_masks[state.bk_index] != 0 {
                         b_feature_map.king_in_passer_path_count += 1;
