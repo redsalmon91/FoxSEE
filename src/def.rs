@@ -3,7 +3,7 @@
  */
 
 pub static ENGINE_NAME: &str = "FoxSEE";
-pub static VERSION: &str = "v8.2";
+pub static VERSION: &str = "v8.3";
 pub static AUTHOR: &str = "Zixiao Han";
 
 pub const DEFAULT_HASH_SIZE_MB: usize = 128;
@@ -66,7 +66,12 @@ pub const fn on_same_side(player: u8, piece_code: u8) -> bool {
 }
 
 #[inline]
-pub fn get_rank(player: u8, index: usize) -> usize {
+pub fn get_file(index: usize) -> usize {
+    index & 7
+}
+
+#[inline]
+pub fn get_passer_rank(player: u8, index: usize) -> usize {
     if player == PLAYER_W {
         index / 8
     } else {
@@ -118,13 +123,20 @@ mod tests {
     }
 
     #[test]
-    fn test_get_rank() {
-        assert_eq!(0, get_rank(PLAYER_W, 6));
-        assert_eq!(1, get_rank(PLAYER_W, 9));
-        assert_eq!(7, get_rank(PLAYER_W, 62));
-        assert_eq!(7, get_rank(PLAYER_B, 2));
-        assert_eq!(3, get_rank(PLAYER_B, 35));
-        assert_eq!(7, get_rank(PLAYER_W, 58));
+    fn test_get_file() {
+        assert_eq!(0, get_file(0));
+        assert_eq!(7, get_file(7));
+        assert_eq!(4, get_file(28));
+    }
+
+    #[test]
+    fn test_get_passer_rank() {
+        assert_eq!(0, get_passer_rank(PLAYER_W, 6));
+        assert_eq!(1, get_passer_rank(PLAYER_W, 9));
+        assert_eq!(7, get_passer_rank(PLAYER_W, 62));
+        assert_eq!(7, get_passer_rank(PLAYER_B, 2));
+        assert_eq!(3, get_passer_rank(PLAYER_B, 35));
+        assert_eq!(7, get_passer_rank(PLAYER_W, 58));
     }
 
     #[test]

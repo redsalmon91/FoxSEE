@@ -81,6 +81,8 @@ const THREAT_DISCOUNT_FACTOR: i32 = 12;
 const WEAK_SQR_PEN: i32 = -5;
 
 const TOTAL_PHASE: i32 = 96;
+const TOTAL_PAWN_PHASE: i32 = 16;
+
 const Q_PHASE_WEIGHT: i32 = 16;
 const R_PHASE_WEIGHT: i32 = 8;
 const B_PHASE_WEIGHT: i32 = 4;
@@ -261,13 +263,82 @@ const SQR_TABLE_K_ENDGAME: [i32; def::BOARD_SIZE] = [
     -50,-40,-30,-30,-30,-30,-40,-50,
 ];
 
+const SQR_TABLE_W_K_SIDE_EXTRA: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0, 20,  0,  0,
+      0,  0,  0,  0,  0, 20, 20, 20,
+      0,  0,  0,  0,  0, 20, 20, 20,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+];
+
+const SQR_TABLE_W_Q_SIDE_EXTRA: [i32; def::BOARD_SIZE] = [
+      0,  0, 20,  0,  0,  0,  0,  0,
+     20, 20, 20,  0,  0,  0,  0,  0,
+     20, 20, 20,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+];
+
+const SQR_TABLE_W_CENTER_EXTRA: [i32; def::BOARD_SIZE] = [
+      0,  0, 20,  0,  0, 20,  0,  0,
+      0,  0, 20, 20, 20, 20,  0,  0,
+      0,  0, 20, 20, 20, 20,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+];
+
+const SQR_TABLE_B_K_SIDE_EXTRA: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0, 20, 20, 20,
+      0,  0,  0,  0,  0, 20, 20, 20,
+      0,  0,  0,  0,  0, 20,  0,  0,
+];
+
+const SQR_TABLE_B_Q_SIDE_EXTRA: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+     20, 20, 20,  0,  0,  0,  0,  0,
+     20, 20, 20,  0,  0,  0,  0,  0,
+      0,  0, 20,  0,  0,  0,  0,  0,
+];
+
+const SQR_TABLE_B_CENTER_EXTRA: [i32; def::BOARD_SIZE] = [
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0, 20, 20, 20, 20,  0,  0,
+      0,  0, 20, 20, 20, 20,  0,  0,
+      0,  0, 20,  0,  0, 20,  0,  0,
+];
+
 const W_PAWN_PROMO_RANK: u64 = 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
 const B_PAWN_PROMO_RANK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
 
 const WK_K_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11100000_11100000_11100000;
 const WK_Q_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000111_00000111_00000111;
+const WK_CENTER_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00011000_00011000_00011000;
+
 const BK_K_SIDE_MASK: u64 = 0b11100000_11100000_11100000_00000000_00000000_00000000_00000000_00000000;
 const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000000_00000000_00000000;
+const BK_CENTER_MASK: u64 = 0b00011000_00011000_00011000_00000000_00000000_00000000_00000000_00000000;
 
 const W_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000;
 const B_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
@@ -502,6 +573,8 @@ pub fn eval_materials(state: &mut State) -> (i32, bool) {
         }
     }
 
+    let mut bishop_pair_bonus = 0;
+
     if is_endgame_with_different_colored_bishop {
         if bitboard.w_rook | bitboard.b_rook == 0 {
             if material_score > 0  {
@@ -518,15 +591,16 @@ pub fn eval_materials(state: &mut State) -> (i32, bool) {
         }
     } else {
         if w_bishop_count > 1 {
-            eg_score += EG_BISHOP_PAIR_BONUS;
+            bishop_pair_bonus += EG_BISHOP_PAIR_BONUS;
         }
 
         if b_bishop_count > 1 {
-            eg_score -= EG_BISHOP_PAIR_BONUS;
+            bishop_pair_bonus -= EG_BISHOP_PAIR_BONUS;
         }
     }
 
     let phase = get_phase(state);
+    let pawn_phase = get_pawn_phase(state);
 
     let score_sign = if state.player == def::PLAYER_W {
         1
@@ -534,7 +608,7 @@ pub fn eval_materials(state: &mut State) -> (i32, bool) {
         -1
     };
 
-    ((material_score + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE) * score_sign, false)
+    ((material_score + bishop_pair_bonus * (TOTAL_PAWN_PHASE - pawn_phase) / TOTAL_PAWN_PHASE + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE) * score_sign, false)
 }
 
 pub fn get_phase(state: &mut State) -> i32 {
@@ -542,6 +616,10 @@ pub fn get_phase(state: &mut State) -> i32 {
     + (state.wr_count + state.br_count) * R_PHASE_WEIGHT
     + (state.wb_count + state.bb_count) * B_PHASE_WEIGHT
     + (state.wn_count + state.bn_count) * N_PHASE_WEIGHT
+}
+
+pub fn get_pawn_phase(state: &mut State) -> i32 {
+    state.wp_count + state.bp_count
 }
 
 pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
@@ -586,12 +664,10 @@ pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
 
     let mut endgame_positional_score =
         w_features_map.eg_sqr_point
-        + w_features_map.passed_pawn_point
         + w_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         + w_features_map.eg_mobility
         + w_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS
         - b_features_map.eg_sqr_point
-        - b_features_map.passed_pawn_point
         - b_features_map.controlled_passed_pawn_count * CONTROLLED_PASS_PAWN_VAL
         - b_features_map.eg_mobility
         - b_features_map.king_in_passer_path_count * KING_IN_PASSER_PATH_BONUS;
@@ -617,11 +693,13 @@ pub fn eval_state(state: &mut State, material_score: i32) -> i32 {
 
     let shared_positional_score =
         w_features_map.mobility
+        + w_features_map.passed_pawn_point
         + w_features_map.threat_point / THREAT_DISCOUNT_FACTOR
         + w_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         + w_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
         + w_features_map.doubled_pawn_count * DOUBLED_PAWN_PEN
         - b_features_map.mobility
+        - b_features_map.passed_pawn_point
         - b_features_map.threat_point / THREAT_DISCOUNT_FACTOR
         - b_features_map.behind_pawn_count * BEHIND_PAWN_PEN
         - b_features_map.isolated_pawn_count * ISOLATED_PAWN_PEN
@@ -679,7 +757,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
                 let forward_mask = bitmask.wp_forward_masks[index];
-                let rank = def::get_rank(def::PLAYER_W, index) as i32;
+                let rank = def::get_passer_rank(def::PLAYER_W, index) as i32;
 
                 if (bitmask.bp_forward_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
                     if (bitmask.wp_forward_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
@@ -698,7 +776,13 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
                 }
 
                 if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
-                    w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    let file = def::get_file(index);
+
+                    if file == 0 || file == 7 {
+                        w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize] / 2;
+                    } else {
+                        w_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    }
 
                     if forward_mask & bitmask.k_attack_masks[state.wk_index] != 0 {
                         w_feature_map.king_in_passer_path_count += 1;
@@ -735,7 +819,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
                 let forward_mask = bitmask.bp_forward_masks[index];
-                let rank = def::get_rank(def::PLAYER_B, index) as i32;
+                let rank = def::get_passer_rank(def::PLAYER_B, index) as i32;
 
                 if (bitmask.wp_forward_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
                     if (bitmask.bp_forward_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
@@ -754,7 +838,13 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
                 }
 
                 if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
-                    b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    let file = def::get_file(index);
+
+                    if file == 0 || file == 7 {
+                        b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize] / 2;
+                    } else {
+                        b_feature_map.passed_pawn_point += PASS_PAWN_VAL[rank as usize];
+                    }
 
                     if forward_mask & bitmask.k_attack_masks[state.bk_index] != 0 {
                         b_feature_map.king_in_passer_path_count += 1;
@@ -895,7 +985,15 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
     w_feature_map.eg_mobility += K_MOB_SCORE[(wk_ring_mask &!bitboard.w_all & !b_attack_mask).count_ones() as usize];
     b_feature_map.eg_mobility += K_MOB_SCORE[(bk_ring_mask &!bitboard.b_all & !w_attack_mask).count_ones() as usize];
 
-    if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
+    let wk_on_k_side = bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0;
+    let wk_on_q_side = bitmask.index_masks[state.wk_index] & WK_Q_SIDE_MASK != 0;
+    let wk_in_center = bitmask.index_masks[state.wk_index] & WK_CENTER_MASK != 0;
+
+    let bk_on_k_side = bitmask.index_masks[state.bk_index] & BK_K_SIDE_MASK != 0;
+    let bk_on_q_side = bitmask.index_masks[state.bk_index] & BK_Q_SIDE_MASK != 0;
+    let bk_in_center = bitmask.index_masks[state.bk_index] & BK_CENTER_MASK != 0;
+
+    if wk_on_k_side {
         w_feature_map.weak_sqr_count += (W_CRITICAL_RANK_MASK & WK_K_SIDE_MASK & !w_attack_without_king_mask).count_ones() as i32;
 
         let protecting_pawn_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones();
@@ -919,7 +1017,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         if bitboard.w_pawn & bitmask.file_masks[7] == 0 {
             w_feature_map.king_exposure_count += 1;
         }
-    } else if bitmask.index_masks[state.wk_index] & WK_Q_SIDE_MASK != 0 {
+    } else if wk_on_q_side {
         w_feature_map.weak_sqr_count += (W_CRITICAL_RANK_MASK & WK_Q_SIDE_MASK & !w_attack_without_king_mask).count_ones() as i32;
 
         let protecting_pawn_count = (bitboard.w_pawn & WK_Q_SIDE_MASK).count_ones();
@@ -942,9 +1040,28 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         if bitboard.w_pawn & bitmask.file_masks[1] == 0 {
             w_feature_map.king_exposure_count += 1;
         }
+    } else if wk_in_center {
+        w_feature_map.weak_sqr_count += (W_CRITICAL_RANK_MASK & WK_CENTER_MASK & !w_attack_without_king_mask).count_ones() as i32;
+
+        let protecting_pawn_count = (bitboard.w_pawn & WK_CENTER_MASK).count_ones();
+        if protecting_pawn_count < 2 {
+            w_feature_map.king_exposure_count += 1;
+
+            if protecting_pawn_count == 0 {
+                w_feature_map.king_exposure_count += 1;
+            }
+        }
+
+        if bitboard.w_pawn & bitmask.file_masks[3] == 0 {
+            w_feature_map.king_exposure_count += 1;
+        }
+
+        if bitboard.w_pawn & bitmask.file_masks[4] == 0 {
+            w_feature_map.king_exposure_count += 1;
+        }
     }
 
-    if bitmask.index_masks[state.bk_index] & BK_K_SIDE_MASK != 0 {
+    if bk_on_k_side {
         b_feature_map.weak_sqr_count += (B_CRITICAL_RANK_MASK & BK_K_SIDE_MASK & !b_attack_without_king_mask).count_ones() as i32;
 
         let protecting_pawn_count = (bitboard.b_pawn & BK_K_SIDE_MASK).count_ones();
@@ -968,7 +1085,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         if bitboard.b_pawn & bitmask.file_masks[7] == 0 {
             b_feature_map.king_exposure_count += 1;
         }
-    } else if bitmask.index_masks[state.bk_index] & BK_Q_SIDE_MASK != 0 {
+    } else if bk_on_q_side {
         b_feature_map.weak_sqr_count += (B_CRITICAL_RANK_MASK & BK_Q_SIDE_MASK & !b_attack_without_king_mask).count_ones() as i32;
 
         let protecting_pawn_count = (bitboard.b_pawn & BK_Q_SIDE_MASK).count_ones();
@@ -990,6 +1107,26 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         }
 
         if bitboard.b_pawn & bitmask.file_masks[1] == 0 {
+            b_feature_map.king_exposure_count += 1;
+        }
+    } else if bk_in_center {
+        b_feature_map.weak_sqr_count += (B_CRITICAL_RANK_MASK & BK_CENTER_MASK & !b_attack_without_king_mask).count_ones() as i32;
+
+        let protecting_pawn_count = (bitboard.b_pawn & BK_CENTER_MASK).count_ones();
+
+        if protecting_pawn_count < 2 {
+            b_feature_map.king_exposure_count += 1;
+
+            if protecting_pawn_count == 0 {
+                b_feature_map.king_exposure_count += 1;
+            }
+        }
+
+        if bitboard.b_pawn & bitmask.file_masks[3] == 0 {
+            b_feature_map.king_exposure_count += 1;
+        }
+
+        if bitboard.b_pawn & bitmask.file_masks[4] == 0 {
             b_feature_map.king_exposure_count += 1;
         }
     }
@@ -1020,6 +1157,26 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         let threat_val = val_of(piece);
         let index_mask = bitmask.index_masks[index];
         let mov_mask = mov_mask_map[index];
+
+        if !(def::is_p(piece) || def::is_k(piece)) {
+            if def::on_same_side(def::PLAYER_W, piece) {
+                if bk_on_k_side {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_B_K_SIDE_EXTRA[index];
+                } else if bk_on_q_side {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_B_Q_SIDE_EXTRA[index];
+                } else if bk_in_center {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_B_CENTER_EXTRA[index];
+                }
+            } else {
+                if wk_on_k_side {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_W_K_SIDE_EXTRA[index];
+                } else if wk_on_q_side {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_W_Q_SIDE_EXTRA[index];
+                } else if wk_in_center {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_W_CENTER_EXTRA[index];
+                }
+            }
+        }
 
         if !(def::is_p(piece) || def::is_q(piece) || def::is_k(piece)) {
             if def::on_same_side(def::PLAYER_W, piece) {
@@ -1324,6 +1481,18 @@ mod tests {
     }
 
     #[test]
+    fn test_find_weak_sqrs3() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbqkb1r/ppp2ppp/8/8/8/2P5/PP1P1PPP/RNBQKR2 w Qq - 0 1");
+        let (w_features, b_features) = extract_features(&mut state);
+
+        assert_eq!(2, w_features.weak_sqr_count);
+        assert_eq!(0, b_features.weak_sqr_count);
+    }
+
+    #[test]
     fn test_find_pin() {
         zob_keys::init();
         bitmask::init();
@@ -1366,5 +1535,17 @@ mod tests {
 
         assert_eq!(1, w_features.semi_pin_count);
         assert_eq!(1, b_features.semi_pin_count);
+    }
+
+    #[test]
+    fn test_find_king_exposure() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbqk2r/ppp2pbp/6p1/8/8/2P5/PP1P1PPP/RNBQKR2 w Qq - 0 1");
+        let (w_features, b_features) = extract_features(&mut state);
+
+        assert_eq!(2, w_features.king_exposure_count);
+        assert_eq!(4, b_features.king_exposure_count);
     }
 }
