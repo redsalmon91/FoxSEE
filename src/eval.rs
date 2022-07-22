@@ -26,6 +26,8 @@ const EG_R_VAL: i32 = 50;
 const EG_P_VAL: i32 = 10;
 
 const EG_PAWN_ESSENTIAL_VAL: i32 = 190;
+const EG_NO_PIECE_BONUS: i32 = 90;
+
 const EG_DIFFERENT_COLORED_BISHOP_VAL: i32 = 90;
 const EG_DIFFERENT_COLORED_BISHOP_WITH_ROOK_VAL: i32 = 50;
 const EG_BISHOP_PAIR_BONUS: i32 = 50;
@@ -528,6 +530,14 @@ pub fn eval_materials(state: &mut State) -> (i32, bool) {
 
     let phase = get_phase(state);
 
+    if phase == 0 {
+        if material_score >= P_VAL {
+            eg_score += EG_NO_PIECE_BONUS;
+        } else if material_score <= -P_VAL {
+            eg_score -= EG_NO_PIECE_BONUS;
+        }
+    }
+
     let score_sign = if state.player == def::PLAYER_W {
         1
     } else {
@@ -880,9 +890,6 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
         }
     }
 
-    w_feature_map.weak_sqr_count = (W_CRITICAL_RANK_MASK & !wp_attack_mask).count_ones() as i32;
-    b_feature_map.weak_sqr_count = (B_CRITICAL_RANK_MASK & !bp_attack_mask).count_ones() as i32;
-
     let wk_ring_mask = bitmask.k_attack_masks[state.wk_index];
     let bk_ring_mask = bitmask.k_attack_masks[state.bk_index];
 
@@ -891,6 +898,9 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
     let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
     let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
+
+    w_feature_map.weak_sqr_count = (W_CRITICAL_RANK_MASK & !wp_attack_mask).count_ones() as i32;
+    b_feature_map.weak_sqr_count = (B_CRITICAL_RANK_MASK & !bp_attack_mask).count_ones() as i32;
 
     w_feature_map.eg_mobility += K_MOB_SCORE[(wk_ring_mask &!bitboard.w_all & !b_attack_mask).count_ones() as usize];
     b_feature_map.eg_mobility += K_MOB_SCORE[(bk_ring_mask &!bitboard.b_all & !w_attack_mask).count_ones() as usize];
