@@ -92,7 +92,7 @@ const EG_PHASE: i32 = 32;
 const TEMPO_VAL: i32 = 20;
 
 const P_MOB_SCORE: i32 = 5;
-const N_MOB_SCORE: [i32; 9] = [-50, -20, -5, 0, 5, 10, 15, 20, 25];
+static mut N_MOB_SCORE: [i32; 9] = [-50, -20, -5, 0, 5, 10, 15, 20, 25];
 const B_MOB_SCORE: [i32; 14] = [-50, -20, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 const R_MOB_SCORE: [i32; 15] = [-50, -10, 0, 0, 0, 5, 10, 15, 20, 25, 30, 30, 30, 30, 30];
 const Q_MOB_SCORE: [i32; 28] = [-30, -20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
@@ -273,6 +273,12 @@ const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000
 
 const W_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000;
 const B_CRITICAL_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
+
+pub fn set_test_val(index: usize, val: i32) {
+    unsafe {
+        N_MOB_SCORE[index] = val;
+    }
+}
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
@@ -1020,267 +1026,269 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
     };
 
 
-    for index in start_index..end_index {
-        let piece = squares[index];
-
-        if piece == 0 {
-            continue;
-        }
-
-        let threat_val = val_of(piece);
-        let index_mask = bitmask.index_masks[index];
-        let mov_mask = mov_mask_map[index];
-
-        if !(def::is_p(piece) || def::is_q(piece) || def::is_k(piece)) {
-            if def::on_same_side(def::PLAYER_W, piece) {
-                state.bitboard.w_all ^= index_mask;
-                let king_under_attack = if w_in_check {
-                    false
-                } else {
-                    mov_table::is_in_check(state, def::PLAYER_W)
-                };
-
-                let queen_under_attack = if w_queen_under_attack {
-                    false
-                } else {
-                    if bitboard.w_queen == 0 {
+    unsafe {
+        for index in start_index..end_index {
+            let piece = squares[index];
+    
+            if piece == 0 {
+                continue;
+            }
+    
+            let threat_val = val_of(piece);
+            let index_mask = bitmask.index_masks[index];
+            let mov_mask = mov_mask_map[index];
+    
+            if !(def::is_p(piece) || def::is_q(piece) || def::is_k(piece)) {
+                if def::on_same_side(def::PLAYER_W, piece) {
+                    state.bitboard.w_all ^= index_mask;
+                    let king_under_attack = if w_in_check {
                         false
                     } else {
-                        mov_table::is_under_attack(state, wq_index, def::PLAYER_W)
-                    }
-                };
-
-                state.bitboard.w_all ^= index_mask;
-
-                if king_under_attack {
-                    w_feature_map.pin_count += 1;
-
-                    if w_attack_without_king_mask & index_mask == 0 {
+                        mov_table::is_in_check(state, def::PLAYER_W)
+                    };
+    
+                    let queen_under_attack = if w_queen_under_attack {
+                        false
+                    } else {
+                        if bitboard.w_queen == 0 {
+                            false
+                        } else {
+                            mov_table::is_under_attack(state, wq_index, def::PLAYER_W)
+                        }
+                    };
+    
+                    state.bitboard.w_all ^= index_mask;
+    
+                    if king_under_attack {
                         w_feature_map.pin_count += 1;
+    
+                        if w_attack_without_king_mask & index_mask == 0 {
+                            w_feature_map.pin_count += 1;
+                        }
+                    } else if queen_under_attack {
+                        w_feature_map.semi_pin_count += 1;
                     }
-                } else if queen_under_attack {
-                    w_feature_map.semi_pin_count += 1;
-                }
-            } else {
-                state.bitboard.b_all ^= index_mask;
-                let king_under_attack = if b_in_check {
-                    false
                 } else {
-                    mov_table::is_in_check(state, def::PLAYER_B)
-                };
-
-                let queen_under_attack = if b_queen_under_attack {
-                    false
-                } else {
-                    if bitboard.b_queen == 0 {
+                    state.bitboard.b_all ^= index_mask;
+                    let king_under_attack = if b_in_check {
                         false
                     } else {
-                        mov_table::is_under_attack(state, bq_index, def::PLAYER_B)
-                    }
-                };
-
-                state.bitboard.b_all ^= index_mask;
-
-                if king_under_attack {
-                    b_feature_map.pin_count += 1;
-
-                    if b_attack_without_king_mask & index_mask == 0 {
+                        mov_table::is_in_check(state, def::PLAYER_B)
+                    };
+    
+                    let queen_under_attack = if b_queen_under_attack {
+                        false
+                    } else {
+                        if bitboard.b_queen == 0 {
+                            false
+                        } else {
+                            mov_table::is_under_attack(state, bq_index, def::PLAYER_B)
+                        }
+                    };
+    
+                    state.bitboard.b_all ^= index_mask;
+    
+                    if king_under_attack {
                         b_feature_map.pin_count += 1;
+    
+                        if b_attack_without_king_mask & index_mask == 0 {
+                            b_feature_map.pin_count += 1;
+                        }
+                    } else if queen_under_attack {
+                        b_feature_map.semi_pin_count += 1;
                     }
-                } else if queen_under_attack {
-                    b_feature_map.semi_pin_count += 1;
                 }
             }
-        }
-
-        match piece {
-            def::WP => {
-                w_feature_map.mg_sqr_point += SQR_TABLE_WP[index];
-                w_feature_map.eg_sqr_point += SQR_TABLE_WP_ENDGAME[index];
-
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
+    
+            match piece {
+                def::WP => {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_WP[index];
+                    w_feature_map.eg_sqr_point += SQR_TABLE_WP_ENDGAME[index];
+    
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
                     }
-                }
-
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
-            },
-            def::WN => {
-                w_feature_map.mg_sqr_point += SQR_TABLE_WN[index];
-
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
+    
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
+                },
+                def::WN => {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_WN[index];
+    
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BP);
                     }
-                } else if index_mask & bp_attack_mask != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BP);
-                }
-
-                let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
-                w_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
-                w_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.bk_index] & mov_mask).count_ones() as i32;
-
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
-                w_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.bk_index] & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
-            },
-            def::WB => {
-                w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
-
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
+                    w_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
+                    w_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.bk_index] & mov_mask).count_ones() as i32;
+    
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+                    w_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.bk_index] & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+                },
+                def::WB => {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
+    
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BP);
                     }
-                } else if index_mask & bp_attack_mask != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BP);
-                }
-
-                let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
-                w_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
-            },
-            def::WR => {
-                w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
-
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
+                    w_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+                },
+                def::WR => {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
+    
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BP);
+                    } else if index_mask & (bn_attack_mask | bb_attack_mask) != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BN);
                     }
-                } else if index_mask & bp_attack_mask != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BP);
-                } else if index_mask & (bn_attack_mask | bb_attack_mask) != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BN);
-                }
-
-                let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
-                w_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
-                w_feature_map.strong_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
-            },
-            def::WQ => {
-                w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
-
-                if index_mask & w_attack_mask == 0 {
-                    if index_mask & b_attack_mask != 0 {
-                        w_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
+                    w_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
+                    w_feature_map.strong_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+                },
+                def::WQ => {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
+    
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BP);
+                    } else if index_mask & (bn_attack_mask | bb_attack_mask) != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BN);
+                    } else if index_mask & br_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - val_of(def::BR);
                     }
-                } else if index_mask & bp_attack_mask != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BP);
-                } else if index_mask & (bn_attack_mask | bb_attack_mask) != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BN);
-                } else if index_mask & br_attack_mask != 0 {
-                    w_feature_map.threat_point -= threat_val - val_of(def::BR);
-                }
-
-                let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
-                w_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
-                w_feature_map.strong_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
-            },
-            def::WK => {
-                w_feature_map.mg_sqr_point += SQR_TABLE_WK[index];
-                w_feature_map.eg_sqr_point += SQR_TABLE_K_ENDGAME[index];
-            },
-            def::BP => {
-                b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
-                b_feature_map.eg_sqr_point += SQR_TABLE_BP_ENDGAME[index];
-
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
+                    w_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    w_feature_map.weak_king_attack_count += (bk_ring_mask & mov_mask).count_ones() as i32;
+                    w_feature_map.strong_king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
+                },
+                def::WK => {
+                    w_feature_map.mg_sqr_point += SQR_TABLE_WK[index];
+                    w_feature_map.eg_sqr_point += SQR_TABLE_K_ENDGAME[index];
+                },
+                def::BP => {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
+                    b_feature_map.eg_sqr_point += SQR_TABLE_BP_ENDGAME[index];
+    
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
                     }
-                }
-
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
-            },
-            def::BN => {
-                b_feature_map.mg_sqr_point += SQR_TABLE_BN[index];
-
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
+    
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
+                },
+                def::BN => {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_BN[index];
+    
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WP);
                     }
-                } else if index_mask & wp_attack_mask != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WP);
-                }
-
-                let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
-                b_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
-                b_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.wk_index] & mov_mask).count_ones() as i32;
-
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-                b_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.wk_index] & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-            },
-            def::BB => {
-                b_feature_map.mg_sqr_point += SQR_TABLE_BB[index];
-
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
+                    b_feature_map.mobility += N_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
+                    b_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.wk_index] & mov_mask).count_ones() as i32;
+    
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+                    b_feature_map.weak_king_attack_count += (bitmask.n_attack_masks[state.wk_index] & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+                },
+                def::BB => {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_BB[index];
+    
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WP);
                     }
-                } else if index_mask & wp_attack_mask != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WP);
-                }
-
-                let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
-                b_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
-            },
-            def::BR => {
-                b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
-
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
+                    b_feature_map.mobility += B_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+                },
+                def::BR => {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
+    
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WP);
+                    } else if index_mask & (wn_attack_mask | wb_attack_mask) != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WN);
                     }
-                } else if index_mask & wp_attack_mask != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WP);
-                } else if index_mask & (wn_attack_mask | wb_attack_mask) != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WN);
-                }
-
-                let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
-                b_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
-                b_feature_map.strong_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
-            },
-            def::BQ => {
-                b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
-
-                if index_mask & b_attack_mask == 0 {
-                    if index_mask & w_attack_mask != 0 {
-                        b_feature_map.threat_point -= threat_val;
+    
+                    let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
+                    b_feature_map.mobility += R_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
+                    b_feature_map.strong_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+                },
+                def::BQ => {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
+    
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WP);
+                    } else if index_mask & (wn_attack_mask | wb_attack_mask) != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WN);
+                    } else if index_mask & wr_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - val_of(def::WR);
                     }
-                } else if index_mask & wp_attack_mask != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WP);
-                } else if index_mask & (wn_attack_mask | wb_attack_mask) != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WN);
-                } else if index_mask & wr_attack_mask != 0 {
-                    b_feature_map.threat_point -= threat_val - val_of(def::WR);
-                }
-
-                let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
-                b_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
-
-                b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
-                b_feature_map.strong_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
-            },
-            def::BK => {
-                b_feature_map.mg_sqr_point += SQR_TABLE_BK[index];
-                b_feature_map.eg_sqr_point += SQR_TABLE_K_ENDGAME[index];
-            },
-            _ => {},
+    
+                    let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
+                    b_feature_map.mobility += Q_MOB_SCORE[mobility_mask.count_ones() as usize];
+    
+                    b_feature_map.weak_king_attack_count += (wk_ring_mask & mov_mask).count_ones() as i32;
+                    b_feature_map.strong_king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
+                },
+                def::BK => {
+                    b_feature_map.mg_sqr_point += SQR_TABLE_BK[index];
+                    b_feature_map.eg_sqr_point += SQR_TABLE_K_ENDGAME[index];
+                },
+                _ => {},
+            }
         }
     }
 

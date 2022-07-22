@@ -27,6 +27,7 @@ use std::thread;
 use std::sync::mpsc;
 use std::time;
 use std::u128;
+use std::env;
 
 const DEFAULT_MAX_TIME: TimeCapacity = TimeCapacity {
     main_time_millis: u128::MAX,
@@ -40,6 +41,11 @@ fn main() {
         println!("only litte-endian systems are supported");
         std::process::exit(0);
     }
+
+    let args: Vec<String> = env::args().collect();
+    let test_index: String = args[1].parse().unwrap();
+    let test_val: String = args[2].parse().unwrap();
+    eval::set_test_val(test_index.parse::<usize>().unwrap(), test_val.parse::<i32>().unwrap());
 
     zob_keys::init();
     bitmask::init();
