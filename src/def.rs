@@ -66,7 +66,7 @@ pub const fn on_same_side(player: u8, piece_code: u8) -> bool {
 }
 
 #[inline]
-pub fn get_rank(player: u8, index: usize) -> usize {
+pub fn get_passer_rank(player: u8, index: usize) -> usize {
     if player == PLAYER_W {
         index / 8
     } else {
@@ -118,13 +118,13 @@ mod tests {
     }
 
     #[test]
-    fn test_get_rank() {
-        assert_eq!(0, get_rank(PLAYER_W, 6));
-        assert_eq!(1, get_rank(PLAYER_W, 9));
-        assert_eq!(7, get_rank(PLAYER_W, 62));
-        assert_eq!(7, get_rank(PLAYER_B, 2));
-        assert_eq!(3, get_rank(PLAYER_B, 35));
-        assert_eq!(7, get_rank(PLAYER_W, 58));
+    fn test_get_passer_rank() {
+        assert_eq!(0, get_passer_rank(PLAYER_W, 6));
+        assert_eq!(1, get_passer_rank(PLAYER_W, 9));
+        assert_eq!(7, get_passer_rank(PLAYER_W, 62));
+        assert_eq!(7, get_passer_rank(PLAYER_B, 2));
+        assert_eq!(3, get_passer_rank(PLAYER_B, 35));
+        assert_eq!(7, get_passer_rank(PLAYER_W, 58));
     }
 
     #[test]

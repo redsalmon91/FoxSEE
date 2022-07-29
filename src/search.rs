@@ -42,23 +42,23 @@ const MCP_CUT_COUNT: u8 = 3;
 const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
 
-const DELTA_MARGIN: i32 = 200;
+static mut DELTA_MARGIN: i32 = 240;
 
 const FP_DEPTH: u8 = 7;
-const FP_MARGIN: i32 = 100;
+static mut FP_MARGIN: i32 = 85;
 
 const RAZOR_DEPTH: u8 = 2;
-const RAZOR_MARGIN: i32 = 600;
+static mut RAZOR_MARGIN: i32 = 524;
 
-const SE_MARGIN: i32 = 120;
+static mut SE_MARGIN: i32 = 132;
 
-const WD_SIZE: i32 = 50;
+static mut WD_SIZE: i32 = 50;
 
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
 pub static mut ABORT_SEARCH: bool = false;
 
-static mut ONLY_LEGAL_MOV: bool = false;
+static mut ONLY_ONE_LEGAL_MOV: bool = false;
 
 use std::time::Instant;
 
@@ -170,7 +170,7 @@ impl SearchEngine {
 
         unsafe {
             ABORT_SEARCH = false;
-            ONLY_LEGAL_MOV = false;
+            ONLY_ONE_LEGAL_MOV = false;
         }
 
         let in_check = mov_table::is_in_check(state, state.player);
@@ -235,14 +235,16 @@ impl SearchEngine {
                 }
 
                 unsafe {
-                    if ONLY_LEGAL_MOV {
+                    if ONLY_ONE_LEGAL_MOV {
                         break;
                     }
                 }
             }
 
-            alpha = score - WD_SIZE;
-            beta = score + WD_SIZE;
+            unsafe {
+                alpha = score - WD_SIZE;
+                beta = score + WD_SIZE;
+            }
 
             depth += 1;
             accumulated_time_taken = total_time_taken;
@@ -355,8 +357,10 @@ impl SearchEngine {
 
         if !on_pv && !on_extend && !in_check {
             if depth <= RAZOR_DEPTH && !eval::has_promoting_pawn(state, state.player) {
-                if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
-                    return self.q_search(state, alpha, beta, ply);
+                unsafe {
+                    if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
+                        return self.q_search(state, alpha, beta, ply);
+                    }
                 }
             }
 
@@ -463,8 +467,10 @@ impl SearchEngine {
                 pv_found = true;
             }
 
-            if score - SE_MARGIN < alpha {
-                is_singular_mov = false;
+            unsafe {
+                if score - SE_MARGIN < alpha {
+                    is_singular_mov = false;
+                }
             }
         }
 
@@ -549,7 +555,7 @@ impl SearchEngine {
         } else if legal_mov_count == 1 && ply == 0 {
             if hash_mov != 0 {
                 unsafe {
-                    ONLY_LEGAL_MOV = true;
+                    ONLY_ONE_LEGAL_MOV = true;
                 }
     
                 return alpha;
@@ -608,8 +614,10 @@ impl SearchEngine {
             let is_capture = state.squares[to] != 0;
 
             if mov_count > 1 && !gives_check && !in_check && !under_mate_threat && !is_passer && depth <= FP_DEPTH {
-                if static_eval + eval::val_of(state.squares[to]) + eval::val_of(promo) + FP_MARGIN * depth as i32 <= alpha {
-                    continue;
+                unsafe {
+                    if static_eval + eval::val_of(state.squares[to]) + eval::val_of(promo) + FP_MARGIN * depth as i32 <= alpha {
+                        continue;
+                    }
                 }
             }
 
@@ -910,8 +918,10 @@ impl SearchEngine {
                 if !in_endgame {
                     let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
     
-                    if static_eval + gain + DELTA_MARGIN < alpha {
-                        continue;
+                    unsafe {
+                        if static_eval + gain + DELTA_MARGIN < alpha {
+                            continue;
+                        }
                     }
                 }
     
