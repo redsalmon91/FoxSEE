@@ -15,52 +15,19 @@ use crate::{
     },
     mov_table,
     state::State,
+    search_params::SearchParams,
     time_control::TimeCapacity,
     util,
     zob_keys,
 };
 
+use std::time::Instant;
+
 const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
-
-const SORTING_CAP_BASE_VAL: i32 = 100000000;
-const SORTING_HISTORY_BASE_VAL: i32 = 100000;
-const SORTING_CHECK_BONUS: i32 = 50;
-const SORTING_COUNTER_MOV_VAL: i32 = 30;
-const SORTING_PRIMARY_KILLER_VAL: i32 = 20;
-const SORTING_SECONDARY_KILLER_VAL: i32 = 10;
-const SORTING_CHECK_OR_PASSER_VAL: i32 = -10;
-
-const NM_DEPTH: u8 = 6;
-const NM_R: u8 = 2;
-
-const MCP_DEPTH: u8 = 8;
-const MCP_R: u8 = 6;
-const MCP_MOV_COUNT: u8 = 6;
-const MCP_CUT_COUNT: u8 = 3;
-
-const IID_DEPTH: u8 = 7;
-const IID_DEPTH_R: u8 = 2;
-
-static mut DELTA_MARGIN: i32 = 240;
-
-const FP_DEPTH: u8 = 7;
-static mut FP_MARGIN: i32 = 85;
-
-const RAZOR_DEPTH: u8 = 2;
-static mut RAZOR_MARGIN: i32 = 524;
-
-static mut SE_MARGIN: i32 = 132;
-
-static mut WD_SIZE: i32 = 50;
-
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
 pub static mut ABORT_SEARCH: bool = false;
-
-static mut ONLY_ONE_LEGAL_MOV: bool = false;
-
-use std::time::Instant;
 
 struct OrderedMov {
     mov: u32,
@@ -75,12 +42,14 @@ struct OrderedQMov {
 }
 
 pub struct SearchEngine {
+    evaluator: eval::Evaluator,
     depth_preferred_hash_table: DepthPreferredHashTable,
     primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     counter_mov_table: [[[u32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    params: SearchParams,
     null_mov_count: u8,
     root_full_mov_count: u16,
     root_half_mov_count: u16,
@@ -88,17 +57,20 @@ pub struct SearchEngine {
     max_time_millis: u128,
     node_count: u64,
     seldepth: u8,
+    has_one_legal_mov: bool,
 }
 
 impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
+            evaluator: eval::Evaluator::new(),
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size),
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             counter_mov_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            params: SearchParams::default(),
             null_mov_count: 0,
             root_full_mov_count: 0,
             root_half_mov_count: 0,
@@ -106,7 +78,13 @@ impl SearchEngine {
             max_time_millis: 0,
             node_count: 0,
             seldepth: 0,
+            has_one_legal_mov: false,
         }
+    }
+
+    pub fn set_params(&mut self, search_params_file: &str, eval_params_file: &str) {
+        self.params = SearchParams::from_config(&util::load_params(search_params_file));
+        self.evaluator.set_params(eval_params_file);
     }
 
     pub fn reset(&mut self) {
@@ -167,10 +145,10 @@ impl SearchEngine {
 
         self.node_count = 0;
         self.seldepth = 0;
+        self.has_one_legal_mov = false;
 
         unsafe {
             ABORT_SEARCH = false;
-            ONLY_ONE_LEGAL_MOV = false;
         }
 
         let in_check = mov_table::is_in_check(state, state.player);
@@ -234,17 +212,13 @@ impl SearchEngine {
                     break
                 }
 
-                unsafe {
-                    if ONLY_ONE_LEGAL_MOV {
-                        break;
-                    }
+                if self.has_one_legal_mov {
+                    break;
                 }
             }
 
-            unsafe {
-                alpha = score - WD_SIZE;
-                beta = score + WD_SIZE;
-            }
+            alpha = score - self.params.aspiration_window_size;
+            beta = score + self.params.aspiration_window_size;
 
             depth += 1;
             accumulated_time_taken = total_time_taken;
@@ -343,32 +317,30 @@ impl SearchEngine {
                 }
             },
             _ => {
-                let (material_score, is_draw) = eval::eval_materials(state);
+                let (material_score, is_draw) = self.evaluator.eval_materials(state);
 
                 if is_draw && ply > 0 {
                     return 0;
                 }
 
-                static_eval = eval::eval_state(state, material_score);
+                static_eval = self.evaluator.eval_state(state, material_score);
             },
         }
 
         let mut under_mate_threat = false;
 
         if !on_pv && !on_extend && !in_check {
-            if depth <= RAZOR_DEPTH && !eval::has_promoting_pawn(state, state.player) {
-                unsafe {
-                    if static_eval + RAZOR_MARGIN * depth as i32 <= alpha {
-                        return self.q_search(state, alpha, beta, ply);
-                    }
+            if depth <= self.params.razoring_depth && !eval::has_promoting_pawn(state, state.player) {
+                if static_eval + self.params.razoring_margin * depth as i32 <= alpha {
+                    return self.q_search(state, alpha, beta, ply);
                 }
             }
 
-            if depth >= NM_DEPTH && static_eval >= beta {
-                let depth_reduction = if depth > NM_DEPTH {
-                    NM_R + 1
+            if depth >= self.params.null_move_pruning_depth && static_eval >= beta {
+                let depth_reduction = if depth > self.params.null_move_pruning_depth {
+                    self.params.null_move_pruning_reduction + 1
                 } else {
-                    NM_R
+                    self.params.null_move_pruning_reduction
                 };
 
                 self.null_mov_count += 1;
@@ -393,8 +365,8 @@ impl SearchEngine {
             }
         }
 
-        if on_pv && hash_mov == 0 && depth >= IID_DEPTH {
-            self.ab_search(state, in_check, on_extend, alpha, beta, depth - IID_DEPTH_R, ply);
+        if on_pv && hash_mov == 0 && depth >= self.params.internal_iterative_deepening_depth {
+            self.ab_search(state, in_check, on_extend, alpha, beta, depth - self.params.internal_iterative_deepening_reduction, ply);
 
             unsafe {
                 if ABORT_SEARCH {
@@ -467,10 +439,8 @@ impl SearchEngine {
                 pv_found = true;
             }
 
-            unsafe {
-                if score - SE_MARGIN < alpha {
-                    is_singular_mov = false;
-                }
+            if score - self.params.singular_extension_margin <= alpha {
+                is_singular_mov = false;
             }
         }
 
@@ -515,27 +485,29 @@ impl SearchEngine {
                 };
     
                 if state.squares[to] != 0 || promo != 0 {
-                    let see_score = see(state, from, to, tp, promo);
+                    let see_score = self.see(state, from, to, tp, promo);
     
                     if gives_check {
-                        ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score + SORTING_CHECK_BONUS;
+                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_check_capture_bonus;
                     } else {
-                        ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
+                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
                     }
                 } else if mov == counter_mov {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_COUNTER_MOV_VAL;
+                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_counter_move_val;
                 } else if mov == primary_killer {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PRIMARY_KILLER_VAL;
+                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_killer_primary_val;
                 } else if mov == secondary_killer {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_SECONDARY_KILLER_VAL;
-                } else if gives_check || is_passer {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECK_OR_PASSER_VAL;
+                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_killer_secondary_val;
+                } else if gives_check {
+                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_checker_val;
+                } else if is_passer {
+                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_passer_val;
                 } else {
                     let history_score = self.history_table[state.player as usize - 1][from][to];
     
                     if history_score != 0 {
                         let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                        ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
+                        ordered_mov.sort_score = self.params.sorting_history_base_val + history_score / butterfly_score;
                     } else {
                         let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
                         ordered_mov.sort_score = sqr_val_diff;
@@ -554,10 +526,7 @@ impl SearchEngine {
             return -eval::MATE_VAL + ply as i32;
         } else if legal_mov_count == 1 && ply == 0 {
             if hash_mov != 0 {
-                unsafe {
-                    ONLY_ONE_LEGAL_MOV = true;
-                }
-    
+                self.has_one_legal_mov = true;
                 return alpha;
             }
         }
@@ -566,14 +535,14 @@ impl SearchEngine {
             ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
-        if !on_pv && !on_extend && !in_check && !under_mate_threat && depth >= MCP_DEPTH {
+        if !on_pv && !on_extend && !in_check && !under_mate_threat && depth >= self.params.multi_cut_pruning_depth {
             let mut cut_mov_count = 0;
             let mut cut_count = 0;
 
             for ordered_mov in &ordered_mov_list {
                 cut_mov_count += 1;
 
-                if cut_mov_count > MCP_MOV_COUNT {
+                if cut_mov_count > self.params.multi_cut_pruning_move_count {
                     break;
                 }
 
@@ -583,7 +552,7 @@ impl SearchEngine {
                 let (from, to, tp, promo) = util::decode_u32_mov(mov);
 
                 state.do_mov(from, to, tp, promo);
-                let scout_score = -self.ab_search(state, gives_check, false, -beta, -beta+1, depth - MCP_R - 1, ply + 1);
+                let scout_score = -self.ab_search(state, gives_check, false, -beta, -beta+1, depth - self.params.multi_cut_pruning_reduction - 1, ply + 1);
                 state.undo_mov(from, to, tp);
 
                 unsafe {
@@ -595,7 +564,7 @@ impl SearchEngine {
                 if scout_score >= beta {
                     cut_count += 1;
 
-                    if cut_count >= MCP_CUT_COUNT {
+                    if cut_count >= self.params.multi_cut_pruning_cut_count {
                         return beta;
                     }
                 }
@@ -613,11 +582,9 @@ impl SearchEngine {
 
             let is_capture = state.squares[to] != 0;
 
-            if mov_count > 1 && !gives_check && !in_check && !under_mate_threat && !is_passer && depth <= FP_DEPTH {
-                unsafe {
-                    if static_eval + eval::val_of(state.squares[to]) + eval::val_of(promo) + FP_MARGIN * depth as i32 <= alpha {
-                        continue;
-                    }
+            if mov_count > 1 && !gives_check && !in_check && !under_mate_threat && !is_passer && depth <= self.params.futility_pruning_depth {
+                if static_eval + self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo) + self.params.futility_pruning_margin * depth as i32 <= alpha {
+                    continue;
                 }
             }
 
@@ -631,8 +598,8 @@ impl SearchEngine {
                 extended = true;
             }
 
-            let score = if depth > 2 && mov_count > 1 && !extended {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
+            let score = if depth > self.params.late_move_reductions_depth && mov_count > self.params.late_move_reductions_move_count && !extended {
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - (1 + mov_count as u8 / self.params.late_move_reductions_reduction_factor).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
@@ -831,13 +798,13 @@ impl SearchEngine {
                 }
             },
             _ => {
-                let (material_score, is_draw) = eval::eval_materials(state);
+                let (material_score, is_draw) = self.evaluator.eval_materials(state);
 
                 if is_draw {
                     return 0;
                 }
 
-                static_eval = eval::eval_state(state, material_score);
+                static_eval = self.evaluator.eval_state(state, material_score);
             },
         }
 
@@ -916,16 +883,14 @@ impl SearchEngine {
 
             if !illegal_mov {
                 if !in_endgame {
-                    let gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
+                    let gain = self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo);
     
-                    unsafe {
-                        if static_eval + gain + DELTA_MARGIN < alpha {
-                            continue;
-                        }
+                    if static_eval + gain + self.params.delta_margin < alpha {
+                        continue;
                     }
                 }
     
-                let see_score = see(state, from, to, tp, promo);
+                let see_score = self.see(state, from, to, tp, promo);
     
                 if see_score <= eval::EQUAL_EXCHANGE {
                     continue;
@@ -1017,6 +982,34 @@ impl SearchEngine {
         self.retrieve_pv(state, pv_table, mov_index + 1);
 
         state.undo_mov(from, to, tp);
+    }
+
+    fn see(&self, state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
+        let initial_gain = self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo);
+    
+        state.do_mov(from, to, tp, promo);
+    
+        let score = initial_gain - self.see_exchange(state, to, state.squares[to]);
+    
+        state.undo_mov(from, to, tp);
+    
+        score
+    }
+
+    fn see_exchange(&self, state: &mut State, to: usize, last_attacker: u8) -> i32 {
+        let (attacker, tp, promo, attack_from) = mov_table::get_smallest_attacker_index(state, to);
+    
+        if attacker == 0 {
+            return 0
+        }
+    
+        state.do_mov(attack_from, to, tp, promo);
+    
+        let score = (self.evaluator.val_of(last_attacker) + self.evaluator.val_of(promo) - self.see_exchange(state, to, attacker)).max(0);
+    
+        state.undo_mov(attack_from, to, tp);
+    
+        score
     }
 
     #[inline]
@@ -1155,34 +1148,6 @@ fn is_passed_pawn(state: &State, moving_piece: u8, to_index: usize) -> bool {
         },
         _ => false
     }
-}
-
-fn see(state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
-    let initial_gain = eval::val_of(state.squares[to]) + eval::val_of(promo);
-
-    state.do_mov(from, to, tp, promo);
-
-    let score = initial_gain - see_exchange(state, to, state.squares[to]);
-
-    state.undo_mov(from, to, tp);
-
-    score
-}
-
-fn see_exchange(state: &mut State, to: usize, last_attacker: u8) -> i32 {
-    let (attacker, tp, promo, attack_from) = mov_table::get_smallest_attacker_index(state, to);
-
-    if attacker == 0 {
-        return 0
-    }
-
-    state.do_mov(attack_from, to, tp, promo);
-
-    let score = (eval::val_of(last_attacker) + eval::val_of(promo) - see_exchange(state, to, attacker)).max(0);
-
-    state.undo_mov(attack_from, to, tp);
-
-    score
 }
 
 #[cfg(test)]

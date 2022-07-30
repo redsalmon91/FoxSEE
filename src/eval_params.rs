@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
 
 #[derive(Debug)]
 pub struct EvalParams {
@@ -134,96 +132,69 @@ impl EvalParams {
         }        
     }
 
-    pub fn from_config(config_map: &HashMap<String, i32>) -> Self {
+    pub fn from_config(config_map: &HashMap<String, String>) -> Self {
         EvalParams {
-            q_val: *config_map.get("q_val").unwrap(),
-            r_val: *config_map.get("r_val").unwrap(),
-            b_val: *config_map.get("b_val").unwrap(),
-            n_val: *config_map.get("n_val").unwrap(),
-            p_val: *config_map.get("p_val").unwrap(),
+            q_val: config_map.get("q_val").unwrap().parse::<i32>().unwrap(),
+            r_val: config_map.get("r_val").unwrap().parse::<i32>().unwrap(),
+            b_val: config_map.get("b_val").unwrap().parse::<i32>().unwrap(),
+            n_val: config_map.get("n_val").unwrap().parse::<i32>().unwrap(),
+            p_val: config_map.get("p_val").unwrap().parse::<i32>().unwrap(),
 
-            eg_q_val: *config_map.get("eg_q_val").unwrap(),
-            eg_r_val: *config_map.get("eg_r_val").unwrap(),
-            eg_b_val: *config_map.get("eg_b_val").unwrap(),
-            eg_n_val: *config_map.get("eg_n_val").unwrap(),
-            eg_p_val: *config_map.get("eg_p_val").unwrap(),
+            eg_q_val: config_map.get("eg_q_val").unwrap().parse::<i32>().unwrap(),
+            eg_r_val: config_map.get("eg_r_val").unwrap().parse::<i32>().unwrap(),
+            eg_b_val: config_map.get("eg_b_val").unwrap().parse::<i32>().unwrap(),
+            eg_n_val: config_map.get("eg_n_val").unwrap().parse::<i32>().unwrap(),
+            eg_p_val: config_map.get("eg_p_val").unwrap().parse::<i32>().unwrap(),
 
-            isolated_pawn_pen: *config_map.get("isolated_pawn_pen").unwrap(),
-            doubled_pawn_pen: *config_map.get("doubled_pawn_pen").unwrap(),
-            behind_pawn_pen: *config_map.get("behind_pawn_pen").unwrap(),
+            isolated_pawn_pen: config_map.get("isolated_pawn_pen").unwrap().parse::<i32>().unwrap(),
+            doubled_pawn_pen: config_map.get("doubled_pawn_pen").unwrap().parse::<i32>().unwrap(),
+            behind_pawn_pen: config_map.get("behind_pawn_pen").unwrap().parse::<i32>().unwrap(),
 
-            passer_base_val: *config_map.get("passer_base_val").unwrap(),
-            passer_rank_bonus: *config_map.get("passer_rank_bonus").unwrap(),
+            passer_base_val: config_map.get("passer_base_val").unwrap().parse::<i32>().unwrap(),
+            passer_rank_bonus: config_map.get("passer_rank_bonus").unwrap().parse::<i32>().unwrap(),
 
-            candidate_passer_base_val: *config_map.get("candidate_passer_base_val").unwrap(),
-            candidate_passer_rank_bonus: *config_map.get("candidate_passer_rank_bonus").unwrap(),
+            candidate_passer_base_val: config_map.get("candidate_passer_base_val").unwrap().parse::<i32>().unwrap(),
+            candidate_passer_rank_bonus: config_map.get("candidate_passer_rank_bonus").unwrap().parse::<i32>().unwrap(),
 
-            k_attack_score: *config_map.get("k_attack_score").unwrap(),
-            k_attack_ignore_base: *config_map.get("k_attack_ignore_base").unwrap(),
-            nk_attack_weight: *config_map.get("nk_attack_weight").unwrap(),
-            bk_attack_weight: *config_map.get("bk_attack_weight").unwrap(),
-            rk_attack_weight: *config_map.get("rk_attack_weight").unwrap(),
-            qk_attack_weight: *config_map.get("qk_attack_weight").unwrap(),
-            k_exposure_pen: *config_map.get("k_exposure_pen").unwrap(),
-            k_no_cas_rights_pen: *config_map.get("k_no_cas_rights_pen").unwrap(),
+            k_attack_score: config_map.get("k_attack_score").unwrap().parse::<i32>().unwrap(),
+            k_attack_ignore_base: config_map.get("k_attack_ignore_base").unwrap().parse::<i32>().unwrap(),
+            nk_attack_weight: config_map.get("nk_attack_weight").unwrap().parse::<i32>().unwrap(),
+            bk_attack_weight: config_map.get("bk_attack_weight").unwrap().parse::<i32>().unwrap(),
+            rk_attack_weight: config_map.get("rk_attack_weight").unwrap().parse::<i32>().unwrap(),
+            qk_attack_weight: config_map.get("qk_attack_weight").unwrap().parse::<i32>().unwrap(),
+            k_exposure_pen: config_map.get("k_exposure_pen").unwrap().parse::<i32>().unwrap(),
+            k_no_cas_rights_pen: config_map.get("k_no_cas_rights_pen").unwrap().parse::<i32>().unwrap(),
 
-            rook_open_bonus: *config_map.get("rook_open_bonus").unwrap(),
+            rook_open_bonus: config_map.get("rook_open_bonus").unwrap().parse::<i32>().unwrap(),
 
-            weak_sqr_pen: *config_map.get("weak_sqr_pen").unwrap(),
+            weak_sqr_pen: config_map.get("weak_sqr_pen").unwrap().parse::<i32>().unwrap(),
 
-            pin_pen: *config_map.get("pin_pen").unwrap(),
-            semi_pin_pen: *config_map.get("semi_pin_pen").unwrap(),
+            pin_pen: config_map.get("pin_pen").unwrap().parse::<i32>().unwrap(),
+            semi_pin_pen: config_map.get("semi_pin_pen").unwrap().parse::<i32>().unwrap(),
 
-            p_mob_score: *config_map.get("p_mob_score").unwrap(),
-            n_mob_score: *config_map.get("n_mob_score").unwrap(),
-            b_mob_score: *config_map.get("b_mob_score").unwrap(),
-            r_mob_score: *config_map.get("r_mob_score").unwrap(),
-            q_mob_score: *config_map.get("q_mob_score").unwrap(),
+            p_mob_score: config_map.get("p_mob_score").unwrap().parse::<i32>().unwrap(),
+            n_mob_score: config_map.get("n_mob_score").unwrap().parse::<i32>().unwrap(),
+            b_mob_score: config_map.get("b_mob_score").unwrap().parse::<i32>().unwrap(),
+            r_mob_score: config_map.get("r_mob_score").unwrap().parse::<i32>().unwrap(),
+            q_mob_score: config_map.get("q_mob_score").unwrap().parse::<i32>().unwrap(),
 
-            n_mob_zero_pen: *config_map.get("n_mob_zero_pen").unwrap(),
-            b_mob_zero_pen: *config_map.get("b_mob_zero_pen").unwrap(),
-            r_mob_zero_pen: *config_map.get("r_mob_zero_pen").unwrap(),
-            q_mob_zero_pen: *config_map.get("q_mob_zero_pen").unwrap(),
+            n_mob_zero_pen: config_map.get("n_mob_zero_pen").unwrap().parse::<i32>().unwrap(),
+            b_mob_zero_pen: config_map.get("b_mob_zero_pen").unwrap().parse::<i32>().unwrap(),
+            r_mob_zero_pen: config_map.get("r_mob_zero_pen").unwrap().parse::<i32>().unwrap(),
+            q_mob_zero_pen: config_map.get("q_mob_zero_pen").unwrap().parse::<i32>().unwrap(),
 
-            threat_discount_factor: *config_map.get("threat_discount_factor").unwrap(),
+            threat_discount_factor: config_map.get("threat_discount_factor").unwrap().parse::<i32>().unwrap(),
 
-            tempo_val: *config_map.get("tempo_val").unwrap(),
+            tempo_val: config_map.get("tempo_val").unwrap().parse::<i32>().unwrap(),
 
-            eg_pawn_essential_val: *config_map.get("eg_pawn_essential_val").unwrap(),
-            eg_different_color_bishop_val: *config_map.get("eg_different_color_bishop_val").unwrap(),
-            eg_different_color_bishop_with_rook_val: *config_map.get("eg_different_color_bishop_with_rook_val").unwrap(),
-            eg_bishop_pair_bonus: *config_map.get("eg_bishop_pair_bonus").unwrap(),
-            eg_rn_knight_protected_bonus: *config_map.get("eg_rn_knight_protected_bonus").unwrap(),
-            eg_king_in_passer_path_bonus: *config_map.get("eg_king_in_passer_path_bonus").unwrap(),
-            eg_controlled_passer_val: *config_map.get("eg_controlled_passer_val").unwrap(),
-            eg_no_piece_bonus: *config_map.get("eg_no_piece_bonus").unwrap(),
+            eg_pawn_essential_val: config_map.get("eg_pawn_essential_val").unwrap().parse::<i32>().unwrap(),
+            eg_different_color_bishop_val: config_map.get("eg_different_color_bishop_val").unwrap().parse::<i32>().unwrap(),
+            eg_different_color_bishop_with_rook_val: config_map.get("eg_different_color_bishop_with_rook_val").unwrap().parse::<i32>().unwrap(),
+            eg_bishop_pair_bonus: config_map.get("eg_bishop_pair_bonus").unwrap().parse::<i32>().unwrap(),
+            eg_rn_knight_protected_bonus: config_map.get("eg_rn_knight_protected_bonus").unwrap().parse::<i32>().unwrap(),
+            eg_king_in_passer_path_bonus: config_map.get("eg_king_in_passer_path_bonus").unwrap().parse::<i32>().unwrap(),
+            eg_controlled_passer_val: config_map.get("eg_controlled_passer_val").unwrap().parse::<i32>().unwrap(),
+            eg_no_piece_bonus: config_map.get("eg_no_piece_bonus").unwrap().parse::<i32>().unwrap(),
         }
     }
-}
-
-pub fn load_config(config_file: &str) -> HashMap<String, i32> {
-    let mut file = File::open(config_file).expect("Config file not found");
-    
-    let mut config_data = String::new();
-    file.read_to_string(&mut config_data).expect("Unable to read config file");
-
-    let mut config_map = HashMap::new();
-
-    let param_entry_list = config_data.split('\n');
-    for param_entry in param_entry_list {
-        let mut param_entry_pair = param_entry.split('=');
-        let key = param_entry_pair.next();
-        if key.is_none() {
-            continue;
-        }
-
-        let value = param_entry_pair.next();
-        if value.is_none() {
-            continue;
-        }
-
-        config_map.insert(key.unwrap().to_string(), value.unwrap().parse::<i32>().unwrap());
-    }
-
-    config_map
 }

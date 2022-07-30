@@ -1,6 +1,9 @@
 /*
  * Copyright (C) 2020-2022 Zixiao Han
  */
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
 
 use crate::def;
 
@@ -261,6 +264,33 @@ fn gen_diag_down_perms(mask: u64, index: usize, perms: &mut Vec<u64>) {
 
     gen_diag_down_perms(mask, index + def::DIM_SIZE - 1, perms);
     gen_diag_down_perms(mask | 0b1 << index, index + def::DIM_SIZE - 1, perms);
+}
+
+pub fn load_params(params_file: &str) -> HashMap<String, String> {
+    let mut file = File::open(params_file).expect("Params file not found");
+    
+    let mut params_data = String::new();
+    file.read_to_string(&mut params_data).expect("Unable to read params file");
+
+    let mut params_map = HashMap::new();
+
+    let param_entry_list = params_data.split('\n');
+    for param_entry in param_entry_list {
+        let mut param_entry_pair = param_entry.split('=');
+        let key = param_entry_pair.next();
+        if key.is_none() {
+            continue;
+        }
+
+        let value = param_entry_pair.next();
+        if value.is_none() {
+            continue;
+        }
+
+        params_map.insert(key.unwrap().to_string(), value.unwrap().to_string());
+    }
+
+    params_map
 }
 
 #[cfg(test)]
