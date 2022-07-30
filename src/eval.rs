@@ -456,6 +456,10 @@ pub fn eval_materials(state: &mut State) -> (i32, bool) {
 
         let phase = get_phase(state);
 
+        if phase == 0 {
+            eg_score += (w_pawn_count - b_pawn_count) * PARAMS.eg_no_piece_bonus;
+        }
+
         let score_sign = if state.player == def::PLAYER_W {
             1
         } else {

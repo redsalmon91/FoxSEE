@@ -64,6 +64,7 @@ pub struct EvalParams {
     pub eg_rn_knight_protected_bonus: i32,
     pub eg_king_in_passer_path_bonus: i32,
     pub eg_controlled_passer_val: i32,
+    pub eg_no_piece_bonus: i32,
 }
 
 impl EvalParams {
@@ -113,8 +114,8 @@ impl EvalParams {
             r_mob_score: 5,
             q_mob_score: 5,
         
-            n_mob_zero_pen: -50,
-            b_mob_zero_pen: -50,
+            n_mob_zero_pen: -20,
+            b_mob_zero_pen: -20,
             r_mob_zero_pen: -50,
             q_mob_zero_pen: -50,
 
@@ -129,6 +130,7 @@ impl EvalParams {
             eg_rn_knight_protected_bonus: 50,
             eg_king_in_passer_path_bonus: 50,
             eg_controlled_passer_val: 50,
+            eg_no_piece_bonus: 50,
         }        
     }
 
@@ -194,6 +196,7 @@ impl EvalParams {
             eg_rn_knight_protected_bonus: *config_map.get("eg_rn_knight_protected_bonus").unwrap(),
             eg_king_in_passer_path_bonus: *config_map.get("eg_king_in_passer_path_bonus").unwrap(),
             eg_controlled_passer_val: *config_map.get("eg_controlled_passer_val").unwrap(),
+            eg_no_piece_bonus: *config_map.get("eg_no_piece_bonus").unwrap(),
         }
     }
 }
