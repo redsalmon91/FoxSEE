@@ -599,7 +599,7 @@ impl SearchEngine {
             }
 
             let score = if depth > self.params.late_move_reductions_depth && mov_count > self.params.late_move_reductions_move_count && !extended {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - (1 + mov_count as u8 / self.params.late_move_reductions_reduction_factor).min(depth-1), ply + 1);
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
                 if score > alpha {
                     if on_pv && pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);

@@ -36,7 +36,6 @@ pub struct SearchParams {
 
     pub late_move_reductions_depth: u8,
     pub late_move_reductions_move_count: usize,
-    pub late_move_reductions_reduction_factor: u8,
 }
 
 impl SearchParams {
@@ -76,7 +75,6 @@ impl SearchParams {
 
             late_move_reductions_depth: 2,
             late_move_reductions_move_count: 1,
-            late_move_reductions_reduction_factor: 5,
         }
     }
 
@@ -116,7 +114,6 @@ impl SearchParams {
 
             late_move_reductions_depth: config_map.get("late_move_reductions_depth").unwrap().parse::<u8>().unwrap(),
             late_move_reductions_move_count: config_map.get("late_move_reductions_move_count").unwrap().parse::<usize>().unwrap(),
-            late_move_reductions_reduction_factor: config_map.get("late_move_reductions_reduction_factor").unwrap().parse::<u8>().unwrap(),
         }
     }
 }
