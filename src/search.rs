@@ -82,9 +82,9 @@ impl SearchEngine {
         }
     }
 
-    pub fn set_params(&mut self, search_params_file: &str, eval_params_file: &str) {
-        self.params = SearchParams::from_config(&util::load_params(search_params_file));
-        self.evaluator.set_params(eval_params_file);
+    pub fn set_params(&mut self, params_file: &str) {
+        self.params = SearchParams::from_config(&util::load_params(params_file));
+        self.evaluator.set_params(params_file);
     }
 
     pub fn reset(&mut self) {

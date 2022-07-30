@@ -55,9 +55,8 @@ fn main() {
         let args: Vec<String> = env::args().collect();
         
         if args.len() != 0 {
-            let search_params_file: String = args[1].parse().unwrap();
-            let eval_params_file: String = args[2].parse().unwrap();
-            search_engine.set_params(&search_params_file, &eval_params_file);
+            let params_file: String = args[1].parse().unwrap();
+            search_engine.set_params(&params_file);
         }
 
         let mut state = State::new(uci::FEN_START_POS);
