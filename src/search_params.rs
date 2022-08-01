@@ -70,8 +70,8 @@ impl SearchParams {
             sorting_counter_move_val: 30,
             sorting_killer_primary_val: 20,
             sorting_killer_secondary_val: 10,
-            sorting_checker_val: -10,
-            sorting_passer_val: -10,
+            sorting_checker_val: 22,
+            sorting_passer_val: 16,
 
             late_move_reductions_depth: 2,
             late_move_reductions_move_count: 1,

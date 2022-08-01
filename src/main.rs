@@ -53,8 +53,8 @@ fn main() {
         let mut search_engine = SearchEngine::new(def::DEFAULT_HASH_SIZE_UNIT);
 
         let args: Vec<String> = env::args().collect();
-        
-        if args.len() != 0 {
+
+        if args.len() > 1 {
             let params_file: String = args[1].parse().unwrap();
             search_engine.set_params(&params_file);
         }

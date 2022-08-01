@@ -75,7 +75,7 @@ impl EvalParams {
             p_val: 120,
         
             eg_q_val: 98,
-            eg_r_val: 32,
+            eg_r_val: 60,
             eg_b_val: 30,
             eg_n_val: 44,
             eg_p_val: 16,
