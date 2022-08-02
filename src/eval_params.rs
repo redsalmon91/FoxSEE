@@ -34,8 +34,6 @@ pub struct EvalParams {
     pub k_no_cas_rights_pen: i32,
 
     pub rook_open_bonus: i32,
-    
-    pub weak_sqr_pen: i32,
 
     pub pin_pen: i32,
     pub semi_pin_pen: i32,
@@ -83,13 +81,13 @@ impl EvalParams {
             isolated_pawn_pen: -12,
             doubled_pawn_pen: -20,
             behind_pawn_pen: -10,
-        
+
             passer_base_val: 32,
             passer_rank_bonus: 38,
-        
+
             candidate_passer_base_val: 20,
             candidate_passer_rank_bonus: 15,
-        
+
             k_attack_score: 5,
             k_attack_ignore_base: 8,
             nk_attack_weight: 3,
@@ -100,18 +98,16 @@ impl EvalParams {
             k_no_cas_rights_pen: -50,
 
             rook_open_bonus: 26,
-            
-            weak_sqr_pen: -5,
 
             pin_pen: -20,
             semi_pin_pen: -10,
-        
+
             p_mob_score: 5,
             n_mob_score: 5,
             b_mob_score: 5,
             r_mob_score: 5,
             q_mob_score: 5,
-        
+
             n_mob_zero_pen: -20,
             b_mob_zero_pen: -20,
             r_mob_zero_pen: -50,
@@ -129,7 +125,7 @@ impl EvalParams {
             eg_king_in_passer_path_bonus: 50,
             eg_controlled_passer_val: 50,
             eg_no_piece_bonus: 50,
-        }        
+        }
     }
 
     pub fn from_config(config_map: &HashMap<String, String>) -> Self {
@@ -166,8 +162,6 @@ impl EvalParams {
             k_no_cas_rights_pen: config_map.get("k_no_cas_rights_pen").unwrap().parse::<i32>().unwrap(),
 
             rook_open_bonus: config_map.get("rook_open_bonus").unwrap().parse::<i32>().unwrap(),
-
-            weak_sqr_pen: config_map.get("weak_sqr_pen").unwrap().parse::<i32>().unwrap(),
 
             pin_pen: config_map.get("pin_pen").unwrap().parse::<i32>().unwrap(),
             semi_pin_pen: config_map.get("semi_pin_pen").unwrap().parse::<i32>().unwrap(),

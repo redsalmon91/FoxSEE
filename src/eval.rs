@@ -197,9 +197,6 @@ const WK_Q_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000
 const BK_K_SIDE_MASK: u64 = 0b11100000_11100000_11100000_00000000_00000000_00000000_00000000_00000000;
 const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000000_00000000_00000000;
 
-const W_BASE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_11111111_11111111;
-const B_BASE_MASK: u64 = 0b11111111_11111111_11111111_00000000_00000000_00000000_00000000_00000000;
-
 pub fn get_square_val_diff(state: &mut State, moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
     match moving_piece {
         def::WP => {
@@ -285,8 +282,6 @@ pub struct FeatureMap {
     pin_count: i32,
     semi_pin_count: i32,
 
-    weak_sqr_count: i32,
-
     king_attack_count: i32,
     king_exposure_count: i32,
 }
@@ -313,8 +308,6 @@ impl FeatureMap {
             threat_point: 0,
             pin_count: 0,
             semi_pin_count: 0,
-
-            weak_sqr_count: 0,
 
             king_attack_count: 0,
             king_exposure_count: 0,
@@ -498,14 +491,12 @@ impl Evaluator {
             + w_features_map.pin_count * self.params.pin_pen
             + w_features_map.semi_pin_count * self.params.semi_pin_pen
             + w_features_map.rook_open_count * self.params.rook_open_bonus
-            + w_features_map.weak_sqr_count * self.params.weak_sqr_pen
             + w_features_map.king_exposure_count * self.params.k_exposure_pen
             + w_king_attack_count * self.params.k_attack_score
             - b_features_map.mg_sqr_point
             - b_features_map.pin_count * self.params.pin_pen
-            + b_features_map.semi_pin_count * self.params.semi_pin_pen
+            - b_features_map.semi_pin_count * self.params.semi_pin_pen
             - b_features_map.rook_open_count * self.params.rook_open_bonus
-            - b_features_map.weak_sqr_count * self.params.weak_sqr_pen
             - b_features_map.king_exposure_count * self.params.k_exposure_pen
             - b_king_attack_count * self.params.k_attack_score;
 
@@ -817,10 +808,7 @@ impl Evaluator {
     
         let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
         let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
-    
-        w_feature_map.weak_sqr_count = (W_BASE_MASK & !w_attack_mask & b_attack_mask).count_ones() as i32;
-        b_feature_map.weak_sqr_count = (B_BASE_MASK & !b_attack_mask & w_attack_mask).count_ones() as i32;
-    
+
         if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
             let protecting_pawn_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones();
     
