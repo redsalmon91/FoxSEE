@@ -48,6 +48,7 @@ pub struct SearchEngine {
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     counter_mov_table: [[[u32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     params: SearchParams,
     null_mov_count: u8,
     root_full_mov_count: u16,
@@ -68,6 +69,7 @@ impl SearchEngine {
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             counter_mov_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             params: SearchParams::default(),
             null_mov_count: 0,
             root_full_mov_count: 0,
@@ -136,6 +138,7 @@ impl SearchEngine {
         self.primary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
+        self.butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
 
         self.root_full_mov_count = state.full_mov_count;
         self.root_half_mov_count = state.half_mov_count;
@@ -503,7 +506,8 @@ impl SearchEngine {
                     let history_score = self.history_table[state.player as usize - 1][from][to];
     
                     if history_score != 0 {
-                        ordered_mov.sort_score = self.params.sorting_history_base_val + history_score;
+                        let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
+                        ordered_mov.sort_score = self.params.sorting_history_base_val + history_score / butterfly_score;
                     } else {
                         let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
                         ordered_mov.sort_score = sqr_val_diff;
@@ -638,6 +642,42 @@ impl SearchEngine {
                     self.update_history_table(state.player, depth, from, to);
                     self.update_killer_table(ply, mov, score, depth);
                     self.update_counter_mov_table(state, mov);
+
+                    if mov_count > 1 {
+                        if hash_mov != 0 {
+                            let (from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
+
+                            let is_capture = state.squares[to] != 0;
+
+                            if !is_capture && promo == 0 {
+                                self.update_butterfly_table(state.player, from, to);
+                            }
+
+                            for index in 0..mov_count-2 {
+                                let prev_mov = &ordered_mov_list[index];
+
+                                let (from, to, _tp, _promo) = util::decode_u32_mov(prev_mov.mov);
+
+                                let is_capture = state.squares[to] != 0;
+
+                                if !is_capture && promo == 0 {
+                                    self.update_butterfly_table(state.player, from, to);
+                                }
+                            }
+                        } else {
+                            for index in 0..mov_count-1 {
+                                let prev_mov = &ordered_mov_list[index];
+
+                                let (from, to, _tp, _promo) = util::decode_u32_mov(prev_mov.mov);
+
+                                let is_capture = state.squares[to] != 0;
+
+                                if !is_capture && promo == 0 {
+                                    self.update_butterfly_table(state.player, from, to);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 self.set_hash(state, depth, ply, HASH_TYPE_BETA, score, static_eval, mov);
@@ -852,7 +892,7 @@ impl SearchEngine {
     
                 let see_score = self.see(state, from, to, tp, promo);
     
-                if see_score < eval::EQUAL_EXCHANGE {
+                if see_score <= eval::EQUAL_EXCHANGE {
                     continue;
                 }
     
@@ -1071,6 +1111,12 @@ impl SearchEngine {
         let history_score = self.history_table[player as usize - 1][from][to];
         let increment = depth as i32;
         self.history_table[player as usize - 1][from][to] = history_score + increment * increment * increment;
+    }
+
+    #[inline]
+    fn update_butterfly_table(&mut self, player: u8, from: usize, to: usize) {
+        let butterfly_score = self.butterfly_table[player as usize - 1][from][to];
+        self.butterfly_table[player as usize - 1][from][to] = butterfly_score + 1;
     }
 }
 
