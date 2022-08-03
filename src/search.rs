@@ -42,15 +42,15 @@ const MCP_CUT_COUNT: u8 = 3;
 const IID_DEPTH: u8 = 7;
 const IID_DEPTH_R: u8 = 2;
 
-const DELTA_MARGIN: i32 = 200;
+const DELTA_MARGIN: i32 = 242;
 
 const FP_DEPTH: u8 = 7;
-const FP_MARGIN: i32 = 100;
+const FP_MARGIN: i32 = 85;
 
 const RAZOR_DEPTH: u8 = 2;
-const RAZOR_MARGIN: i32 = 600;
+const RAZOR_MARGIN: i32 = 524;
 
-const SE_MARGIN: i32 = 120;
+const SE_MARGIN: i32 = 132;
 
 const WD_SIZE: i32 = 50;
 
