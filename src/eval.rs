@@ -39,8 +39,6 @@ const CANDIDATE_PASS_PAWN_VAL: [i32; def::DIM_SIZE] = [0, 10, 10, 10, 20, 20, 0,
 
 const KING_IN_PASSER_PATH_BONUS: i32 = 50;
 
-const EG_P_SQR_DIFF_MULTIPLIER: i32 = 2;
-
 const CONTROLLED_PASS_PAWN_VAL: i32 = 50;
 const DOUBLED_PAWN_PEN: i32 = -20;
 const ISOLATED_PAWN_PEN: i32 = -10;
@@ -358,50 +356,6 @@ pub fn val_of(piece: u8) -> i32 {
     }
 }
 
-pub fn get_square_val_diff(state: &mut State, moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
-    match moving_piece {
-        def::WP => {
-            if is_in_endgame(state) {
-                (SQR_TABLE_WP_ENDGAME[to_index] - SQR_TABLE_WP_ENDGAME[from_index]) * EG_P_SQR_DIFF_MULTIPLIER
-            } else {
-                SQR_TABLE_WP[to_index] - SQR_TABLE_WP[from_index]
-            }
-        },
-        def::WN => SQR_TABLE_WN[to_index] - SQR_TABLE_WN[from_index],
-        def::WB => SQR_TABLE_WB[to_index] - SQR_TABLE_WB[from_index],
-        def::WR => SQR_TABLE_WR[to_index] - SQR_TABLE_WR[from_index],
-        def::WQ => SQR_TABLE_WQ[to_index] - SQR_TABLE_WQ[from_index],
-        def::WK => {
-            if is_in_endgame(state) {
-                SQR_TABLE_K_ENDGAME[to_index] - SQR_TABLE_K_ENDGAME[from_index]
-            } else {
-                SQR_TABLE_WK[to_index] - SQR_TABLE_WK[from_index]
-            }
-        },
-
-        def::BP => {
-            if is_in_endgame(state) {
-                (SQR_TABLE_BP_ENDGAME[to_index] - SQR_TABLE_BP_ENDGAME[from_index]) * EG_P_SQR_DIFF_MULTIPLIER
-            } else {
-                SQR_TABLE_BP[to_index] - SQR_TABLE_BP[from_index]
-            }
-        },
-        def::BN => SQR_TABLE_BN[to_index] - SQR_TABLE_BN[from_index],
-        def::BB => SQR_TABLE_BB[to_index] - SQR_TABLE_BB[from_index],
-        def::BR => SQR_TABLE_BR[to_index] - SQR_TABLE_BR[from_index],
-        def::BQ => SQR_TABLE_BQ[to_index] - SQR_TABLE_BQ[from_index],
-        def::BK => {
-            if is_in_endgame(state) {
-                SQR_TABLE_K_ENDGAME[to_index] - SQR_TABLE_K_ENDGAME[from_index]
-            } else {
-                SQR_TABLE_BK[to_index] - SQR_TABLE_BK[from_index]
-            }
-        },
-
-        _ => 0,
-    }
-}
-
 pub fn is_in_endgame(state: &mut State) -> bool {
     get_phase(state) <= EG_PHASE
 }
@@ -689,7 +643,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
                 let forward_mask = bitmask.wp_forward_masks[index];
-                let rank = def::get_rank(def::PLAYER_W, index) as i32;
+                let rank = def::get_passer_rank(def::PLAYER_W, index) as i32;
 
                 if (bitmask.bp_forward_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
                     if (bitmask.wp_forward_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
@@ -745,7 +699,7 @@ fn extract_features(state: &mut State) -> (FeatureMap, FeatureMap) {
 
                 let file_mask = file_masks[index];
                 let forward_mask = bitmask.bp_forward_masks[index];
-                let rank = def::get_rank(def::PLAYER_B, index) as i32;
+                let rank = def::get_passer_rank(def::PLAYER_B, index) as i32;
 
                 if (bitmask.wp_forward_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
                     if (bitmask.bp_forward_masks[index] & !file_mask) & bitboard.b_pawn == 0 {

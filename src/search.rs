@@ -15,6 +15,7 @@ use crate::{
     },
     mov_table,
     state::State,
+    simple_rnd::SimpleRnd,
     time_control::TimeCapacity,
     util,
     zob_keys,
@@ -26,10 +27,11 @@ const PV_PRINT_LENGTH: usize = 16;
 const SORTING_CAP_BASE_VAL: i32 = 100000000;
 const SORTING_HISTORY_BASE_VAL: i32 = 100000;
 const SORTING_CHECK_BONUS: i32 = 50;
-const SORTING_COUNTER_MOV_VAL: i32 = 30;
-const SORTING_PRIMARY_KILLER_VAL: i32 = 20;
-const SORTING_SECONDARY_KILLER_VAL: i32 = 10;
-const SORTING_CHECK_OR_PASSER_VAL: i32 = -10;
+const SORTING_CHECKER_VAL: i32 = -15;
+const SORTING_COUNTER_MOV_VAL: i32 = -20;
+const SORTING_PRIMARY_KILLER_VAL: i32 = -30;
+const SORTING_SECONDARY_KILLER_VAL: i32 = -40;
+const SORTING_PASSER_VAL: i32 = -60;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -81,6 +83,7 @@ pub struct SearchEngine {
     counter_mov_table: [[[u32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
     butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    rnd: SimpleRnd,
     null_mov_count: u8,
     root_full_mov_count: u16,
     root_half_mov_count: u16,
@@ -99,6 +102,7 @@ impl SearchEngine {
             counter_mov_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
             butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            rnd: SimpleRnd::new(),
             null_mov_count: 0,
             root_full_mov_count: 0,
             root_half_mov_count: 0,
@@ -516,14 +520,16 @@ impl SearchEngine {
                     } else {
                         ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                     }
+                } else if gives_check {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECKER_VAL;
                 } else if mov == counter_mov {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_COUNTER_MOV_VAL;
                 } else if mov == primary_killer {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PRIMARY_KILLER_VAL;
                 } else if mov == secondary_killer {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_SECONDARY_KILLER_VAL;
-                } else if gives_check || is_passer {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECK_OR_PASSER_VAL;
+                } else if is_passer {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PASSER_VAL + def::get_passer_rank(state.player, to) as i32;
                 } else {
                     let history_score = self.history_table[state.player as usize - 1][from][to];
     
@@ -531,8 +537,7 @@ impl SearchEngine {
                         let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
                         ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
                     } else {
-                        let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
-                        ordered_mov.sort_score = sqr_val_diff;
+                        ordered_mov.sort_score = self.rnd.next_rnd();
                     }
                 }
     

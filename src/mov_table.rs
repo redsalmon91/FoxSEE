@@ -797,26 +797,13 @@ pub fn get_smallest_attacker_index(state: &mut State, index: usize) -> (u8, u8, 
     (0, 0, 0, 0)
 }
 
+#[inline]
 fn is_valid_attacker(state: &mut State, from_index: usize, to_index: usize) -> bool {
     state.do_mov(from_index, to_index, def::MOV_REG, 0);
+    let in_check = is_in_check(state, def::get_opposite_player(state.player));
+    state.undo_mov(from_index, to_index, def::MOV_REG);
 
-    if state.player == def::PLAYER_W {
-        if is_in_check(state, def::PLAYER_B) {
-            state.undo_mov(from_index, to_index, def::MOV_REG);
-            return false;
-        } else {
-            state.undo_mov(from_index, to_index, def::MOV_REG);
-            return true;
-        }
-    } else {
-        if is_in_check(state, def::PLAYER_W) {
-            state.undo_mov(from_index, to_index, def::MOV_REG);
-            return false;
-        } else {
-            state.undo_mov(from_index, to_index, def::MOV_REG);
-            return true;
-        }
-    }
+    !in_check
 }
 
 #[cfg(test)]
