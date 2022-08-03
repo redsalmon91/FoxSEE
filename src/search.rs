@@ -917,7 +917,7 @@ impl SearchEngine {
     
                 let see_score = see(state, from, to, tp, promo);
     
-                if see_score <= eval::EQUAL_EXCHANGE {
+                if see_score < eval::EQUAL_EXCHANGE {
                     continue;
                 }
     
