@@ -25,11 +25,13 @@ UCI chess engine written in Rust!
 - Zobrist Hashing
 - Transposition Table
 - Static Exchange Evalution (SEE)
+- MVV-LVA Heuristics
 - Null-Move Pruning
 - Delta Pruning
 - Futility Pruning
 - Time Pruning ([wiki](https://github.com/redsalmon91/FoxSEE/wiki/Time-Pruning))
 - Multi-Cut Pruning
+- Butterfly Pruning
 - Razoring
 - Check Extensions
 - Singular Extensions

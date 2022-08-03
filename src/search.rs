@@ -27,6 +27,9 @@ const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
+pub const WINNING_EXCHANGE: i32 = 20;
+pub const EQUAL_EXCHANGE: i32 = -20;
+
 pub static mut ABORT_SEARCH: bool = false;
 
 struct OrderedMov {
@@ -483,14 +486,24 @@ impl SearchEngine {
                     is_passer,
                     sort_score: 0,
                 };
-    
+
                 if state.squares[to] != 0 || promo != 0 {
-                    let see_score = self.see(state, from, to, tp, promo);
-    
-                    if gives_check {
-                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_check_capture_bonus;
+                    let mvv_lva_score = self.mvv_lva(state, from, to, promo);
+
+                    if mvv_lva_score > WINNING_EXCHANGE {
+                        if gives_check {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + mvv_lva_score + self.params.sorting_check_capture_bonus;
+                        } else {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + mvv_lva_score;
+                        }
                     } else {
-                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
+                        let see_score = self.see(state, from, to, tp, promo);
+
+                        if gives_check {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_check_capture_bonus;
+                        } else {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
+                        }
                     }
                 } else if mov == counter_mov {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_counter_move_val;
@@ -504,16 +517,23 @@ impl SearchEngine {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_passer_val;
                 } else {
                     let history_score = self.history_table[state.player as usize - 1][from][to];
-    
+                    let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
+
                     if history_score != 0 {
-                        let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                        ordered_mov.sort_score = self.params.sorting_history_base_val + history_score / butterfly_score;
+                        if history_score > butterfly_score {
+                            ordered_mov.sort_score = self.params.sorting_good_history_base_val + history_score / butterfly_score;
+                        } else {
+                            ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score - butterfly_score;
+                        }
                     } else {
-                        let sqr_val_diff = eval::get_square_val_diff(state, state.squares[from], from, to);
-                        ordered_mov.sort_score = sqr_val_diff;
+                        if !on_pv && !on_extend && !in_check && legal_mov_count > 0 && butterfly_score > self.params.butterfly_pruning_count {
+                            continue;
+                        }
+
+                        ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to);
                     }
                 }
-    
+
                 ordered_mov_list.push(ordered_mov);
             }
         }
@@ -884,22 +904,31 @@ impl SearchEngine {
             if !illegal_mov {
                 if !in_endgame {
                     let gain = self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo);
-    
+
                     if static_eval + gain + self.params.delta_margin < alpha {
                         continue;
                     }
                 }
-    
-                let see_score = self.see(state, from, to, tp, promo);
-    
-                if see_score < eval::EQUAL_EXCHANGE {
-                    continue;
+
+                let mvv_lva_score = self.mvv_lva(state, from, to, promo);
+
+                if mvv_lva_score > WINNING_EXCHANGE {
+                    scored_mov_list.push(OrderedQMov {
+                        mov,
+                        sort_score: mvv_lva_score,
+                    });
+                } else {
+                    let see_score = self.see(state, from, to, tp, promo);
+
+                    if see_score < EQUAL_EXCHANGE {
+                        continue;
+                    }
+
+                    scored_mov_list.push(OrderedQMov {
+                        mov,
+                        sort_score: see_score,
+                    });
                 }
-    
-                scored_mov_list.push(OrderedQMov {
-                    mov,
-                    sort_score: see_score,
-                });
             }
         }
 
@@ -984,31 +1013,36 @@ impl SearchEngine {
         state.undo_mov(from, to, tp);
     }
 
+    #[inline]
+    fn mvv_lva(&self, state: &State, from: usize, to: usize, promo: u8) -> i32 {
+        self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo) - self.evaluator.val_of(state.squares[from])
+    }
+
     fn see(&self, state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
         let initial_gain = self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo);
-    
+
         state.do_mov(from, to, tp, promo);
-    
+
         let score = initial_gain - self.see_exchange(state, to, state.squares[to]);
-    
+
         state.undo_mov(from, to, tp);
-    
+
         score
     }
 
     fn see_exchange(&self, state: &mut State, to: usize, last_attacker: u8) -> i32 {
         let (attacker, tp, promo, attack_from) = mov_table::get_smallest_attacker_index(state, to);
-    
+
         if attacker == 0 {
             return 0
         }
-    
+
         state.do_mov(attack_from, to, tp, promo);
-    
+
         let score = (self.evaluator.val_of(last_attacker) + self.evaluator.val_of(promo) - self.see_exchange(state, to, attacker)).max(0);
-    
+
         state.undo_mov(attack_from, to, tp);
-    
+
         score
     }
 

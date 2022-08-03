@@ -19,6 +19,8 @@ pub struct SearchParams {
     pub razoring_depth: u8,
     pub razoring_margin: i32,
 
+    pub butterfly_pruning_count: i32,
+
     pub singular_extension_margin: i32,
 
     pub aspiration_window_size: i32,
@@ -26,7 +28,8 @@ pub struct SearchParams {
     pub delta_margin: i32,
 
     pub sorting_capture_base_val: i32,
-    pub sorting_history_base_val: i32,
+    pub sorting_good_history_base_val: i32,
+    pub sorting_normal_history_base_val: i32,
     pub sorting_check_capture_bonus: i32,
     pub sorting_counter_move_val: i32,
     pub sorting_killer_primary_val: i32,
@@ -58,20 +61,23 @@ impl SearchParams {
             razoring_depth: 2,
             razoring_margin: 524,
 
+            butterfly_pruning_count: 20,
+
             singular_extension_margin: 132,
 
             aspiration_window_size: 50,
 
             delta_margin: 240,
 
-            sorting_capture_base_val: 100000000,
-            sorting_history_base_val: 100000,
+            sorting_capture_base_val: 1_000_000_000,
+            sorting_good_history_base_val: 100_000_000,
+            sorting_normal_history_base_val: 10_000_000,
             sorting_check_capture_bonus: 50,
-            sorting_counter_move_val: 60,
-            sorting_checker_val: 50,
-            sorting_killer_primary_val: 40,
-            sorting_passer_val: 30,
-            sorting_killer_secondary_val: 20,
+            sorting_counter_move_val: -20,
+            sorting_killer_primary_val: -30,
+            sorting_killer_secondary_val: -40,
+            sorting_checker_val: -50,
+            sorting_passer_val: -60,
 
             late_move_reductions_depth: 2,
             late_move_reductions_move_count: 1,
@@ -97,6 +103,8 @@ impl SearchParams {
             razoring_depth: config_map.get("razoring_depth").unwrap().parse::<u8>().unwrap(),
             razoring_margin: config_map.get("razoring_margin").unwrap().parse::<i32>().unwrap(),
 
+            butterfly_pruning_count: config_map.get("butterfly_pruning_count").unwrap().parse::<i32>().unwrap(),
+
             singular_extension_margin: config_map.get("singular_extension_margin").unwrap().parse::<i32>().unwrap(),
 
             aspiration_window_size: config_map.get("aspiration_window_size").unwrap().parse::<i32>().unwrap(),
@@ -104,7 +112,8 @@ impl SearchParams {
             delta_margin: config_map.get("delta_margin").unwrap().parse::<i32>().unwrap(),
 
             sorting_capture_base_val: config_map.get("sorting_capture_base_val").unwrap().parse::<i32>().unwrap(),
-            sorting_history_base_val: config_map.get("sorting_history_base_val").unwrap().parse::<i32>().unwrap(),
+            sorting_good_history_base_val: config_map.get("sorting_good_history_base_val").unwrap().parse::<i32>().unwrap(),
+            sorting_normal_history_base_val: config_map.get("sorting_normal_history_base_val").unwrap().parse::<i32>().unwrap(),
             sorting_check_capture_bonus: config_map.get("sorting_check_capture_bonus").unwrap().parse::<i32>().unwrap(),
             sorting_counter_move_val: config_map.get("sorting_counter_move_val").unwrap().parse::<i32>().unwrap(),
             sorting_killer_primary_val: config_map.get("sorting_killer_primary_val").unwrap().parse::<i32>().unwrap(),
