@@ -44,6 +44,11 @@ pub struct EvalParams {
     pub r_mob_score: i32,
     pub q_mob_score: i32,
 
+    pub n_mob_offset_index: i32,
+    pub b_mob_offset_index: i32,
+    pub r_mob_offset_index: i32,
+    pub q_mob_offset_index: i32,
+
     pub n_mob_zero_pen: i32,
     pub b_mob_zero_pen: i32,
     pub r_mob_zero_pen: i32,
@@ -66,7 +71,7 @@ pub struct EvalParams {
 impl EvalParams {
     pub const fn default() -> Self {
         EvalParams {
-            q_val: 1456,
+            q_val: 1400,
             r_val: 732,
             b_val: 500,
             n_val: 490,
@@ -107,6 +112,11 @@ impl EvalParams {
             b_mob_score: 5,
             r_mob_score: 5,
             q_mob_score: 5,
+
+            n_mob_offset_index: 3,
+            b_mob_offset_index: 3,
+            r_mob_offset_index: 3,
+            q_mob_offset_index: 3,
 
             n_mob_zero_pen: -20,
             b_mob_zero_pen: -20,
@@ -171,6 +181,11 @@ impl EvalParams {
             b_mob_score: config_map.get("b_mob_score").unwrap().parse::<i32>().unwrap(),
             r_mob_score: config_map.get("r_mob_score").unwrap().parse::<i32>().unwrap(),
             q_mob_score: config_map.get("q_mob_score").unwrap().parse::<i32>().unwrap(),
+
+            n_mob_offset_index: config_map.get("n_mob_offset_index").unwrap().parse::<i32>().unwrap(),
+            b_mob_offset_index: config_map.get("b_mob_offset_index").unwrap().parse::<i32>().unwrap(),
+            r_mob_offset_index: config_map.get("r_mob_offset_index").unwrap().parse::<i32>().unwrap(),
+            q_mob_offset_index: config_map.get("q_mob_offset_index").unwrap().parse::<i32>().unwrap(),
 
             n_mob_zero_pen: config_map.get("n_mob_zero_pen").unwrap().parse::<i32>().unwrap(),
             b_mob_zero_pen: config_map.get("b_mob_zero_pen").unwrap().parse::<i32>().unwrap(),

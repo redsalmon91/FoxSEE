@@ -1017,7 +1017,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         w_feature_map.mobility += self.params.b_mob_zero_pen;
                     } else {
-                        w_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.n_mob_score;
+                        w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.n_mob_offset_index) * self.params.n_mob_score;
                     }
     
                     w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32 * self.params.nk_attack_weight;
@@ -1037,7 +1037,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         w_feature_map.mobility += self.params.b_mob_zero_pen;
                     } else {
-                        w_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.b_mob_score;
+                        w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.b_mob_offset_index) * self.params.b_mob_score;
                     }
     
                     w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32 * self.params.bk_attack_weight;
@@ -1059,7 +1059,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         w_feature_map.mobility += self.params.r_mob_zero_pen;
                     } else {
-                        w_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.r_mob_score;
+                        w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.r_mob_offset_index) * self.params.r_mob_score;
                     }
     
                     w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32 * self.params.rk_attack_weight;
@@ -1083,7 +1083,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         w_feature_map.mobility += self.params.q_mob_zero_pen;
                     } else {
-                        w_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.q_mob_score;
+                        w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.q_mob_offset_index) * self.params.q_mob_score;
                     }
     
                     w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32 * self.params.qk_attack_weight;
@@ -1119,7 +1119,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         b_feature_map.mobility += self.params.n_mob_zero_pen;
                     } else {
-                        b_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.n_mob_score;
+                        b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.n_mob_offset_index) * self.params.n_mob_score;
                     }
     
                     b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32 * self.params.nk_attack_weight;
@@ -1139,7 +1139,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         b_feature_map.mobility += self.params.b_mob_zero_pen;
                     } else {
-                        b_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.b_mob_score;
+                        b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.b_mob_offset_index) * self.params.b_mob_score;
                     }
     
                     b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32 * self.params.bk_attack_weight;
@@ -1161,7 +1161,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         b_feature_map.mobility += self.params.r_mob_zero_pen;
                     } else {
-                        b_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.r_mob_score;
+                        b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.r_mob_offset_index) * self.params.r_mob_score;
                     }
     
                     b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32 * self.params.rk_attack_weight;
@@ -1185,7 +1185,7 @@ impl Evaluator {
                     if mobility_mask == 0 {
                         b_feature_map.mobility += self.params.q_mob_zero_pen;
                     } else {
-                        b_feature_map.mobility += mobility_mask.count_ones() as i32 * self.params.q_mob_score;
+                        b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.q_mob_offset_index) * self.params.q_mob_score;
                     }
     
                     b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32 * self.params.qk_attack_weight;
