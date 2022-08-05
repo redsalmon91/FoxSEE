@@ -25,13 +25,13 @@ const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 
 const SORTING_CAP_BASE_VAL: i32 = 100000000;
-const SORTING_HISTORY_BASE_VAL: i32 = 100000;
+const SORTING_GOOD_HISTORY_BASE_VAL: i32 = 1000000;
+const SORTING_NORMAL_HISTORY_BASE_VAL: i32 = 100000;
 const SORTING_CHECK_BONUS: i32 = 50;
-const SORTING_CHECKER_VAL: i32 = -15;
 const SORTING_COUNTER_MOV_VAL: i32 = -20;
 const SORTING_PRIMARY_KILLER_VAL: i32 = -30;
 const SORTING_SECONDARY_KILLER_VAL: i32 = -40;
-const SORTING_PASSER_VAL: i32 = -60;
+const SORTING_CHECKER_VAL: i32 = -50;
 
 const NM_DEPTH: u8 = 6;
 const NM_R: u8 = 2;
@@ -520,22 +520,25 @@ impl SearchEngine {
                     } else {
                         ordered_mov.sort_score = SORTING_CAP_BASE_VAL + see_score;
                     }
-                } else if gives_check {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECKER_VAL;
                 } else if mov == counter_mov {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_COUNTER_MOV_VAL;
                 } else if mov == primary_killer {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PRIMARY_KILLER_VAL;
                 } else if mov == secondary_killer {
                     ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_SECONDARY_KILLER_VAL;
-                } else if is_passer {
-                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_PASSER_VAL + def::get_passer_rank(state.player, to) as i32;
+                } else if gives_check {
+                    ordered_mov.sort_score = SORTING_CAP_BASE_VAL + SORTING_CHECKER_VAL;
                 } else {
                     let history_score = self.history_table[state.player as usize - 1][from][to];
     
                     if history_score != 0 {
                         let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
-                        ordered_mov.sort_score = SORTING_HISTORY_BASE_VAL + history_score / butterfly_score;
+
+                        if history_score > butterfly_score {
+                            ordered_mov.sort_score = SORTING_GOOD_HISTORY_BASE_VAL + history_score / butterfly_score;
+                        } else {
+                            ordered_mov.sort_score = SORTING_NORMAL_HISTORY_BASE_VAL + history_score;
+                        }
                     } else {
                         ordered_mov.sort_score = self.rnd.next_rnd();
                     }
@@ -1495,3 +1498,4 @@ mod tests {
         assert_eq!(to, util::map_sqr_notation_to_index("f3"));
     }
 }
+
