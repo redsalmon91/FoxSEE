@@ -15,6 +15,7 @@ use crate::{
     },
     mov_table,
     state::State,
+    simple_rnd::SimpleRnd,
     search_params::SearchParams,
     time_control::TimeCapacity,
     util,
@@ -46,6 +47,7 @@ struct OrderedQMov {
 
 pub struct SearchEngine {
     evaluator: eval::Evaluator,
+    rand: SimpleRnd,
     depth_preferred_hash_table: DepthPreferredHashTable,
     primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
@@ -67,6 +69,7 @@ impl SearchEngine {
     pub fn new(hash_size: usize) -> Self {
         SearchEngine {
             evaluator: eval::Evaluator::new(),
+            rand: SimpleRnd::new(),
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size),
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
@@ -526,11 +529,7 @@ impl SearchEngine {
                             ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score - butterfly_score;
                         }
                     } else {
-                        if !on_pv && !on_extend && !in_check && legal_mov_count > 0 && butterfly_score > self.params.butterfly_pruning_count {
-                            continue;
-                        }
-
-                        ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to);
+                        ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to) + self.rand.next_rnd();
                     }
                 }
 
