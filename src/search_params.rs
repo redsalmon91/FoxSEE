@@ -34,8 +34,6 @@ pub struct SearchParams {
     pub sorting_counter_move_val: i32,
     pub sorting_killer_primary_val: i32,
     pub sorting_killer_secondary_val: i32,
-    pub sorting_checker_val: i32,
-    pub sorting_passer_val: i32,
 
     pub late_move_reductions_depth: u8,
     pub late_move_reductions_move_count: usize,
@@ -61,7 +59,7 @@ impl SearchParams {
             razoring_depth: 2,
             razoring_margin: 524,
 
-            butterfly_pruning_count: 20,
+            butterfly_pruning_count: 100,
 
             singular_extension_margin: 132,
 
@@ -76,8 +74,6 @@ impl SearchParams {
             sorting_counter_move_val: -20,
             sorting_killer_primary_val: -30,
             sorting_killer_secondary_val: -40,
-            sorting_checker_val: -50,
-            sorting_passer_val: -60,
 
             late_move_reductions_depth: 2,
             late_move_reductions_move_count: 1,
@@ -118,8 +114,6 @@ impl SearchParams {
             sorting_counter_move_val: config_map.get("sorting_counter_move_val").unwrap().parse::<i32>().unwrap(),
             sorting_killer_primary_val: config_map.get("sorting_killer_primary_val").unwrap().parse::<i32>().unwrap(),
             sorting_killer_secondary_val: config_map.get("sorting_killer_secondary_val").unwrap().parse::<i32>().unwrap(),
-            sorting_checker_val: config_map.get("sorting_checker_val").unwrap().parse::<i32>().unwrap(),
-            sorting_passer_val: config_map.get("sorting_passer_val").unwrap().parse::<i32>().unwrap(),
 
             late_move_reductions_depth: config_map.get("late_move_reductions_depth").unwrap().parse::<u8>().unwrap(),
             late_move_reductions_move_count: config_map.get("late_move_reductions_move_count").unwrap().parse::<usize>().unwrap(),

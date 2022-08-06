@@ -503,10 +503,6 @@ impl SearchEngine {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_killer_primary_val;
                 } else if mov == secondary_killer {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_killer_secondary_val;
-                } else if gives_check {
-                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_checker_val;
-                } else if is_passer {
-                    ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_passer_val;
                 } else {
                     let history_score = self.history_table[state.player as usize - 1][from][to];
                     let butterfly_score = self.butterfly_table[state.player as usize - 1][from][to];
@@ -518,6 +514,10 @@ impl SearchEngine {
                             ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score - butterfly_score;
                         }
                     } else {
+                        if butterfly_score > self.params.butterfly_pruning_count && !on_pv && !on_extend && !in_check && !under_mate_threat && legal_mov_count > 0 {
+                            continue;
+                        }
+
                         ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to) + self.rand.next_rnd();
                     }
                 }
@@ -607,8 +607,17 @@ impl SearchEngine {
             }
 
             let score = if depth > self.params.late_move_reductions_depth && mov_count > self.params.late_move_reductions_move_count && !extended {
-                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - ((mov_count as f64).sqrt() as u8).min(depth-1), ply + 1);
+                let mut reduction = (mov_count as f64).sqrt() as u8;
+                if reduction > depth - 2 {
+                    reduction = depth - 2;
+                }
+
+                depth -= reduction;
+
+                let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 1, ply + 1);
                 if score > alpha {
+                    depth += reduction;
+
                     if on_pv && pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
 
