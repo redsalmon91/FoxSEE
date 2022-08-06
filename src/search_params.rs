@@ -19,8 +19,6 @@ pub struct SearchParams {
     pub razoring_depth: u8,
     pub razoring_margin: i32,
 
-    pub butterfly_pruning_count: i32,
-
     pub singular_extension_margin: i32,
 
     pub aspiration_window_size: i32,
@@ -59,8 +57,6 @@ impl SearchParams {
             razoring_depth: 2,
             razoring_margin: 524,
 
-            butterfly_pruning_count: 100,
-
             singular_extension_margin: 132,
 
             aspiration_window_size: 50,
@@ -98,8 +94,6 @@ impl SearchParams {
 
             razoring_depth: config_map.get("razoring_depth").unwrap().parse::<u8>().unwrap(),
             razoring_margin: config_map.get("razoring_margin").unwrap().parse::<i32>().unwrap(),
-
-            butterfly_pruning_count: config_map.get("butterfly_pruning_count").unwrap().parse::<i32>().unwrap(),
 
             singular_extension_margin: config_map.get("singular_extension_margin").unwrap().parse::<i32>().unwrap(),
 
