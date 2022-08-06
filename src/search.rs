@@ -28,7 +28,6 @@ const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
-pub const WINNING_EXCHANGE: i32 = 20;
 pub const EQUAL_EXCHANGE: i32 = -20;
 
 pub static mut ABORT_SEARCH: bool = false;
@@ -491,22 +490,12 @@ impl SearchEngine {
                 };
 
                 if state.squares[to] != 0 || promo != 0 {
-                    let mvv_lva_score = self.mvv_lva(state, from, to, promo);
+                    let see_score = self.see(state, from, to, tp, promo);
 
-                    if mvv_lva_score > WINNING_EXCHANGE {
-                        if gives_check {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + mvv_lva_score + self.params.sorting_check_capture_bonus;
-                        } else {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + mvv_lva_score;
-                        }
+                    if gives_check {
+                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_check_capture_bonus;
                     } else {
-                        let see_score = self.see(state, from, to, tp, promo);
-
-                        if gives_check {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_check_capture_bonus;
-                        } else {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
-                        }
+                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
                     }
                 } else if mov == counter_mov {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_counter_move_val;
@@ -909,25 +898,16 @@ impl SearchEngine {
                     }
                 }
 
-                let mvv_lva_score = self.mvv_lva(state, from, to, promo);
+                let see_score = self.see(state, from, to, tp, promo);
 
-                if mvv_lva_score > WINNING_EXCHANGE {
-                    scored_mov_list.push(OrderedQMov {
-                        mov,
-                        sort_score: mvv_lva_score,
-                    });
-                } else {
-                    let see_score = self.see(state, from, to, tp, promo);
-
-                    if see_score < EQUAL_EXCHANGE {
-                        continue;
-                    }
-
-                    scored_mov_list.push(OrderedQMov {
-                        mov,
-                        sort_score: see_score,
-                    });
+                if see_score < EQUAL_EXCHANGE {
+                    continue;
                 }
+
+                scored_mov_list.push(OrderedQMov {
+                    mov,
+                    sort_score: see_score,
+                });
             }
         }
 
@@ -1010,11 +990,6 @@ impl SearchEngine {
         self.retrieve_pv(state, pv_table, mov_index + 1);
 
         state.undo_mov(from, to, tp);
-    }
-
-    #[inline]
-    fn mvv_lva(&self, state: &State, from: usize, to: usize, promo: u8) -> i32 {
-        self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo) - self.evaluator.val_of(state.squares[from])
     }
 
     fn see(&self, state: &mut State, from: usize, to: usize, tp: u8, promo: u8) -> i32 {
