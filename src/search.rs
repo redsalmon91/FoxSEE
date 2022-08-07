@@ -252,30 +252,7 @@ impl SearchEngine {
         let on_pv = beta - alpha > 1;
 
         if depth == 0 {
-            let mut score = self.q_search(state, alpha, beta, ply);
-
-            if !on_pv {
-                return score;
-            }
-
-            let full_mov_count_discount = state.full_mov_count as i32 - self.root_full_mov_count as i32;
-            let mut half_mov_count_discount = state.half_mov_count as i32 - self.root_half_mov_count as i32;
-
-            if half_mov_count_discount < 0 {
-                half_mov_count_discount = 0;
-            }
-
-            let time_discount = (full_mov_count_discount + half_mov_count_discount) * self.params.time_pruning_weight;
-
-            if score > time_discount {
-                score -= time_discount;
-            } else if score < time_discount {
-                score += time_discount;
-            } else {
-                score = 0;
-            }
-
-            return score;
+            return self.q_search(state, alpha, beta, ply);
         }
 
         let original_alpha = alpha;
@@ -511,7 +488,7 @@ impl SearchEngine {
                         if history_score > butterfly_score {
                             ordered_mov.sort_score = self.params.sorting_good_history_base_val + history_score / butterfly_score;
                         } else {
-                            ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score - butterfly_score;
+                            ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score;
                         }
                     } else {
                         ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to) + self.rand.next_rnd();
