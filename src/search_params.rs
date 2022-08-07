@@ -5,11 +5,6 @@ pub struct SearchParams {
     pub null_move_pruning_depth: u8,
     pub null_move_pruning_reduction: u8,
 
-    pub multi_cut_pruning_depth: u8,
-    pub multi_cut_pruning_reduction: u8,
-    pub multi_cut_pruning_move_count: u8,
-    pub multi_cut_pruning_cut_count: u8,
-
     pub internal_iterative_deepening_depth: u8,
     pub internal_iterative_deepening_reduction: u8,
 
@@ -43,11 +38,6 @@ impl SearchParams {
             null_move_pruning_depth: 6,
             null_move_pruning_reduction: 2,
 
-            multi_cut_pruning_depth: 8,
-            multi_cut_pruning_reduction: 6,
-            multi_cut_pruning_move_count: 6,
-            multi_cut_pruning_cut_count: 3,
-
             internal_iterative_deepening_depth: 7,
             internal_iterative_deepening_reduction: 2,
 
@@ -80,11 +70,6 @@ impl SearchParams {
         SearchParams {
             null_move_pruning_depth: config_map.get("null_move_pruning_depth").unwrap().parse::<u8>().unwrap(),
             null_move_pruning_reduction: config_map.get("null_move_pruning_reduction").unwrap().parse::<u8>().unwrap(),
-
-            multi_cut_pruning_depth: config_map.get("multi_cut_pruning_depth").unwrap().parse::<u8>().unwrap(),
-            multi_cut_pruning_reduction: config_map.get("multi_cut_pruning_reduction").unwrap().parse::<u8>().unwrap(),
-            multi_cut_pruning_move_count: config_map.get("multi_cut_pruning_move_count").unwrap().parse::<u8>().unwrap(),
-            multi_cut_pruning_cut_count: config_map.get("multi_cut_pruning_cut_count").unwrap().parse::<u8>().unwrap(),
 
             internal_iterative_deepening_depth: config_map.get("internal_iterative_deepening_depth").unwrap().parse::<u8>().unwrap(),
             internal_iterative_deepening_reduction: config_map.get("internal_iterative_deepening_reduction").unwrap().parse::<u8>().unwrap(),

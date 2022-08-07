@@ -516,42 +516,6 @@ impl SearchEngine {
             ordered_mov_b.sort_score.partial_cmp(&ordered_mov_a.sort_score).unwrap()
         });
 
-        if !on_pv && !on_extend && !in_check && !under_mate_threat && depth >= self.params.multi_cut_pruning_depth {
-            let mut cut_mov_count = 0;
-            let mut cut_count = 0;
-
-            for ordered_mov in &ordered_mov_list {
-                cut_mov_count += 1;
-
-                if cut_mov_count > self.params.multi_cut_pruning_move_count {
-                    break;
-                }
-
-                let mov = ordered_mov.mov;
-                let gives_check = ordered_mov.gives_check;
-
-                let (from, to, tp, promo) = util::decode_u32_mov(mov);
-
-                state.do_mov(from, to, tp, promo);
-                let scout_score = -self.ab_search(state, gives_check, false, -beta, -beta+1, depth - self.params.multi_cut_pruning_reduction - 1, ply + 1);
-                state.undo_mov(from, to, tp);
-
-                unsafe {
-                    if ABORT_SEARCH {
-                        return alpha;
-                    }
-                }
-
-                if scout_score >= beta {
-                    cut_count += 1;
-
-                    if cut_count >= self.params.multi_cut_pruning_cut_count {
-                        return beta;
-                    }
-                }
-            }
-        }
-
         for ordered_mov in &ordered_mov_list {
             mov_count += 1;
 
