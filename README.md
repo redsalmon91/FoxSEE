@@ -28,6 +28,7 @@ UCI chess engine written in Rust!
 - Null-Move Pruning
 - Delta Pruning
 - Futility Pruning
+- Butterfly Pruning
 - Time Pruning ([wiki](https://github.com/redsalmon91/FoxSEE/wiki/Time-Pruning))
 - Multi-Cut Pruning
 - Razoring

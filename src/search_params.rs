@@ -16,8 +16,12 @@ pub struct SearchParams {
     pub futility_pruning_depth: u8,
     pub futility_pruning_margin: i32,
 
+    pub time_pruning_weight: i32,
+
     pub razoring_depth: u8,
     pub razoring_margin: i32,
+
+    pub butterfly_pruning_count: i32,
 
     pub singular_extension_margin: i32,
 
@@ -54,8 +58,12 @@ impl SearchParams {
             futility_pruning_depth: 7,
             futility_pruning_margin: 85,
 
+            time_pruning_weight: 2,
+
             razoring_depth: 2,
             razoring_margin: 524,
+
+            butterfly_pruning_count: 16,
 
             singular_extension_margin: 132,
 
@@ -92,8 +100,12 @@ impl SearchParams {
             futility_pruning_depth: config_map.get("futility_pruning_depth").unwrap().parse::<u8>().unwrap(),
             futility_pruning_margin: config_map.get("futility_pruning_margin").unwrap().parse::<i32>().unwrap(),
 
+            time_pruning_weight: config_map.get("time_pruning_weight").unwrap().parse::<i32>().unwrap(),
+
             razoring_depth: config_map.get("razoring_depth").unwrap().parse::<u8>().unwrap(),
             razoring_margin: config_map.get("razoring_margin").unwrap().parse::<i32>().unwrap(),
+
+            butterfly_pruning_count: config_map.get("butterfly_pruning_count").unwrap().parse::<i32>().unwrap(),
 
             singular_extension_margin: config_map.get("singular_extension_margin").unwrap().parse::<i32>().unwrap(),
 

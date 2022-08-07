@@ -265,7 +265,7 @@ impl SearchEngine {
                 half_mov_count_discount = 0;
             }
 
-            let time_discount = full_mov_count_discount + half_mov_count_discount;
+            let time_discount = (full_mov_count_discount + half_mov_count_discount) * self.params.time_pruning_weight;
 
             if score > time_discount {
                 score -= time_discount;
@@ -514,6 +514,10 @@ impl SearchEngine {
                             ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score - butterfly_score;
                         }
                     } else {
+                        if butterfly_score > self.params.butterfly_pruning_count && !on_pv && !on_extend && !in_check && !under_mate_threat && legal_mov_count > 0 {
+                            continue;
+                        }
+
                         ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to) + self.rand.next_rnd();
                     }
                 }
@@ -603,16 +607,16 @@ impl SearchEngine {
             }
 
             let score = if depth > self.params.late_move_reductions_depth && mov_count > self.params.late_move_reductions_move_count && !extended {
-                let mut lmr_reduction = (mov_count as f64).sqrt() as u8;
-                if lmr_reduction > depth - 2 {
-                    lmr_reduction = depth - 2;
+                let mut reduction = (mov_count as f64).sqrt() as u8;
+                if reduction > depth - 2 {
+                    reduction = depth - 2;
                 }
 
-                depth -= lmr_reduction;
+                depth -= reduction;
 
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 1, ply + 1);
                 if score > alpha {
-                    depth += lmr_reduction;
+                    depth += reduction;
 
                     if on_pv && pv_found {
                         let score = -self.ab_search(state, gives_check, extended, -alpha-1, -alpha, depth - 1, ply + 1);
