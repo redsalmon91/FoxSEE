@@ -16,6 +16,9 @@ pub const BOARD_SIZE: usize = 64;
 pub const DIM_SIZE: usize = 8;
 pub const PIECE_CODE_RANGE: usize = 131;
 
+pub const SEVENTH_RANK_INDEX: usize = 56;
+pub const SECOND_RANK_INDEX: usize = 8;
+
 pub const MAX_CAP_COUNT: usize = 64;
 pub const MAX_MOV_COUNT: usize = 128;
 

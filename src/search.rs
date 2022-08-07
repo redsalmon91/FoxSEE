@@ -1459,7 +1459,7 @@ mod tests {
     }
 
     #[test]
-    fn test_search_x() {
+    fn test_search_one_legal_move() {
         zob_keys::init();
         bitmask::init();
 
@@ -1476,5 +1476,25 @@ mod tests {
         let (from, to, _, _) = util::decode_u32_mov(best_mov);
         assert_eq!(from, util::map_sqr_notation_to_index("e2"));
         assert_eq!(to, util::map_sqr_notation_to_index("f3"));
+    }
+
+    #[test]
+    fn test_search_lu() {
+        zob_keys::init();
+        bitmask::init();
+
+        let mut state = State::new("rnbqkb1r/1p3p1p/p4n2/4pPP1/3p4/2N1BQ2/PPP2P1P/2KR1B1R b kq - 1 12");
+        let mut search_engine = SearchEngine::new(131072);
+
+        let time_capacity = TimeCapacity {
+            main_time_millis: 55500,
+            extra_time_millis: 5500,
+        };
+
+        let best_mov = search_engine.search(&mut state, time_capacity, 64);
+
+        let (from, to, _, _) = util::decode_u32_mov(best_mov);
+        assert_eq!(from, util::map_sqr_notation_to_index("b8"));
+        assert_eq!(to, util::map_sqr_notation_to_index("d7"));
     }
 }

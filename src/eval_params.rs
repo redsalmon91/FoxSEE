@@ -94,7 +94,7 @@ impl EvalParams {
             candidate_passer_rank_bonus: 15,
 
             k_attack_score: 5,
-            k_attack_ignore_base: 8,
+            k_attack_ignore_base: 3,
             nk_attack_weight: 3,
             bk_attack_weight: 3,
             rk_attack_weight: 5,
