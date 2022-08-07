@@ -1020,7 +1020,13 @@ impl Evaluator {
                         w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.n_mob_offset_index) * self.params.n_mob_score;
                     }
 
-                    w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32 * self.params.nk_attack_weight;
+                    if bk_ring_mask & mov_mask != 0 {
+                        w_feature_map.king_attack_count += self.params.nk_attack_weight;
+                    }
+
+                    if bk_ring_mask & mov_mask & !bp_attack_mask != 0 {
+                        w_feature_map.king_attack_count += self.params.nk_attack_weight;
+                    }
                 },
                 def::WB => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
@@ -1040,7 +1046,13 @@ impl Evaluator {
                         w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.b_mob_offset_index) * self.params.b_mob_score;
                     }
 
-                    w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32 * self.params.bk_attack_weight;
+                    if bk_ring_mask & mov_mask != 0 {
+                        w_feature_map.king_attack_count += self.params.bk_attack_weight;
+                    }
+
+                    if bk_ring_mask & mov_mask & !bp_attack_mask != 0 {
+                        w_feature_map.king_attack_count += self.params.bk_attack_weight;
+                    }
                 },
                 def::WR => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
@@ -1062,7 +1074,13 @@ impl Evaluator {
                         w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.r_mob_offset_index) * self.params.r_mob_score;
                     }
 
-                    w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32 * self.params.rk_attack_weight;
+                    if bk_ring_mask & mov_mask != 0 {
+                        w_feature_map.king_attack_count += self.params.rk_attack_weight;
+                    }
+
+                    if bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) != 0 {
+                        w_feature_map.king_attack_count += self.params.rk_attack_weight;
+                    }
                 },
                 def::WQ => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
@@ -1086,7 +1104,13 @@ impl Evaluator {
                         w_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.q_mob_offset_index) * self.params.q_mob_score;
                     }
 
-                    w_feature_map.king_attack_count += (bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32 * self.params.qk_attack_weight;
+                    if bk_ring_mask & mov_mask != 0 {
+                        w_feature_map.king_attack_count += self.params.qk_attack_weight;
+                    }
+
+                    if bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) != 0 {
+                        w_feature_map.king_attack_count += self.params.qk_attack_weight;
+                    }
                 },
                 def::WK => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WK[index];
@@ -1122,7 +1146,13 @@ impl Evaluator {
                         b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.n_mob_offset_index) * self.params.n_mob_score;
                     }
 
-                    b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32 * self.params.nk_attack_weight;
+                    if wk_ring_mask & mov_mask != 0 {
+                        b_feature_map.king_attack_count += self.params.nk_attack_weight;
+                    }
+
+                    if wk_ring_mask & mov_mask & !wp_attack_mask != 0 {
+                        b_feature_map.king_attack_count += self.params.nk_attack_weight;
+                    }
                 },
                 def::BB => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BB[index];
@@ -1142,7 +1172,13 @@ impl Evaluator {
                         b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.b_mob_offset_index) * self.params.b_mob_score;
                     }
 
-                    b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32 * self.params.bk_attack_weight;
+                    if wk_ring_mask & mov_mask != 0 {
+                        b_feature_map.king_attack_count += self.params.bk_attack_weight;
+                    }
+
+                    if wk_ring_mask & mov_mask & !wp_attack_mask != 0 {
+                        b_feature_map.king_attack_count += self.params.bk_attack_weight;
+                    }
                 },
                 def::BR => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
@@ -1164,7 +1200,13 @@ impl Evaluator {
                         b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.r_mob_offset_index) * self.params.r_mob_score;
                     }
 
-                    b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32 * self.params.rk_attack_weight;
+                    if wk_ring_mask & mov_mask != 0 {
+                        b_feature_map.king_attack_count += self.params.rk_attack_weight;
+                    }
+
+                    if wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) != 0 {
+                        b_feature_map.king_attack_count += self.params.rk_attack_weight;
+                    }
                 },
                 def::BQ => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
@@ -1188,7 +1230,13 @@ impl Evaluator {
                         b_feature_map.mobility += (mobility_mask.count_ones() as i32 - self.params.q_mob_offset_index) * self.params.q_mob_score;
                     }
 
-                    b_feature_map.king_attack_count += (wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32 * self.params.qk_attack_weight;
+                    if wk_ring_mask & mov_mask != 0 {
+                        b_feature_map.king_attack_count += self.params.nk_attack_weight;
+                    }
+
+                    if wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) != 0 {
+                        b_feature_map.king_attack_count += self.params.qk_attack_weight;
+                    }
                 },
                 def::BK => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BK[index];

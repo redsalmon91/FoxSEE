@@ -514,10 +514,6 @@ impl SearchEngine {
                             ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score - butterfly_score;
                         }
                     } else {
-                        if butterfly_score > self.params.butterfly_pruning_count && !on_pv && !on_extend && !in_check && !under_mate_threat && legal_mov_count > 0 {
-                            continue;
-                        }
-
                         ordered_mov.sort_score = eval::get_square_val_diff(state, state.squares[from], from, to) + self.rand.next_rnd();
                     }
                 }
