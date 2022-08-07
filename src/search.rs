@@ -582,7 +582,7 @@ impl SearchEngine {
 
             let is_capture = state.squares[to] != 0;
 
-            if mov_count > 1 && !gives_check && !in_check && !under_mate_threat && !is_passer && depth <= self.params.futility_pruning_depth {
+            if mov_count > 1 && !on_pv && !gives_check && !under_mate_threat && !is_passer && depth <= self.params.futility_pruning_depth {
                 if static_eval + self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo) + self.params.futility_pruning_margin * depth as i32 <= alpha {
                     continue;
                 }
