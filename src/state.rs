@@ -80,7 +80,7 @@ pub struct State {
     pub enp_sqr_stack: Vec<usize>,
     pub cas_rights_stack: Vec<u8>,
     pub history_pos_stack: Vec<(u64, u8)>,
-    pub history_mov_stack: Vec<(u8, usize, usize)>,
+    pub history_mov_stack: Vec<(u8, u8, usize, usize)>,
     pub half_mov_count_stack: Vec<u16>,
     pub king_index_stack: Vec<(usize, usize)>,
 }
@@ -274,7 +274,7 @@ impl State {
         self.cas_rights_stack.push(self.cas_rights);
         self.enp_sqr_stack.push(self.enp_square);
         self.history_pos_stack.push((self.hash_key, self.player));
-        self.history_mov_stack.push((self.player, from, to));
+        self.history_mov_stack.push((self.player, self.squares[from], from, to));
         self.half_mov_count_stack.push(self.half_mov_count);
         self.king_index_stack.push((self.wk_index, self.bk_index));
         self.enp_square = 0;

@@ -194,36 +194,6 @@ const WK_Q_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000
 const BK_K_SIDE_MASK: u64 = 0b11100000_11100000_11100000_00000000_00000000_00000000_00000000_00000000;
 const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000000_00000000_00000000;
 
-pub fn get_square_val_diff(state: &mut State, moving_piece: u8, from_index: usize, to_index: usize) -> i32 {
-    match moving_piece {
-        def::WP => {
-            if is_in_endgame(state) {
-                SQR_TABLE_WP_ENDGAME[to_index] - SQR_TABLE_WP_ENDGAME[from_index]
-            } else {
-                SQR_TABLE_WP[to_index] - SQR_TABLE_WP[from_index]
-            }
-        },
-        def::WN => SQR_TABLE_WN[to_index] - SQR_TABLE_WN[from_index],
-        def::WB => SQR_TABLE_WB[to_index] - SQR_TABLE_WB[from_index],
-        def::WR => SQR_TABLE_WR[to_index] - SQR_TABLE_WR[from_index],
-        def::WQ => SQR_TABLE_WQ[to_index] - SQR_TABLE_WQ[from_index],
-
-        def::BP => {
-            if is_in_endgame(state) {
-                SQR_TABLE_BP_ENDGAME[to_index] - SQR_TABLE_BP_ENDGAME[from_index]
-            } else {
-                SQR_TABLE_BP[to_index] - SQR_TABLE_BP[from_index]
-            }
-        },
-        def::BN => SQR_TABLE_BN[to_index] - SQR_TABLE_BN[from_index],
-        def::BB => SQR_TABLE_BB[to_index] - SQR_TABLE_BB[from_index],
-        def::BR => SQR_TABLE_BR[to_index] - SQR_TABLE_BR[from_index],
-        def::BQ => SQR_TABLE_BQ[to_index] - SQR_TABLE_BQ[from_index],
-
-        _ => 0,
-    }
-}
-
 pub fn is_in_endgame(state: &mut State) -> bool {
     get_phase(state) <= EG_PHASE
 }

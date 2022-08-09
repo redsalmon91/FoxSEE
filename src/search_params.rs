@@ -21,9 +21,13 @@ pub struct SearchParams {
     pub delta_margin: i32,
 
     pub sorting_capture_base_val: i32,
+
     pub sorting_good_history_base_val: i32,
     pub sorting_normal_history_base_val: i32,
-    pub sorting_check_capture_bonus: i32,
+    pub sorting_weak_history_base_val: i32,
+
+    pub sorting_checker_bonus: i32,
+
     pub sorting_counter_move_val: i32,
     pub sorting_killer_primary_val: i32,
     pub sorting_killer_secondary_val: i32,
@@ -54,9 +58,13 @@ impl SearchParams {
             delta_margin: 240,
 
             sorting_capture_base_val: 1_000_000_000,
+
             sorting_good_history_base_val: 100_000_000,
             sorting_normal_history_base_val: 10_000_000,
-            sorting_check_capture_bonus: 50,
+            sorting_weak_history_base_val: 1_000_000,
+
+            sorting_checker_bonus: 50,
+
             sorting_counter_move_val: -20,
             sorting_killer_primary_val: -30,
             sorting_killer_secondary_val: -40,
@@ -87,9 +95,13 @@ impl SearchParams {
             delta_margin: config_map.get("delta_margin").unwrap().parse::<i32>().unwrap(),
 
             sorting_capture_base_val: config_map.get("sorting_capture_base_val").unwrap().parse::<i32>().unwrap(),
+
             sorting_good_history_base_val: config_map.get("sorting_good_history_base_val").unwrap().parse::<i32>().unwrap(),
             sorting_normal_history_base_val: config_map.get("sorting_normal_history_base_val").unwrap().parse::<i32>().unwrap(),
-            sorting_check_capture_bonus: config_map.get("sorting_check_capture_bonus").unwrap().parse::<i32>().unwrap(),
+            sorting_weak_history_base_val: config_map.get("sorting_weak_history_base_val").unwrap().parse::<i32>().unwrap(),
+
+            sorting_checker_bonus: config_map.get("sorting_checker_bonus").unwrap().parse::<i32>().unwrap(),
+
             sorting_counter_move_val: config_map.get("sorting_counter_move_val").unwrap().parse::<i32>().unwrap(),
             sorting_killer_primary_val: config_map.get("sorting_killer_primary_val").unwrap().parse::<i32>().unwrap(),
             sorting_killer_secondary_val: config_map.get("sorting_killer_secondary_val").unwrap().parse::<i32>().unwrap(),
