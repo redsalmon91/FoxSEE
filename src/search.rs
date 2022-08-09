@@ -28,6 +28,7 @@ const PV_PRINT_LENGTH: usize = 16;
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
 pub const EQUAL_EXCHANGE_SCORE: i32 = -20;
+pub const WINNING_EXCHANGE: i32 = 20;
 
 pub static mut ABORT_SEARCH: bool = false;
 
@@ -481,12 +482,22 @@ impl SearchEngine {
                 };
 
                 if state.squares[to] != 0 || promo != 0 {
-                    let see_score = self.see(state, from, to, tp, promo);
+                    let mvv_lva_score = self.mvv_lva(state, from, to, promo);
 
-                    if gives_check {
-                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_checker_bonus;
+                    if mvv_lva_score > WINNING_EXCHANGE {
+                        if gives_check {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_mvv_lva_extra_base_val + mvv_lva_score + self.params.sorting_checker_bonus;
+                        } else {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_mvv_lva_extra_base_val + mvv_lva_score;
+                        }
                     } else {
-                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
+                        let see_score = self.see(state, from, to, tp, promo);
+
+                        if gives_check {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_checker_bonus;
+                        } else {
+                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
+                        }
                     }
                 } else if mov == counter_mov {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_counter_move_val;

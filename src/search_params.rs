@@ -24,6 +24,8 @@ pub struct SearchParams {
 
     pub sorting_capture_base_val: i32,
 
+    pub sorting_mvv_lva_extra_base_val: i32,
+
     pub sorting_good_history_base_val: i32,
     pub sorting_normal_history_base_val: i32,
     pub sorting_weak_history_base_val: i32,
@@ -62,6 +64,7 @@ impl SearchParams {
             butterfly_pruning_count: 16,
 
             sorting_capture_base_val: 1_000_000_000,
+            sorting_mvv_lva_extra_base_val: 500,
 
             sorting_good_history_base_val: 100_000_000,
             sorting_normal_history_base_val: 10_000_000,
@@ -101,6 +104,8 @@ impl SearchParams {
             butterfly_pruning_count: config_map.get("butterfly_pruning_count").unwrap().parse::<i32>().unwrap(),
 
             sorting_capture_base_val: config_map.get("sorting_capture_base_val").unwrap().parse::<i32>().unwrap(),
+
+            sorting_mvv_lva_extra_base_val: config_map.get("sorting_mvv_lva_extra_base_val").unwrap().parse::<i32>().unwrap(),
 
             sorting_good_history_base_val: config_map.get("sorting_good_history_base_val").unwrap().parse::<i32>().unwrap(),
             sorting_normal_history_base_val: config_map.get("sorting_normal_history_base_val").unwrap().parse::<i32>().unwrap(),
