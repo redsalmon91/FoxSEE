@@ -481,22 +481,12 @@ impl SearchEngine {
                 };
 
                 if state.squares[to] != 0 || promo != 0 {
-                    let mvv_lva_score = self.mvv_lva(state, from, to, promo);
+                    let see_score = self.see(state, from, to, tp, promo);
 
-                    if mvv_lva_score >= EQUAL_EXCHANGE_SCORE {
-                        if gives_check {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + mvv_lva_score + self.params.sorting_checker_bonus;
-                        } else {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + mvv_lva_score;
-                        }
+                    if gives_check {
+                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_checker_bonus;
                     } else {
-                        let see_score = self.see(state, from, to, tp, promo);
-
-                        if gives_check {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score + self.params.sorting_checker_bonus;
-                        } else {
-                            ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
-                        }
+                        ordered_mov.sort_score = self.params.sorting_capture_base_val + see_score;
                     }
                 } else if mov == counter_mov {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_counter_move_val;
@@ -514,11 +504,15 @@ impl SearchEngine {
                         ordered_mov.sort_score = self.params.sorting_good_history_base_val
                         + piece_history_score / piece_butterfly_score
                         + index_history_score / index_butterfly_score;
-                    } else if piece_history_score != 0 {
-                        ordered_mov.sort_score = self.params.sorting_normal_history_base_val + piece_history_score / piece_butterfly_score;
-                    } else if index_history_score != 0 {
-                        ordered_mov.sort_score = self.params.sorting_weak_history_base_val + index_history_score / index_butterfly_score;
+                    } else if piece_history_score + index_history_score != 0 {
+                        ordered_mov.sort_score = self.params.sorting_normal_history_base_val
+                        + piece_history_score / piece_butterfly_score
+                        + index_history_score / index_butterfly_score;
                     } else {
+                        if !on_pv && !in_check && !gives_check && legal_mov_count > 0 && ply >= depth && index_butterfly_score + piece_butterfly_score > self.params.butterfly_pruning_count {
+                            continue;
+                        }
+
                         ordered_mov.sort_score = self.rand.next_rnd();
                     }
                 }
@@ -866,25 +860,16 @@ impl SearchEngine {
                     }
                 }
 
-                let mvv_lva_score = self.mvv_lva(state, from, to, promo);
+                let see_score = self.see(state, from, to, tp, promo);
 
-                if mvv_lva_score >= EQUAL_EXCHANGE_SCORE {
-                    scored_mov_list.push(OrderedQMov {
-                        mov,
-                        sort_score: mvv_lva_score,
-                    });
-                } else {
-                    let see_score = self.see(state, from, to, tp, promo);
-
-                    if see_score < EQUAL_EXCHANGE_SCORE {
-                        continue;
-                    }
-
-                    scored_mov_list.push(OrderedQMov {
-                        mov,
-                        sort_score: see_score,
-                    });
+                if see_score < EQUAL_EXCHANGE_SCORE {
+                    continue;
                 }
+
+                scored_mov_list.push(OrderedQMov {
+                    mov,
+                    sort_score: see_score,
+                });
             }
         }
 
@@ -965,6 +950,7 @@ impl SearchEngine {
         state.undo_mov(from, to, tp);
     }
 
+    #[allow(dead_code)]
     #[inline]
     fn mvv_lva(&self, state: &mut State, from: usize, to: usize, promo: u8) -> i32 {
         self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo) - self.evaluator.val_of(state.squares[from])
