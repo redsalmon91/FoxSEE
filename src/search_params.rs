@@ -20,8 +20,6 @@ pub struct SearchParams {
 
     pub delta_margin: i32,
 
-    pub butterfly_pruning_count: i32,
-
     pub sorting_capture_base_val: i32,
 
     pub sorting_mvv_lva_extra_base_val: i32,
@@ -61,8 +59,6 @@ impl SearchParams {
 
             delta_margin: 240,
 
-            butterfly_pruning_count: 16,
-
             sorting_capture_base_val: 1_000_000_000,
             sorting_mvv_lva_extra_base_val: 500,
 
@@ -100,8 +96,6 @@ impl SearchParams {
             aspiration_window_size: config_map.get("aspiration_window_size").unwrap().parse::<i32>().unwrap(),
 
             delta_margin: config_map.get("delta_margin").unwrap().parse::<i32>().unwrap(),
-
-            butterfly_pruning_count: config_map.get("butterfly_pruning_count").unwrap().parse::<i32>().unwrap(),
 
             sorting_capture_base_val: config_map.get("sorting_capture_base_val").unwrap().parse::<i32>().unwrap(),
 

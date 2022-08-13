@@ -57,9 +57,6 @@ pub struct SearchEngine {
     piece_history_table: [[[i32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
     index_history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
 
-    piece_butterfly_table: [[[i32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
-    index_butterfly_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
-
     params: SearchParams,
     null_mov_count: u8,
     root_full_mov_count: u16,
@@ -86,9 +83,6 @@ impl SearchEngine {
 
             piece_history_table: [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
             index_history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
-
-            piece_butterfly_table: [[[1; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
-            index_butterfly_table: [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
 
             params: SearchParams::default(),
             null_mov_count: 0,
@@ -162,9 +156,6 @@ impl SearchEngine {
 
         self.piece_history_table = [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2];
         self.index_history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
-
-        self.piece_butterfly_table = [[[1; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2];
-        self.index_butterfly_table = [[[1; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
 
         self.root_full_mov_count = state.full_mov_count;
         self.root_half_mov_count = state.half_mov_count;
@@ -508,22 +499,16 @@ impl SearchEngine {
                 } else {
                     let piece_history_score = self.piece_history_table[state.player as usize - 1][state.squares[from] as usize][to];
                     let index_history_score = self.index_history_table[state.player as usize - 1][from][to];
-                    let piece_butterfly_score = self.piece_butterfly_table[state.player as usize - 1][state.squares[from] as usize][to];
-                    let index_butterfly_score = self.index_butterfly_table[state.player as usize - 1][from][to];
 
                     if piece_history_score != 0 && index_history_score != 0 {
                         ordered_mov.sort_score = self.params.sorting_good_history_base_val
-                        + piece_history_score / piece_butterfly_score
-                        + index_history_score / index_butterfly_score;
+                        + piece_history_score
+                        + index_history_score;
                     } else if piece_history_score + index_history_score != 0 {
                         ordered_mov.sort_score = self.params.sorting_normal_history_base_val
-                        + piece_history_score / piece_butterfly_score
-                        + index_history_score / index_butterfly_score;
+                        + piece_history_score
+                        + index_history_score;
                     } else {
-                        if !on_pv && !in_check && !gives_check && legal_mov_count > 0 && ply >= depth && index_butterfly_score + piece_butterfly_score > self.params.butterfly_pruning_count {
-                            continue;
-                        }
-
                         ordered_mov.sort_score = self.rand.next_rnd();
                     }
                 }
@@ -628,42 +613,6 @@ impl SearchEngine {
                     self.update_history_table(state.player, depth, state.squares[from], from, to);
                     self.update_killer_table(ply, mov, score, depth);
                     self.update_counter_mov_table(state, mov);
-
-                    if mov_count > 1 {
-                        if hash_mov != 0 {
-                            let (from, to, _tp, _promo) = util::decode_u32_mov(hash_mov);
-
-                            let is_capture = state.squares[to] != 0;
-
-                            if !is_capture && promo == 0 {
-                                self.update_butterfly_table(state.player, state.squares[from], from, to);
-                            }
-
-                            for index in 0..mov_count-2 {
-                                let prev_mov = &ordered_mov_list[index];
-
-                                let (from, to, _tp, _promo) = util::decode_u32_mov(prev_mov.mov);
-
-                                let is_capture = state.squares[to] != 0;
-
-                                if !is_capture && promo == 0 {
-                                    self.update_butterfly_table(state.player, state.squares[from], from, to);
-                                }
-                            }
-                        } else {
-                            for index in 0..mov_count-1 {
-                                let prev_mov = &ordered_mov_list[index];
-
-                                let (from, to, _tp, _promo) = util::decode_u32_mov(prev_mov.mov);
-
-                                let is_capture = state.squares[to] != 0;
-
-                                if !is_capture && promo == 0 {
-                                    self.update_butterfly_table(state.player, state.squares[from], from, to);
-                                }
-                            }
-                        }
-                    }
                 }
 
                 self.set_hash(state, depth, ply, HASH_TYPE_BETA, score, static_eval, mov);
@@ -1111,12 +1060,6 @@ impl SearchEngine {
         let increment = depth as i32;
         self.piece_history_table[player as usize - 1][piece as usize][to] += increment * increment;
         self.index_history_table[player as usize - 1][from][to] += increment * increment;
-    }
-
-    #[inline]
-    fn update_butterfly_table(&mut self, player: u8, piece: u8, from: usize, to: usize) {
-        self.piece_butterfly_table[player as usize - 1][piece as usize][to] += 1;
-        self.index_butterfly_table[player as usize - 1][from][to] += 1;
     }
 }
 
