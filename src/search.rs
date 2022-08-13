@@ -27,8 +27,8 @@ const PV_TRACK_LENGTH: usize = 128;
 const PV_PRINT_LENGTH: usize = 16;
 const TIME_CHECK_INTEVAL: u64 = 1023;
 
-pub const EQUAL_EXCHANGE_SCORE: i32 = -20;
-pub const WINNING_EXCHANGE: i32 = 20;
+pub const EQUAL_EXCHANGE_SCORE: i32 = -50;
+pub const WINNING_EXCHANGE: i32 = 50;
 
 pub static mut ABORT_SEARCH: bool = false;
 
@@ -871,16 +871,25 @@ impl SearchEngine {
                     }
                 }
 
-                let see_score = self.see(state, from, to, tp, promo);
+                let mvv_lva_score = self.mvv_lva(state, from, to, promo);
 
-                if see_score < EQUAL_EXCHANGE_SCORE {
-                    continue;
+                if mvv_lva_score > WINNING_EXCHANGE {
+                    scored_mov_list.push(OrderedQMov {
+                        mov,
+                        sort_score: mvv_lva_score,
+                    });
+                } else {
+                    let see_score = self.see(state, from, to, tp, promo);
+
+                    if see_score < EQUAL_EXCHANGE_SCORE {
+                        continue;
+                    }
+
+                    scored_mov_list.push(OrderedQMov {
+                        mov,
+                        sort_score: see_score,
+                    });
                 }
-
-                scored_mov_list.push(OrderedQMov {
-                    mov,
-                    sort_score: see_score,
-                });
             }
         }
 
