@@ -51,11 +51,8 @@ pub struct SearchEngine {
     primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
 
-    piece_counter_mov_table: [[[u32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
-    index_counter_mov_table: [[[u32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
-
-    piece_history_table: [[[i32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
-    index_history_table: [[[i32; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+    counter_mov_table: [[[u32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
+    history_table: [[[i32; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
 
     params: SearchParams,
     null_mov_count: u8,
@@ -78,11 +75,9 @@ impl SearchEngine {
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
 
-            piece_counter_mov_table: [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
-            index_counter_mov_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            counter_mov_table: [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
 
-            piece_history_table: [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
-            index_history_table: [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2],
+            history_table: [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2],
 
             params: SearchParams::default(),
             null_mov_count: 0,
@@ -151,11 +146,10 @@ impl SearchEngine {
 
         self.primary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
         self.secondary_killer_table = [(0, 0, 0); PV_TRACK_LENGTH];
-        self.piece_counter_mov_table = [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2];
-        self.index_counter_mov_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
 
-        self.piece_history_table = [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2];
-        self.index_history_table = [[[0; def::BOARD_SIZE]; def::BOARD_SIZE]; 2];
+        self.counter_mov_table = [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2];
+
+        self.history_table = [[[0; def::BOARD_SIZE]; def::PIECE_CODE_RANGE]; 2];
 
         self.root_full_mov_count = state.full_mov_count;
         self.root_half_mov_count = state.half_mov_count;
@@ -413,7 +407,7 @@ impl SearchEngine {
 
             if score >= beta {
                 if !is_capture && promo == 0 {
-                    self.update_history_table(state.player, depth, state.squares[from], from, to);
+                    self.update_history_table(state.player, depth, state.squares[from], to);
                     self.update_killer_table(ply, hash_mov, score, depth);
                     self.update_counter_mov_table(state, hash_mov);
                 }
@@ -497,17 +491,10 @@ impl SearchEngine {
                 } else if mov == secondary_killer {
                     ordered_mov.sort_score = self.params.sorting_capture_base_val + self.params.sorting_killer_secondary_val;
                 } else {
-                    let piece_history_score = self.piece_history_table[state.player as usize - 1][state.squares[from] as usize][to];
-                    let index_history_score = self.index_history_table[state.player as usize - 1][from][to];
+                    let piece_history_score = self.history_table[state.player as usize - 1][state.squares[from] as usize][to];
 
-                    if piece_history_score != 0 && index_history_score != 0 {
-                        ordered_mov.sort_score = self.params.sorting_good_history_base_val
-                        + piece_history_score
-                        + index_history_score;
-                    } else if piece_history_score + index_history_score != 0 {
-                        ordered_mov.sort_score = self.params.sorting_normal_history_base_val
-                        + piece_history_score
-                        + index_history_score;
+                    if piece_history_score != 0 {
+                        ordered_mov.sort_score = self.params.sorting_good_history_base_val + piece_history_score;
                     } else {
                         ordered_mov.sort_score = self.rand.next_rnd();
                     }
@@ -610,7 +597,7 @@ impl SearchEngine {
 
             if score >= beta {
                 if !is_capture && promo == 0 {
-                    self.update_history_table(state.player, depth, state.squares[from], from, to);
+                    self.update_history_table(state.player, depth, state.squares[from], to);
                     self.update_killer_table(ply, mov, score, depth);
                     self.update_counter_mov_table(state, mov);
                 }
@@ -651,7 +638,7 @@ impl SearchEngine {
 
             if score >= beta {
                 if !is_capture && promo == 0 {
-                    self.update_history_table(state.player, depth, state.squares[from], from, to);
+                    self.update_history_table(state.player, depth, state.squares[from], to);
                     self.update_killer_table(ply, hash_mov, score, depth);
                     self.update_counter_mov_table(state, hash_mov);
                 }
@@ -1024,10 +1011,9 @@ impl SearchEngine {
     #[inline]
     fn update_counter_mov_table(&mut self, state: &State, mov: u32) {
         match state.history_mov_stack.last() {
-            Some((player, piece, from, to)) => {
+            Some((player, piece, to)) => {
                 if *player != state.player {
-                    self.piece_counter_mov_table[state.player as usize - 1][*piece as usize][*to] = mov;
-                    self.index_counter_mov_table[state.player as usize - 1][*from][*to] = mov;
+                    self.counter_mov_table[state.player as usize - 1][*piece as usize][*to] = mov;
                 }
             },
             None => {}
@@ -1037,16 +1023,9 @@ impl SearchEngine {
     #[inline]
     fn get_counter_mov(&self, state: &State) -> u32 {
         match state.history_mov_stack.last() {
-            Some((player, piece, from, to)) => {
+            Some((player, piece, to)) => {
                 if *player != state.player {
-                    let piece_counter_mov = self.piece_counter_mov_table[state.player as usize - 1][*piece as usize][*to];
-                    let index_counter_mov = self.index_counter_mov_table[state.player as usize - 1][*from][*to];
-
-                    if piece_counter_mov == index_counter_mov {
-                        piece_counter_mov
-                    } else {
-                        0
-                    }
+                    self.counter_mov_table[state.player as usize - 1][*piece as usize][*to]
                 } else {
                     0
                 }
@@ -1056,10 +1035,9 @@ impl SearchEngine {
     }
 
     #[inline]
-    fn update_history_table(&mut self, player: u8, depth: u8, piece: u8, from: usize, to: usize) {
+    fn update_history_table(&mut self, player: u8, depth: u8, piece: u8, to: usize) {
         let increment = depth as i32;
-        self.piece_history_table[player as usize - 1][piece as usize][to] += increment * increment;
-        self.index_history_table[player as usize - 1][from][to] += increment * increment;
+        self.history_table[player as usize - 1][piece as usize][to] += increment * increment;
     }
 }
 
