@@ -38,6 +38,9 @@ pub struct EvalParams {
     pub pin_pen: i32,
     pub semi_pin_pen: i32,
 
+    pub weak_sqr_pen: i32,
+    pub attacked_weak_sqr_pen: i32,
+
     pub p_mob_score: i32,
     pub n_mob_score: i32,
     pub b_mob_score: i32,
@@ -107,6 +110,9 @@ impl EvalParams {
             pin_pen: -20,
             semi_pin_pen: -10,
 
+            weak_sqr_pen: -1,
+            attacked_weak_sqr_pen: -2,
+
             p_mob_score: 5,
             n_mob_score: 5,
             b_mob_score: 5,
@@ -175,6 +181,9 @@ impl EvalParams {
 
             pin_pen: config_map.get("pin_pen").unwrap().parse::<i32>().unwrap(),
             semi_pin_pen: config_map.get("semi_pin_pen").unwrap().parse::<i32>().unwrap(),
+
+            weak_sqr_pen: config_map.get("weak_sqr_pen").unwrap().parse::<i32>().unwrap(),
+            attacked_weak_sqr_pen: config_map.get("attacked_weak_sqr_pen").unwrap().parse::<i32>().unwrap(),
 
             p_mob_score: config_map.get("p_mob_score").unwrap().parse::<i32>().unwrap(),
             n_mob_score: config_map.get("n_mob_score").unwrap().parse::<i32>().unwrap(),

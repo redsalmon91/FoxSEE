@@ -194,6 +194,8 @@ const WK_Q_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000
 const BK_K_SIDE_MASK: u64 = 0b11100000_11100000_11100000_00000000_00000000_00000000_00000000_00000000;
 const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000000_00000000_00000000;
 
+const BOARD_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111;
+
 pub fn is_in_endgame(state: &mut State) -> bool {
     get_phase(state) <= EG_PHASE
 }
@@ -237,6 +239,9 @@ pub struct FeatureMap {
 
     king_attack_count: i32,
     king_exposure_count: i32,
+
+    weak_sqr_count: i32,
+    attacked_weak_sqr_count: i32,
 }
 
 impl FeatureMap {
@@ -264,6 +269,9 @@ impl FeatureMap {
 
             king_attack_count: 0,
             king_exposure_count: 0,
+
+            weak_sqr_count: 0,
+            attacked_weak_sqr_count: 0,
         }
     }
 }
@@ -502,11 +510,15 @@ impl Evaluator {
             + w_features_map.behind_pawn_count * self.params.behind_pawn_pen
             + w_features_map.isolated_pawn_count * self.params.isolated_pawn_pen
             + w_features_map.doubled_pawn_count * self.params.doubled_pawn_pen
+            + w_features_map.weak_sqr_count * self.params.weak_sqr_pen
+            + w_features_map.attacked_weak_sqr_count * self.params.attacked_weak_sqr_pen
             - b_features_map.mobility
             - b_features_map.threat_point / self.params.threat_discount_factor
             - b_features_map.behind_pawn_count * self.params.behind_pawn_pen
             - b_features_map.isolated_pawn_count * self.params.isolated_pawn_pen
-            - b_features_map.doubled_pawn_count * self.params.doubled_pawn_pen;
+            - b_features_map.doubled_pawn_count * self.params.doubled_pawn_pen
+            - b_features_map.weak_sqr_count * self.params.weak_sqr_pen
+            - b_features_map.attacked_weak_sqr_count * self.params.attacked_weak_sqr_pen;
 
         let phase = get_phase(state);
 
@@ -761,6 +773,12 @@ impl Evaluator {
 
         let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
         let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
+
+        w_feature_map.weak_sqr_count = (BOARD_MASK & !w_attack_mask).count_ones() as i32;
+        w_feature_map.attacked_weak_sqr_count = (BOARD_MASK & b_attack_mask).count_ones() as i32;
+
+        b_feature_map.weak_sqr_count = (BOARD_MASK & !b_attack_mask).count_ones() as i32;
+        b_feature_map.attacked_weak_sqr_count = (BOARD_MASK & w_attack_mask).count_ones() as i32;
 
         if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
             let protecting_pawn_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones();
