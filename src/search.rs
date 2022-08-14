@@ -502,7 +502,7 @@ impl SearchEngine {
                     } else if history_score != 0 {
                         ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score;
                     } else {
-                        ordered_mov.sort_score = self.rand.next_rnd();
+                        ordered_mov.sort_score = eval::get_sqr_diff_val(state.squares[from], from, to) + self.rand.next_rnd();
                     }
                 }
 
