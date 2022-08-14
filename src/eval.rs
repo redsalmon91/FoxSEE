@@ -194,7 +194,14 @@ const WK_Q_SIDE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000
 const BK_K_SIDE_MASK: u64 = 0b11100000_11100000_11100000_00000000_00000000_00000000_00000000_00000000;
 const BK_Q_SIDE_MASK: u64 = 0b00000111_00000111_00000111_00000000_00000000_00000000_00000000_00000000;
 
-const BOARD_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111;
+const W_BASE_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_11111111_11111111_11111111;
+const B_BASE_MASK: u64 = 0b11111111_11111111_11111111_11111111_00000000_00000000_00000000_00000000;
+
+const W_3RD_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000;
+const W_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_00000000_00000000_00000000;
+
+const B_3RD_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
+const B_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_11111111_00000000_00000000_00000000_00000000;
 
 pub fn is_in_endgame(state: &mut State) -> bool {
     get_phase(state) <= EG_PHASE
@@ -232,6 +239,7 @@ pub struct FeatureMap {
     eg_mobility: i32,
 
     rook_open_count: i32,
+    rook_semi_open_count: i32,
 
     threat_point: i32,
     pin_count: i32,
@@ -240,8 +248,16 @@ pub struct FeatureMap {
     king_attack_count: i32,
     king_exposure_count: i32,
 
-    weak_sqr_count: i32,
-    attacked_weak_sqr_count: i32,
+    unprotected_sqr_count: i32,
+    under_attacked_sqr_count: i32,
+
+    protected_p_count: i32,
+    protected_n_count: i32,
+    protected_b_count: i32,
+    protected_r_count: i32,
+
+    np_protected_3rd_rank_sqr_count: i32,
+    np_protected_4th_rank_sqr_count: i32,
 }
 
 impl FeatureMap {
@@ -262,6 +278,7 @@ impl FeatureMap {
             eg_mobility: 0,
 
             rook_open_count: 0,
+            rook_semi_open_count: 0,
 
             threat_point: 0,
             pin_count: 0,
@@ -270,8 +287,16 @@ impl FeatureMap {
             king_attack_count: 0,
             king_exposure_count: 0,
 
-            weak_sqr_count: 0,
-            attacked_weak_sqr_count: 0,
+            unprotected_sqr_count: 0,
+            under_attacked_sqr_count: 0,
+
+            protected_p_count: 0,
+            protected_n_count: 0,
+            protected_b_count: 0,
+            protected_r_count: 0,
+
+            np_protected_3rd_rank_sqr_count: 0,
+            np_protected_4th_rank_sqr_count: 0,
         }
     }
 }
@@ -452,14 +477,29 @@ impl Evaluator {
             + w_features_map.pin_count * self.params.pin_pen
             + w_features_map.semi_pin_count * self.params.semi_pin_pen
             + w_features_map.rook_open_count * self.params.rook_open_bonus
+            + w_features_map.rook_semi_open_count * self.params.rook_semi_open_bonus
             + w_features_map.king_exposure_count * self.params.k_exposure_pen
             + w_king_attack_count * self.params.k_attack_score
+            + w_features_map.protected_p_count * self.params.protected_p_val
+            + w_features_map.protected_n_count * self.params.protected_n_val
+            + w_features_map.protected_b_count * self.params.protected_b_val
+            + w_features_map.protected_r_count * self.params.protected_r_val
+            + w_features_map.np_protected_3rd_rank_sqr_count * self.params.np_protected_3rd_rank_sqr_pen
+            + w_features_map.np_protected_4th_rank_sqr_count * self.params.np_protected_4th_rank_sqr_pen
+
             - b_features_map.mg_sqr_point
             - b_features_map.pin_count * self.params.pin_pen
             - b_features_map.semi_pin_count * self.params.semi_pin_pen
             - b_features_map.rook_open_count * self.params.rook_open_bonus
+            - b_features_map.rook_semi_open_count * self.params.rook_semi_open_bonus
             - b_features_map.king_exposure_count * self.params.k_exposure_pen
-            - b_king_attack_count * self.params.k_attack_score;
+            - b_king_attack_count * self.params.k_attack_score
+            - b_features_map.protected_p_count * self.params.protected_p_val
+            - b_features_map.protected_n_count * self.params.protected_n_val
+            - b_features_map.protected_b_count * self.params.protected_b_val
+            - b_features_map.protected_r_count * self.params.protected_r_val
+            - b_features_map.np_protected_3rd_rank_sqr_count * self.params.np_protected_3rd_rank_sqr_pen
+            - b_features_map.np_protected_4th_rank_sqr_count * self.params.np_protected_4th_rank_sqr_pen;
 
         if state.bitboard.b_queen != 0 {
             if (state.cas_rights | state.cas_history) & 0b1100 == 0 {
@@ -510,15 +550,15 @@ impl Evaluator {
             + w_features_map.behind_pawn_count * self.params.behind_pawn_pen
             + w_features_map.isolated_pawn_count * self.params.isolated_pawn_pen
             + w_features_map.doubled_pawn_count * self.params.doubled_pawn_pen
-            + w_features_map.weak_sqr_count * self.params.weak_sqr_pen
-            + w_features_map.attacked_weak_sqr_count * self.params.attacked_weak_sqr_pen
+            + w_features_map.unprotected_sqr_count * self.params.unprotected_sqr_pen
+            + w_features_map.under_attacked_sqr_count * self.params.under_attacked_sqr_pen
             - b_features_map.mobility
             - b_features_map.threat_point / self.params.threat_discount_factor
             - b_features_map.behind_pawn_count * self.params.behind_pawn_pen
             - b_features_map.isolated_pawn_count * self.params.isolated_pawn_pen
             - b_features_map.doubled_pawn_count * self.params.doubled_pawn_pen
-            - b_features_map.weak_sqr_count * self.params.weak_sqr_pen
-            - b_features_map.attacked_weak_sqr_count * self.params.attacked_weak_sqr_pen;
+            - b_features_map.unprotected_sqr_count * self.params.unprotected_sqr_pen
+            - b_features_map.under_attacked_sqr_count * self.params.under_attacked_sqr_pen;
 
         let phase = get_phase(state);
 
@@ -709,12 +749,12 @@ impl Evaluator {
                     wr_attack_mask |= mov_mask;
                     mov_mask_map[index] = mov_mask;
 
-                    if file_masks[index] & bitboard.w_pawn == 0 {
-                        w_feature_map.rook_open_count += 1;
+                    let file_mask = file_masks[index];
 
-                        if file_masks[index] & bitboard.b_pawn == 0 {
-                            w_feature_map.rook_open_count += 1;
-                        }
+                    if file_mask & (bitboard.w_pawn | bitboard.b_pawn) == 0 {
+                        w_feature_map.rook_open_count += 1;
+                    } else if file_mask & bitboard.w_pawn == 0 {
+                        w_feature_map.rook_semi_open_count += 1;
                     }
                 },
                 def::BR => {
@@ -726,12 +766,12 @@ impl Evaluator {
                     br_attack_mask |= mov_mask;
                     mov_mask_map[index] = mov_mask;
 
-                    if file_masks[index] & bitboard.b_pawn == 0 {
-                        b_feature_map.rook_open_count += 1;
+                    let file_mask = file_masks[index];
 
-                        if file_masks[index] & bitboard.w_pawn == 0 {
-                            b_feature_map.rook_open_count += 1;
-                        }
+                    if file_mask & (bitboard.b_pawn | bitboard.w_pawn) == 0 {
+                        b_feature_map.rook_open_count += 1;
+                    } else if file_mask & bitboard.b_pawn == 0 {
+                        b_feature_map.rook_semi_open_count += 1;
                     }
                 },
 
@@ -774,11 +814,25 @@ impl Evaluator {
         let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
         let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
 
-        w_feature_map.weak_sqr_count = (BOARD_MASK & !w_attack_mask).count_ones() as i32;
-        w_feature_map.attacked_weak_sqr_count = (BOARD_MASK & b_attack_mask).count_ones() as i32;
+        w_feature_map.np_protected_3rd_rank_sqr_count = (W_3RD_RANK_MASK & !wp_attack_mask).count_ones() as i32;
+        w_feature_map.np_protected_4th_rank_sqr_count = (W_4TH_RANK_MASK & !wp_attack_mask).count_ones() as i32;
 
-        b_feature_map.weak_sqr_count = (BOARD_MASK & !b_attack_mask).count_ones() as i32;
-        b_feature_map.attacked_weak_sqr_count = (BOARD_MASK & w_attack_mask).count_ones() as i32;
+        b_feature_map.np_protected_3rd_rank_sqr_count = (B_3RD_RANK_MASK & !bp_attack_mask).count_ones() as i32;
+        b_feature_map.np_protected_4th_rank_sqr_count = (B_4TH_RANK_MASK & !bp_attack_mask).count_ones() as i32;
+
+        w_feature_map.unprotected_sqr_count = (W_BASE_MASK & !w_attack_mask).count_ones() as i32;
+        w_feature_map.under_attacked_sqr_count = (W_BASE_MASK & b_attack_mask & !w_attack_mask).count_ones() as i32;
+        w_feature_map.under_attacked_sqr_count += (W_BASE_MASK & bp_attack_mask).count_ones() as i32;
+        w_feature_map.under_attacked_sqr_count += (W_BASE_MASK & (bn_attack_mask | bb_attack_mask) & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
+        w_feature_map.under_attacked_sqr_count += (W_BASE_MASK & br_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask)).count_ones() as i32;
+        w_feature_map.under_attacked_sqr_count += (W_BASE_MASK & bq_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask | wq_attack_mask)).count_ones() as i32;
+
+        b_feature_map.unprotected_sqr_count = (B_BASE_MASK & !b_attack_mask).count_ones() as i32;
+        b_feature_map.under_attacked_sqr_count = (B_BASE_MASK & w_attack_mask & !b_attack_mask).count_ones() as i32;
+        b_feature_map.under_attacked_sqr_count += (B_BASE_MASK & wp_attack_mask).count_ones() as i32;
+        b_feature_map.under_attacked_sqr_count += (B_BASE_MASK & (wn_attack_mask | wb_attack_mask) & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
+        b_feature_map.under_attacked_sqr_count += (B_BASE_MASK & wr_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask)).count_ones() as i32;
+        b_feature_map.under_attacked_sqr_count += (B_BASE_MASK & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
 
         if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
             let protecting_pawn_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones();

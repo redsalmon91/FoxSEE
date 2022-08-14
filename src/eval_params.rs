@@ -34,12 +34,21 @@ pub struct EvalParams {
     pub k_no_cas_rights_pen: i32,
 
     pub rook_open_bonus: i32,
+    pub rook_semi_open_bonus: i32,
 
     pub pin_pen: i32,
     pub semi_pin_pen: i32,
 
-    pub weak_sqr_pen: i32,
-    pub attacked_weak_sqr_pen: i32,
+    pub unprotected_sqr_pen: i32,
+    pub under_attacked_sqr_pen: i32,
+
+    pub protected_p_val: i32,
+    pub protected_n_val: i32,
+    pub protected_b_val: i32,
+    pub protected_r_val: i32,
+
+    pub np_protected_3rd_rank_sqr_pen: i32, 
+    pub np_protected_4th_rank_sqr_pen: i32, 
 
     pub p_mob_score: i32,
     pub n_mob_score: i32,
@@ -106,12 +115,21 @@ impl EvalParams {
             k_no_cas_rights_pen: -50,
 
             rook_open_bonus: 26,
+            rook_semi_open_bonus: 10,
 
             pin_pen: -20,
             semi_pin_pen: -10,
 
-            weak_sqr_pen: -1,
-            attacked_weak_sqr_pen: -2,
+            unprotected_sqr_pen: -1,
+            under_attacked_sqr_pen: -2,
+
+            protected_p_val: 0,
+            protected_n_val: 0,
+            protected_b_val: 0,
+            protected_r_val: 0,
+
+            np_protected_3rd_rank_sqr_pen: 0,
+            np_protected_4th_rank_sqr_pen: 0,
 
             p_mob_score: 5,
             n_mob_score: 5,
@@ -178,12 +196,21 @@ impl EvalParams {
             k_no_cas_rights_pen: config_map.get("k_no_cas_rights_pen").unwrap().parse::<i32>().unwrap(),
 
             rook_open_bonus: config_map.get("rook_open_bonus").unwrap().parse::<i32>().unwrap(),
+            rook_semi_open_bonus: config_map.get("rook_semi_open_bonus").unwrap().parse::<i32>().unwrap(),
 
             pin_pen: config_map.get("pin_pen").unwrap().parse::<i32>().unwrap(),
             semi_pin_pen: config_map.get("semi_pin_pen").unwrap().parse::<i32>().unwrap(),
 
-            weak_sqr_pen: config_map.get("weak_sqr_pen").unwrap().parse::<i32>().unwrap(),
-            attacked_weak_sqr_pen: config_map.get("attacked_weak_sqr_pen").unwrap().parse::<i32>().unwrap(),
+            unprotected_sqr_pen: config_map.get("unprotected_sqr_pen").unwrap().parse::<i32>().unwrap(),
+            under_attacked_sqr_pen: config_map.get("under_attacked_sqr_pen").unwrap().parse::<i32>().unwrap(),
+
+            protected_p_val: config_map.get("protected_p_val").unwrap().parse::<i32>().unwrap(),
+            protected_n_val: config_map.get("protected_n_val").unwrap().parse::<i32>().unwrap(),
+            protected_b_val: config_map.get("protected_b_val").unwrap().parse::<i32>().unwrap(),
+            protected_r_val: config_map.get("protected_r_val").unwrap().parse::<i32>().unwrap(),
+
+            np_protected_3rd_rank_sqr_pen: config_map.get("np_protected_3rd_rank_sqr_pen").unwrap().parse::<i32>().unwrap(),
+            np_protected_4th_rank_sqr_pen: config_map.get("np_protected_4th_rank_sqr_pen").unwrap().parse::<i32>().unwrap(),
 
             p_mob_score: config_map.get("p_mob_score").unwrap().parse::<i32>().unwrap(),
             n_mob_score: config_map.get("n_mob_score").unwrap().parse::<i32>().unwrap(),
