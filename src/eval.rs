@@ -227,7 +227,11 @@ pub struct FeatureMap {
     mg_sqr_point: i32,
     eg_sqr_point: i32,
 
-    passed_pawn_point: i32,
+    passed_pawn_count: i32,
+    passed_pawn_rank_count: i32,
+    candidate_passed_pawn_count: i32,
+    candidate_passed_pawn_rank_count: i32,
+
     controlled_passed_pawn_count: i32,
     doubled_pawn_count: i32,
     isolated_pawn_count: i32,
@@ -266,7 +270,11 @@ impl FeatureMap {
             mg_sqr_point: 0,
             eg_sqr_point: 0,
 
-            passed_pawn_point: 0,
+            passed_pawn_count: 0,
+            passed_pawn_rank_count: 0,
+            candidate_passed_pawn_count: 0,
+            candidate_passed_pawn_rank_count: 0,
+
             controlled_passed_pawn_count: 0,
             doubled_pawn_count: 0,
             isolated_pawn_count: 0,
@@ -374,21 +382,7 @@ impl Evaluator {
             + (w_knight_count - b_knight_count) * self.params.n_val
             + (w_pawn_count - b_pawn_count) * self.params.p_val;
 
-        if material_score > 0 && (bitboard.w_pawn | bitboard.w_rook | bitboard.w_queen) == 0 && w_knight_count + w_bishop_count == 1 && b_pawn_count == 1 {
-            return (0, false)
-        }
-
-        if material_score < 0 && (bitboard.b_pawn | bitboard.b_rook | bitboard.b_queen) == 0 && b_knight_count + b_bishop_count == 1 && w_pawn_count == 1 {
-            return (0, false)
-        }
-
         let mut eg_score = 0;
-
-        eg_score += (w_queen_count - b_queen_count) * self.params.eg_q_val;
-        eg_score += (w_rook_count - b_rook_count) * self.params.eg_r_val;
-        eg_score += (w_bishop_count - b_bishop_count) * self.params.eg_b_val;
-        eg_score += (w_knight_count - w_knight_count) * self.params.eg_n_val;
-        eg_score += (w_pawn_count - b_pawn_count) * self.params.eg_p_val;
 
         if material_score > self.params.p_val && bitboard.w_pawn == 0 {
             eg_score -= self.params.eg_pawn_essential_val;
@@ -423,15 +417,15 @@ impl Evaluator {
 
         if is_endgame_with_different_colored_bishop {
             if bitboard.w_rook | bitboard.b_rook == 0 {
-                if material_score > 0  {
+                if eg_score > 0  {
                     eg_score -= self.params.eg_different_color_bishop_val;
-                } else if material_score < 0 {
+                } else if eg_score < 0 {
                     eg_score += self.params.eg_different_color_bishop_val;
                 }
             } else {
-                if material_score > 0  {
+                if eg_score > 0  {
                     eg_score -= self.params.eg_different_color_bishop_with_rook_val;
-                } else if material_score < 0 {
+                } else if eg_score < 0 {
                     eg_score += self.params.eg_different_color_bishop_with_rook_val;
                 }
             }
@@ -486,6 +480,15 @@ impl Evaluator {
             + w_features_map.protected_r_count * self.params.protected_r_val
             + w_features_map.np_protected_3rd_rank_sqr_count * self.params.np_protected_3rd_rank_sqr_pen
             + w_features_map.np_protected_4th_rank_sqr_count * self.params.np_protected_4th_rank_sqr_pen
+            + w_features_map.behind_pawn_count * self.params.mg_behind_pawn_pen
+            + w_features_map.isolated_pawn_count * self.params.mg_isolated_pawn_pen
+            + w_features_map.doubled_pawn_count * self.params.mg_doubled_pawn_pen
+            + w_features_map.passed_pawn_count * self.params.mg_passer_base_val
+            + w_features_map.passed_pawn_rank_count * self.params.mg_passer_rank_bonus
+            + w_features_map.candidate_passed_pawn_count * self.params.mg_candidate_passer_base_val
+            + w_features_map.candidate_passed_pawn_rank_count * self.params.mg_candidate_passer_rank_bonus
+            + w_features_map.unprotected_sqr_count * self.params.unprotected_sqr_pen
+            + w_features_map.under_attacked_sqr_count * self.params.under_attacked_sqr_pen
 
             - b_features_map.mg_sqr_point
             - b_features_map.pin_count * self.params.pin_pen
@@ -499,7 +502,16 @@ impl Evaluator {
             - b_features_map.protected_b_count * self.params.protected_b_val
             - b_features_map.protected_r_count * self.params.protected_r_val
             - b_features_map.np_protected_3rd_rank_sqr_count * self.params.np_protected_3rd_rank_sqr_pen
-            - b_features_map.np_protected_4th_rank_sqr_count * self.params.np_protected_4th_rank_sqr_pen;
+            - b_features_map.np_protected_4th_rank_sqr_count * self.params.np_protected_4th_rank_sqr_pen
+            - b_features_map.behind_pawn_count * self.params.mg_behind_pawn_pen
+            - b_features_map.isolated_pawn_count * self.params.mg_isolated_pawn_pen
+            - b_features_map.doubled_pawn_count * self.params.mg_doubled_pawn_pen
+            - b_features_map.passed_pawn_count * self.params.mg_passer_base_val
+            - b_features_map.passed_pawn_rank_count * self.params.mg_passer_rank_bonus
+            - b_features_map.candidate_passed_pawn_count * self.params.mg_candidate_passer_base_val
+            - b_features_map.candidate_passed_pawn_rank_count * self.params.mg_candidate_passer_rank_bonus
+            - b_features_map.unprotected_sqr_count * self.params.unprotected_sqr_pen
+            - b_features_map.under_attacked_sqr_count * self.params.under_attacked_sqr_pen;
 
         if state.bitboard.b_queen != 0 {
             if (state.cas_rights | state.cas_history) & 0b1100 == 0 {
@@ -515,15 +527,36 @@ impl Evaluator {
 
         let mut endgame_positional_score =
             w_features_map.eg_sqr_point
-            + w_features_map.passed_pawn_point
+            + w_features_map.passed_pawn_count * self.params.eg_passer_base_val
+            + w_features_map.passed_pawn_rank_count * self.params.eg_passer_rank_bonus
+            + w_features_map.candidate_passed_pawn_count * self.params.eg_candidate_passer_base_val
+            + w_features_map.candidate_passed_pawn_rank_count * self.params.eg_candidate_passer_rank_bonus
             + w_features_map.controlled_passed_pawn_count * self.params.eg_controlled_passer_val
             + w_features_map.eg_mobility
             + w_features_map.king_in_passer_path_count * self.params.eg_king_in_passer_path_bonus
+            + w_features_map.behind_pawn_count * self.params.mg_behind_pawn_pen
+            + w_features_map.isolated_pawn_count * self.params.mg_isolated_pawn_pen
+            + w_features_map.doubled_pawn_count * self.params.mg_doubled_pawn_pen
+            + w_features_map.protected_p_count * self.params.protected_p_val
+            + w_features_map.protected_n_count * self.params.protected_n_val
+            + w_features_map.protected_b_count * self.params.protected_b_val
+            + w_features_map.protected_r_count * self.params.protected_r_val
+
             - b_features_map.eg_sqr_point
-            - b_features_map.passed_pawn_point
+            - b_features_map.passed_pawn_count * self.params.eg_passer_base_val
+            - b_features_map.passed_pawn_rank_count * self.params.eg_passer_rank_bonus
+            - b_features_map.candidate_passed_pawn_count * self.params.eg_candidate_passer_base_val
+            - b_features_map.candidate_passed_pawn_rank_count * self.params.eg_candidate_passer_rank_bonus
             - b_features_map.controlled_passed_pawn_count * self.params.eg_controlled_passer_val
             - b_features_map.eg_mobility
-            - b_features_map.king_in_passer_path_count * self.params.eg_king_in_passer_path_bonus;
+            - b_features_map.king_in_passer_path_count * self.params.eg_king_in_passer_path_bonus
+            - b_features_map.behind_pawn_count * self.params.eg_behind_pawn_pen
+            - b_features_map.isolated_pawn_count * self.params.eg_isolated_pawn_pen
+            - b_features_map.doubled_pawn_count * self.params.eg_doubled_pawn_pen
+            - b_features_map.protected_p_count * self.params.protected_p_val
+            - b_features_map.protected_n_count * self.params.protected_n_val
+            - b_features_map.protected_b_count * self.params.protected_b_val
+            - b_features_map.protected_r_count * self.params.protected_r_val;
 
         let bitboard = state.bitboard;
         let bitmask = bitmask::get_bitmask();
@@ -547,18 +580,8 @@ impl Evaluator {
         let shared_positional_score =
             w_features_map.mobility
             + w_features_map.threat_point / self.params.threat_discount_factor
-            + w_features_map.behind_pawn_count * self.params.behind_pawn_pen
-            + w_features_map.isolated_pawn_count * self.params.isolated_pawn_pen
-            + w_features_map.doubled_pawn_count * self.params.doubled_pawn_pen
-            + w_features_map.unprotected_sqr_count * self.params.unprotected_sqr_pen
-            + w_features_map.under_attacked_sqr_count * self.params.under_attacked_sqr_pen
             - b_features_map.mobility
-            - b_features_map.threat_point / self.params.threat_discount_factor
-            - b_features_map.behind_pawn_count * self.params.behind_pawn_pen
-            - b_features_map.isolated_pawn_count * self.params.isolated_pawn_pen
-            - b_features_map.doubled_pawn_count * self.params.doubled_pawn_pen
-            - b_features_map.unprotected_sqr_count * self.params.unprotected_sqr_pen
-            - b_features_map.under_attacked_sqr_count * self.params.under_attacked_sqr_pen;
+            - b_features_map.threat_point / self.params.threat_discount_factor;
 
         let phase = get_phase(state);
 
@@ -631,7 +654,8 @@ impl Evaluator {
                     }
 
                     if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
-                        w_feature_map.passed_pawn_point += self.params.passer_base_val + (passer_rank - 1) * self.params.passer_rank_bonus;
+                        w_feature_map.passed_pawn_count += 1;
+                        w_feature_map.passed_pawn_rank_count += passer_rank - 1;
 
                         if forward_mask & bitmask.k_attack_masks[state.wk_index] != 0 {
                             w_feature_map.king_in_passer_path_count += 1;
@@ -652,7 +676,8 @@ impl Evaluator {
                             w_feature_map.eg_mobility += self.params.p_mob_score;
                         }
                     } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.b_pawn).count_ones() == 1 && bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
-                        w_feature_map.passed_pawn_point += self.params.candidate_passer_base_val + (passer_rank - 1) * self.params.candidate_passer_rank_bonus;
+                        w_feature_map.candidate_passed_pawn_count += 1;
+                        w_feature_map.candidate_passed_pawn_rank_count += passer_rank - 1;
                     }
 
                     if (file_mask & bitboard.w_pawn).count_ones() > 1 {
@@ -683,7 +708,8 @@ impl Evaluator {
                     }
 
                     if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
-                        b_feature_map.passed_pawn_point += self.params.passer_base_val + (passer_rank - 1) *  self.params.passer_rank_bonus;
+                        b_feature_map.passed_pawn_count += 1;
+                        b_feature_map.passed_pawn_rank_count += passer_rank - 1;
 
                         if forward_mask & bitmask.k_attack_masks[state.bk_index] != 0 {
                             b_feature_map.king_in_passer_path_count += 1;
@@ -704,7 +730,8 @@ impl Evaluator {
                             b_feature_map.eg_mobility += self.params.p_mob_score;
                         }
                     } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.w_pawn).count_ones() == 1 && bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
-                        b_feature_map.passed_pawn_point += self.params.candidate_passer_base_val + (passer_rank - 1) * self.params.candidate_passer_rank_bonus;
+                        b_feature_map.candidate_passed_pawn_count += 1;
+                        b_feature_map.candidate_passed_pawn_rank_count += passer_rank - 1;
                     }
 
                     if (file_mask & bitboard.b_pawn).count_ones() > 1 {
@@ -813,6 +840,16 @@ impl Evaluator {
 
         let b_attack_without_king_mask = bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask;
         let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
+
+        w_feature_map.protected_p_count = (bitboard.w_pawn & w_attack_mask).count_ones() as i32;
+        w_feature_map.protected_n_count = (bitboard.w_knight & w_attack_mask).count_ones() as i32;
+        w_feature_map.protected_b_count = (bitboard.w_bishop & w_attack_mask).count_ones() as i32;
+        w_feature_map.protected_r_count = (bitboard.w_rook & w_attack_mask).count_ones() as i32;
+
+        b_feature_map.protected_p_count = (bitboard.b_pawn & b_attack_mask).count_ones() as i32;
+        b_feature_map.protected_n_count = (bitboard.b_knight & b_attack_mask).count_ones() as i32;
+        b_feature_map.protected_b_count = (bitboard.b_bishop & b_attack_mask).count_ones() as i32;
+        b_feature_map.protected_r_count = (bitboard.b_rook & b_attack_mask).count_ones() as i32;
 
         w_feature_map.np_protected_3rd_rank_sqr_count = (W_3RD_RANK_MASK & !wp_attack_mask).count_ones() as i32;
         w_feature_map.np_protected_4th_rank_sqr_count = (W_4TH_RANK_MASK & !wp_attack_mask).count_ones() as i32;
