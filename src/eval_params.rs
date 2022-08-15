@@ -14,6 +14,12 @@ pub struct EvalParams {
     pub eg_n_val: i32,
     pub eg_p_val: i32,
 
+    pub pp_q_val: i32,
+    pub pp_r_val: i32,
+    pub pp_b_val: i32,
+    pub pp_n_val: i32,
+    pub pp_p_val: i32,
+
     pub mg_isolated_pawn_pen: i32,
     pub mg_doubled_pawn_pen: i32,
     pub mg_behind_pawn_pen: i32,
@@ -102,6 +108,12 @@ impl EvalParams {
             eg_n_val: 490,
             eg_p_val: 120,
 
+            pp_q_val: 0,
+            pp_r_val: 0,
+            pp_b_val: 0,
+            pp_n_val: 0,
+            pp_p_val: 0,
+
             mg_isolated_pawn_pen: 0,
             mg_doubled_pawn_pen: 0,
             mg_behind_pawn_pen: -10,
@@ -138,13 +150,13 @@ impl EvalParams {
             unprotected_sqr_pen: -1,
             under_attacked_sqr_pen: -1,
 
-            protected_p_val: 0,
-            protected_n_val: 0,
-            protected_b_val: 0,
-            protected_r_val: 0,
+            protected_p_val: 10,
+            protected_n_val: 1,
+            protected_b_val: 1,
+            protected_r_val: 1,
 
-            np_protected_3rd_rank_sqr_pen: 0,
-            np_protected_4th_rank_sqr_pen: 0,
+            np_protected_3rd_rank_sqr_pen: -8,
+            np_protected_4th_rank_sqr_pen: -4,
 
             p_mob_score: 5,
             n_mob_score: 5,
@@ -189,6 +201,12 @@ impl EvalParams {
             eg_b_val: config_map.get("eg_b_val").unwrap().parse::<i32>().unwrap(),
             eg_n_val: config_map.get("eg_n_val").unwrap().parse::<i32>().unwrap(),
             eg_p_val: config_map.get("eg_p_val").unwrap().parse::<i32>().unwrap(),
+
+            pp_q_val: config_map.get("pp_q_val").unwrap().parse::<i32>().unwrap(),
+            pp_r_val: config_map.get("pp_r_val").unwrap().parse::<i32>().unwrap(),
+            pp_b_val: config_map.get("pp_b_val").unwrap().parse::<i32>().unwrap(),
+            pp_n_val: config_map.get("pp_n_val").unwrap().parse::<i32>().unwrap(),
+            pp_p_val: config_map.get("pp_p_val").unwrap().parse::<i32>().unwrap(),
 
             mg_isolated_pawn_pen: config_map.get("mg_isolated_pawn_pen").unwrap().parse::<i32>().unwrap(),
             mg_doubled_pawn_pen: config_map.get("mg_doubled_pawn_pen").unwrap().parse::<i32>().unwrap(),

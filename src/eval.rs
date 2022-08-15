@@ -20,6 +20,7 @@ const R_PHASE_WEIGHT: i32 = 8;
 const B_PHASE_WEIGHT: i32 = 4;
 const N_PHASE_WEIGHT: i32 = 4;
 const EG_PHASE: i32 = 32;
+const TOTAL_PAWN_PHASE: i32 = 16;
 
 const SQR_TABLE_BP: [i32; def::BOARD_SIZE] = [
       0,  0,  0,  0,  0,  0,  0,  0,
@@ -203,10 +204,12 @@ const W_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_0000
 const B_3RD_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
 const B_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_11111111_00000000_00000000_00000000_00000000;
 
+#[inline]
 pub fn is_in_endgame(state: &mut State) -> bool {
     get_phase(state) <= EG_PHASE
 }
 
+#[inline]
 pub fn get_phase(state: &mut State) -> i32 {
     (state.wq_count + state.bq_count) * Q_PHASE_WEIGHT
     + (state.wr_count + state.br_count) * R_PHASE_WEIGHT
@@ -214,6 +217,12 @@ pub fn get_phase(state: &mut State) -> i32 {
     + (state.wn_count + state.bn_count) * N_PHASE_WEIGHT
 }
 
+#[inline]
+pub fn get_pawn_phase(state: &mut State) -> i32 {
+    state.wp_count + state.bp_count
+}
+
+#[inline]
 pub fn has_promoting_pawn(state: &State, player: u8) -> bool {
     if player == def::PLAYER_W {
         state.bitboard.w_pawn & W_PAWN_PROMO_RANK != 0
@@ -222,6 +231,7 @@ pub fn has_promoting_pawn(state: &State, player: u8) -> bool {
     }
 }
 
+#[inline]
 pub fn get_sqr_diff_val(piece: u8, from: usize, to: usize) -> i32 {
     match piece {
         def::WP => SQR_TABLE_WP[to] - SQR_TABLE_WP[from],
@@ -400,15 +410,22 @@ impl Evaluator {
             + (w_knight_count - b_knight_count) * self.params.mg_n_val
             + (w_pawn_count - b_pawn_count) * self.params.mg_p_val;
 
-        let eg_score = (w_queen_count - b_queen_count) * self.params.mg_q_val
-        + (w_rook_count - b_rook_count) * self.params.mg_r_val
-        + (w_bishop_count - b_bishop_count) * self.params.mg_b_val
-        + (w_knight_count - b_knight_count) * self.params.mg_n_val
-        + (w_pawn_count - b_pawn_count) * self.params.mg_p_val;
+        let eg_score = (w_queen_count - b_queen_count) * self.params.eg_q_val
+        + (w_rook_count - b_rook_count) * self.params.eg_r_val
+        + (w_bishop_count - b_bishop_count) * self.params.eg_b_val
+        + (w_knight_count - b_knight_count) * self.params.eg_n_val
+        + (w_pawn_count - b_pawn_count) * self.params.eg_p_val;
+
+        let pp_score = (w_queen_count - b_queen_count) * self.params.pp_q_val
+        + (w_rook_count - b_rook_count) * self.params.pp_r_val
+        + (w_bishop_count - b_bishop_count) * self.params.pp_b_val
+        + (w_knight_count - b_knight_count) * self.params.pp_n_val
+        + (w_pawn_count - b_pawn_count) * self.params.pp_p_val;
 
         let phase = get_phase(state);
+        let pawn_phase = get_pawn_phase(state);
 
-        let material_score = mg_score * phase / TOTAL_PHASE + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE;
+        let material_score = mg_score * phase / TOTAL_PHASE + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE + pp_score * pawn_phase / TOTAL_PAWN_PHASE;
 
         let mut eg_pos_score = 0;
 
@@ -864,14 +881,14 @@ impl Evaluator {
         let b_attack_mask = b_attack_without_king_mask | bk_ring_mask;
 
         w_feature_map.protected_p_count = (bitboard.w_pawn & w_attack_mask).count_ones() as i32;
-        w_feature_map.protected_n_count = (bitboard.w_knight & w_attack_mask).count_ones() as i32;
-        w_feature_map.protected_b_count = (bitboard.w_bishop & w_attack_mask).count_ones() as i32;
-        w_feature_map.protected_r_count = (bitboard.w_rook & w_attack_mask).count_ones() as i32;
+        w_feature_map.protected_n_count = (bitboard.w_knight & w_attack_mask & !bp_attack_mask).count_ones() as i32;
+        w_feature_map.protected_b_count = (bitboard.w_bishop & w_attack_mask & !bp_attack_mask).count_ones() as i32;
+        w_feature_map.protected_r_count = (bitboard.w_rook & w_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask)).count_ones() as i32;
 
         b_feature_map.protected_p_count = (bitboard.b_pawn & b_attack_mask).count_ones() as i32;
-        b_feature_map.protected_n_count = (bitboard.b_knight & b_attack_mask).count_ones() as i32;
-        b_feature_map.protected_b_count = (bitboard.b_bishop & b_attack_mask).count_ones() as i32;
-        b_feature_map.protected_r_count = (bitboard.b_rook & b_attack_mask).count_ones() as i32;
+        b_feature_map.protected_n_count = (bitboard.b_knight & b_attack_mask & !wp_attack_mask).count_ones() as i32;
+        b_feature_map.protected_b_count = (bitboard.b_bishop & b_attack_mask & !wp_attack_mask).count_ones() as i32;
+        b_feature_map.protected_r_count = (bitboard.b_rook & b_attack_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask)).count_ones() as i32;
 
         w_feature_map.np_protected_3rd_rank_sqr_count = (W_3RD_RANK_MASK & !wp_attack_mask).count_ones() as i32;
         w_feature_map.np_protected_4th_rank_sqr_count = (W_4TH_RANK_MASK & !wp_attack_mask).count_ones() as i32;
