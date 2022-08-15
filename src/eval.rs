@@ -222,24 +222,6 @@ pub fn has_promoting_pawn(state: &State, player: u8) -> bool {
     }
 }
 
-pub fn get_sqr_diff_val(piece: u8, from: usize, to: usize) -> i32 {
-    match piece {
-        def::WP => SQR_TABLE_WP[to] - SQR_TABLE_WP[from],
-        def::WN => SQR_TABLE_WN[to] - SQR_TABLE_WN[from],
-        def::WB => SQR_TABLE_WB[to] - SQR_TABLE_WB[from],
-        def::WR => SQR_TABLE_WR[to] - SQR_TABLE_WR[from],
-        def::WQ => SQR_TABLE_WQ[to] - SQR_TABLE_WQ[from],
-
-        def::BP => SQR_TABLE_BP[to] - SQR_TABLE_BP[from],
-        def::BN => SQR_TABLE_BN[to] - SQR_TABLE_BN[from],
-        def::BB => SQR_TABLE_BB[to] - SQR_TABLE_BB[from],
-        def::BR => SQR_TABLE_BR[to] - SQR_TABLE_BR[from],
-        def::BQ => SQR_TABLE_BQ[to] - SQR_TABLE_BQ[from],
-
-        _ => 0,
-    }
-}
-
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     mg_sqr_point: i32,
@@ -263,6 +245,7 @@ pub struct FeatureMap {
     rook_open_count: i32,
     rook_semi_open_count: i32,
 
+    threat_point: i32,
     pin_count: i32,
     semi_pin_count: i32,
 
@@ -305,6 +288,7 @@ impl FeatureMap {
             rook_open_count: 0,
             rook_semi_open_count: 0,
 
+            threat_point: 0,
             pin_count: 0,
             semi_pin_count: 0,
 
@@ -599,7 +583,9 @@ impl Evaluator {
 
         let shared_positional_score =
             w_features_map.mobility
-            - b_features_map.mobility;
+            + w_features_map.threat_point / self.params.threat_discount_factor
+            - b_features_map.mobility
+            - b_features_map.threat_point / self.params.threat_discount_factor;
 
         let phase = get_phase(state);
 
@@ -1020,6 +1006,7 @@ impl Evaluator {
                 continue;
             }
 
+            let threat_val = self.val_of(piece);
             let index_mask = bitmask.index_masks[index];
             let mov_mask = mov_mask_map[index];
 
@@ -1090,10 +1077,24 @@ impl Evaluator {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WP[index];
                     w_feature_map.eg_sqr_point += SQR_TABLE_WP_ENDGAME[index];
 
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    }
+
                     w_feature_map.king_attack_count += 1;
                 },
                 def::WN => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WN[index];
+
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BP);
+                    }
 
                     let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
@@ -1113,6 +1114,14 @@ impl Evaluator {
                 def::WB => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WB[index];
 
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BP);
+                    }
+
                     let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
                         w_feature_map.mobility += self.params.b_mob_zero_pen;
@@ -1131,6 +1140,16 @@ impl Evaluator {
                 def::WR => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WR[index];
 
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BP);
+                    } else if index_mask & (bn_attack_mask | bb_attack_mask) != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BN);
+                    }
+
                     let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
                         w_feature_map.mobility += self.params.r_mob_zero_pen;
@@ -1148,6 +1167,18 @@ impl Evaluator {
                 },
                 def::WQ => {
                     w_feature_map.mg_sqr_point += SQR_TABLE_WQ[index];
+
+                    if index_mask & w_attack_mask == 0 {
+                        if index_mask & b_attack_mask != 0 {
+                            w_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & bp_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BP);
+                    } else if index_mask & (bn_attack_mask | bb_attack_mask) != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BN);
+                    } else if index_mask & br_attack_mask != 0 {
+                        w_feature_map.threat_point -= threat_val - self.val_of(def::BR);
+                    }
 
                     let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
@@ -1172,10 +1203,24 @@ impl Evaluator {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BP[index];
                     b_feature_map.eg_sqr_point += SQR_TABLE_BP_ENDGAME[index];
 
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    }
+
                     b_feature_map.king_attack_count += 1;
                 },
                 def::BN => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BN[index];
+
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WP);
+                    }
 
                     let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
@@ -1195,6 +1240,14 @@ impl Evaluator {
                 def::BB => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BB[index];
 
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WP);
+                    }
+
                     let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
                         b_feature_map.mobility += self.params.b_mob_zero_pen;
@@ -1213,6 +1266,16 @@ impl Evaluator {
                 def::BR => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BR[index];
 
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WP);
+                    } else if index_mask & (wn_attack_mask | wb_attack_mask) != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WN);
+                    }
+
                     let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
                         b_feature_map.mobility += self.params.r_mob_zero_pen;
@@ -1230,6 +1293,18 @@ impl Evaluator {
                 },
                 def::BQ => {
                     b_feature_map.mg_sqr_point += SQR_TABLE_BQ[index];
+
+                    if index_mask & b_attack_mask == 0 {
+                        if index_mask & w_attack_mask != 0 {
+                            b_feature_map.threat_point -= threat_val;
+                        }
+                    } else if index_mask & wp_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WP);
+                    } else if index_mask & (wn_attack_mask | wb_attack_mask) != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WN);
+                    } else if index_mask & wr_attack_mask != 0 {
+                        b_feature_map.threat_point -= threat_val - self.val_of(def::WR);
+                    }
 
                     let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {

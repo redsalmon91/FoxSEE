@@ -138,13 +138,13 @@ impl EvalParams {
             unprotected_sqr_pen: -1,
             under_attacked_sqr_pen: -1,
 
-            protected_p_val: 1,
-            protected_n_val: 1,
-            protected_b_val: 1,
-            protected_r_val: 1,
+            protected_p_val: 0,
+            protected_n_val: 0,
+            protected_b_val: 0,
+            protected_r_val: 0,
 
-            np_protected_3rd_rank_sqr_pen: -4,
-            np_protected_4th_rank_sqr_pen: -2,
+            np_protected_3rd_rank_sqr_pen: 0,
+            np_protected_4th_rank_sqr_pen: 0,
 
             p_mob_score: 5,
             n_mob_score: 5,
