@@ -12,7 +12,6 @@ mod mov_table;
 mod prng;
 mod search;
 mod search_params;
-mod simple_rnd;
 mod state;
 mod time_control;
 mod uci;

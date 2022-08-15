@@ -14,7 +14,6 @@ use crate::{
     },
     mov_table,
     state::State,
-    simple_rnd::SimpleRnd,
     search_params::SearchParams,
     time_control::TimeCapacity,
     util,
@@ -46,7 +45,6 @@ struct OrderedQMov {
 pub struct SearchEngine {
     evaluator: eval::Evaluator,
     depth_preferred_hash_table: DepthPreferredHashTable,
-    rand: SimpleRnd,
 
     primary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
     secondary_killer_table: [(u32, i32, u8); PV_TRACK_LENGTH],
@@ -71,7 +69,6 @@ impl SearchEngine {
         SearchEngine {
             evaluator: eval::Evaluator::new(),
             depth_preferred_hash_table: DepthPreferredHashTable::new(hash_size),
-            rand: SimpleRnd::new(),
 
             primary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
             secondary_killer_table: [(0, 0, 0); PV_TRACK_LENGTH],
@@ -502,7 +499,7 @@ impl SearchEngine {
                     } else if history_score != 0 {
                         ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score;
                     } else {
-                        ordered_mov.sort_score = self.rand.next_rnd();
+                        ordered_mov.sort_score = eval::get_sqr_diff_val(state.squares[from], from, to);
                     }
                 }
 

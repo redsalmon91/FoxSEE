@@ -222,6 +222,24 @@ pub fn has_promoting_pawn(state: &State, player: u8) -> bool {
     }
 }
 
+pub fn get_sqr_diff_val(piece: u8, from: usize, to: usize) -> i32 {
+    match piece {
+        def::WP => SQR_TABLE_WP[to] - SQR_TABLE_WP[from],
+        def::WN => SQR_TABLE_WN[to] - SQR_TABLE_WN[from],
+        def::WB => SQR_TABLE_WB[to] - SQR_TABLE_WB[from],
+        def::WR => SQR_TABLE_WR[to] - SQR_TABLE_WR[from],
+        def::WQ => SQR_TABLE_WQ[to] - SQR_TABLE_WQ[from],
+
+        def::BP => SQR_TABLE_BP[to] - SQR_TABLE_BP[from],
+        def::BN => SQR_TABLE_BN[to] - SQR_TABLE_BN[from],
+        def::BB => SQR_TABLE_BB[to] - SQR_TABLE_BB[from],
+        def::BR => SQR_TABLE_BR[to] - SQR_TABLE_BR[from],
+        def::BQ => SQR_TABLE_BQ[to] - SQR_TABLE_BQ[from],
+
+        _ => 0,
+    }
+}
+
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
     mg_sqr_point: i32,
