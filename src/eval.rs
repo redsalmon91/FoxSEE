@@ -345,18 +345,18 @@ impl Evaluator {
         match piece {
             0 => 0,
             def::WK => MATE_VAL,
-            def::WQ => self.params.q_val,
-            def::WR => self.params.r_val,
-            def::WB => self.params.b_val,
-            def::WN => self.params.n_val,
-            def::WP => self.params.p_val,
+            def::WQ => self.params.mg_q_val,
+            def::WR => self.params.mg_r_val,
+            def::WB => self.params.mg_b_val,
+            def::WN => self.params.mg_n_val,
+            def::WP => self.params.mg_p_val,
 
             def::BK => MATE_VAL,
-            def::BQ => self.params.q_val,
-            def::BR => self.params.r_val,
-            def::BB => self.params.b_val,
-            def::BN => self.params.n_val,
-            def::BP => self.params.p_val,
+            def::BQ => self.params.mg_q_val,
+            def::BR => self.params.mg_r_val,
+            def::BB => self.params.mg_b_val,
+            def::BN => self.params.mg_n_val,
+            def::BP => self.params.mg_p_val,
 
             _ => 0,
         }
@@ -392,20 +392,30 @@ impl Evaluator {
             }
         }
 
-        let material_score = (w_queen_count - b_queen_count) * self.params.q_val
-            + (w_rook_count - b_rook_count) * self.params.r_val
-            + (w_bishop_count - b_bishop_count) * self.params.b_val
-            + (w_knight_count - b_knight_count) * self.params.n_val
-            + (w_pawn_count - b_pawn_count) * self.params.p_val;
+        let mg_score = (w_queen_count - b_queen_count) * self.params.mg_q_val
+            + (w_rook_count - b_rook_count) * self.params.mg_r_val
+            + (w_bishop_count - b_bishop_count) * self.params.mg_b_val
+            + (w_knight_count - b_knight_count) * self.params.mg_n_val
+            + (w_pawn_count - b_pawn_count) * self.params.mg_p_val;
 
-        let mut eg_score = 0;
+        let eg_score = (w_queen_count - b_queen_count) * self.params.mg_q_val
+        + (w_rook_count - b_rook_count) * self.params.mg_r_val
+        + (w_bishop_count - b_bishop_count) * self.params.mg_b_val
+        + (w_knight_count - b_knight_count) * self.params.mg_n_val
+        + (w_pawn_count - b_pawn_count) * self.params.mg_p_val;
 
-        if material_score > self.params.p_val && bitboard.w_pawn == 0 {
-            eg_score -= self.params.eg_pawn_essential_val;
+        let phase = get_phase(state);
+
+        let material_score = mg_score * phase / TOTAL_PHASE + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE;
+
+        let mut eg_pos_score = 0;
+
+        if material_score > self.params.eg_p_val && bitboard.w_pawn == 0 {
+            eg_pos_score -= self.params.eg_pawn_essential_val;
         }
 
-        if material_score < -self.params.p_val && bitboard.b_pawn == 0 {
-            eg_score += self.params.eg_pawn_essential_val;
+        if material_score < -self.params.eg_p_val && bitboard.b_pawn == 0 {
+            eg_pos_score += self.params.eg_pawn_essential_val;
         }
 
         let mut is_endgame_with_different_colored_bishop = false;
@@ -434,31 +444,25 @@ impl Evaluator {
         if is_endgame_with_different_colored_bishop {
             if bitboard.w_rook | bitboard.b_rook == 0 {
                 if eg_score > 0  {
-                    eg_score -= self.params.eg_different_color_bishop_val;
+                    eg_pos_score -= self.params.eg_different_color_bishop_val;
                 } else if eg_score < 0 {
-                    eg_score += self.params.eg_different_color_bishop_val;
+                    eg_pos_score += self.params.eg_different_color_bishop_val;
                 }
             } else {
                 if eg_score > 0  {
-                    eg_score -= self.params.eg_different_color_bishop_with_rook_val;
+                    eg_pos_score -= self.params.eg_different_color_bishop_with_rook_val;
                 } else if eg_score < 0 {
-                    eg_score += self.params.eg_different_color_bishop_with_rook_val;
+                    eg_pos_score += self.params.eg_different_color_bishop_with_rook_val;
                 }
             }
         } else {
             if w_bishop_count > 1 {
-                eg_score += self.params.eg_bishop_pair_bonus;
+                eg_pos_score += self.params.eg_bishop_pair_bonus;
             }
 
             if b_bishop_count > 1 {
-                eg_score -= self.params.eg_bishop_pair_bonus;
+                eg_pos_score -= self.params.eg_bishop_pair_bonus;
             }
-        }
-
-        let phase = get_phase(state);
-
-        if phase == 0 {
-            eg_score += (w_pawn_count - b_pawn_count) * self.params.eg_no_piece_bonus;
         }
 
         let score_sign = if state.player == def::PLAYER_W {
@@ -467,7 +471,7 @@ impl Evaluator {
             -1
         };
 
-        ((material_score + eg_score * (TOTAL_PHASE - phase) / TOTAL_PHASE) * score_sign, false)
+        ((material_score + eg_pos_score * (TOTAL_PHASE - phase) / TOTAL_PHASE) * score_sign, false)
     }
 
     pub fn eval_state(&self, state: &mut State, material_score: i32) -> i32 {

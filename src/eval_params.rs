@@ -2,11 +2,17 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct EvalParams {
-    pub q_val: i32,
-    pub r_val: i32,
-    pub b_val: i32,
-    pub n_val: i32,
-    pub p_val: i32,
+    pub mg_q_val: i32,
+    pub mg_r_val: i32,
+    pub mg_b_val: i32,
+    pub mg_n_val: i32,
+    pub mg_p_val: i32,
+
+    pub eg_q_val: i32,
+    pub eg_r_val: i32,
+    pub eg_b_val: i32,
+    pub eg_n_val: i32,
+    pub eg_p_val: i32,
 
     pub mg_isolated_pawn_pen: i32,
     pub mg_doubled_pawn_pen: i32,
@@ -79,17 +85,22 @@ pub struct EvalParams {
     pub eg_rn_knight_protected_bonus: i32,
     pub eg_king_in_passer_path_bonus: i32,
     pub eg_controlled_passer_val: i32,
-    pub eg_no_piece_bonus: i32,
 }
 
 impl EvalParams {
     pub const fn default() -> Self {
         EvalParams {
-            q_val: 1400,
-            r_val: 732,
-            b_val: 500,
-            n_val: 490,
-            p_val: 120,
+            mg_q_val: 1400,
+            mg_r_val: 732,
+            mg_b_val: 500,
+            mg_n_val: 490,
+            mg_p_val: 120,
+
+            eg_q_val: 1400,
+            eg_r_val: 732,
+            eg_b_val: 500,
+            eg_n_val: 490,
+            eg_p_val: 120,
 
             mg_isolated_pawn_pen: 0,
             mg_doubled_pawn_pen: 0,
@@ -162,17 +173,22 @@ impl EvalParams {
             eg_rn_knight_protected_bonus: 50,
             eg_king_in_passer_path_bonus: 50,
             eg_controlled_passer_val: 50,
-            eg_no_piece_bonus: 50,
         }
     }
 
     pub fn from_config(config_map: &HashMap<String, String>) -> Self {
         EvalParams {
-            q_val: config_map.get("q_val").unwrap().parse::<i32>().unwrap(),
-            r_val: config_map.get("r_val").unwrap().parse::<i32>().unwrap(),
-            b_val: config_map.get("b_val").unwrap().parse::<i32>().unwrap(),
-            n_val: config_map.get("n_val").unwrap().parse::<i32>().unwrap(),
-            p_val: config_map.get("p_val").unwrap().parse::<i32>().unwrap(),
+            mg_q_val: config_map.get("mg_q_val").unwrap().parse::<i32>().unwrap(),
+            mg_r_val: config_map.get("mg_r_val").unwrap().parse::<i32>().unwrap(),
+            mg_b_val: config_map.get("mg_b_val").unwrap().parse::<i32>().unwrap(),
+            mg_n_val: config_map.get("mg_n_val").unwrap().parse::<i32>().unwrap(),
+            mg_p_val: config_map.get("mg_p_val").unwrap().parse::<i32>().unwrap(),
+
+            eg_q_val: config_map.get("eg_q_val").unwrap().parse::<i32>().unwrap(),
+            eg_r_val: config_map.get("eg_r_val").unwrap().parse::<i32>().unwrap(),
+            eg_b_val: config_map.get("eg_b_val").unwrap().parse::<i32>().unwrap(),
+            eg_n_val: config_map.get("eg_n_val").unwrap().parse::<i32>().unwrap(),
+            eg_p_val: config_map.get("eg_p_val").unwrap().parse::<i32>().unwrap(),
 
             mg_isolated_pawn_pen: config_map.get("mg_isolated_pawn_pen").unwrap().parse::<i32>().unwrap(),
             mg_doubled_pawn_pen: config_map.get("mg_doubled_pawn_pen").unwrap().parse::<i32>().unwrap(),
@@ -245,7 +261,6 @@ impl EvalParams {
             eg_rn_knight_protected_bonus: config_map.get("eg_rn_knight_protected_bonus").unwrap().parse::<i32>().unwrap(),
             eg_king_in_passer_path_bonus: config_map.get("eg_king_in_passer_path_bonus").unwrap().parse::<i32>().unwrap(),
             eg_controlled_passer_val: config_map.get("eg_controlled_passer_val").unwrap().parse::<i32>().unwrap(),
-            eg_no_piece_bonus: config_map.get("eg_no_piece_bonus").unwrap().parse::<i32>().unwrap(),
         }
     }
 }
