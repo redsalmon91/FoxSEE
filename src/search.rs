@@ -316,7 +316,7 @@ impl SearchEngine {
         }
 
         if !on_pv && !on_extend && !in_check {
-            if depth <= self.params.razoring_depth && !eval::has_promoting_pawn(state, state.player) {
+            if depth <= self.params.razoring_depth {
                 if static_eval + self.params.razoring_margin * depth as i32 <= alpha {
                     return self.q_search(state, alpha, beta, ply);
                 }
@@ -498,8 +498,6 @@ impl SearchEngine {
                         ordered_mov.sort_score = self.params.sorting_good_history_base_val + history_score / butterfly_score;
                     } else if history_score != 0 {
                         ordered_mov.sort_score = self.params.sorting_normal_history_base_val + history_score;
-                    } else {
-                        ordered_mov.sort_score = eval::get_sqr_diff_val(state.squares[from], from, to);
                     }
                 }
 
@@ -781,8 +779,6 @@ impl SearchEngine {
             alpha = static_eval;
         }
 
-        let in_endgame = eval::is_in_endgame(state);
-
         let original_alpha = alpha;
 
         let mut best_mov = 0;
@@ -838,12 +834,10 @@ impl SearchEngine {
             state.undo_mov(from, to, tp);
 
             if !illegal_mov {
-                if !in_endgame {
-                    let gain = self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo);
+                let gain = self.evaluator.val_of(state.squares[to]) + self.evaluator.val_of(promo);
 
-                    if static_eval + gain + self.params.delta_margin < alpha {
-                        continue;
-                    }
+                if static_eval + gain + self.params.delta_margin < alpha {
+                    continue;
                 }
 
                 let mvv_lva_score = self.mvv_lva(state, from, to, promo);
