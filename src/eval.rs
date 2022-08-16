@@ -35,6 +35,39 @@ const W_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_0000
 const B_3RD_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
 const B_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_11111111_00000000_00000000_00000000_00000000;
 
+const SQR_TIER_N: [i32; def::BOARD_SIZE] = [
+    0, 1, 1, 1, 1, 1, 1, 0,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 2, 3, 3, 3, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 3, 3, 3, 2, 1,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    0, 1, 1, 1, 1, 1, 1, 0,
+];
+
+const SQR_TIER_B: [i32; def::BOARD_SIZE] = [
+    0, 1, 1, 1, 1, 1, 1, 0,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 2, 2, 2, 2, 2, 2, 1,
+    0, 1, 1, 1, 1, 1, 1, 0,
+];
+
+const SQR_TIER_R: [i32; def::BOARD_SIZE] = [
+    1, 2, 2, 2, 2, 2, 2, 1,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    1, 2, 2, 2, 2, 2, 2, 1,
+];
+
 #[inline]
 pub fn get_phase(state: &mut State) -> i32 {
     (state.wq_count + state.bq_count) * Q_PHASE_WEIGHT
@@ -50,6 +83,10 @@ pub fn get_pawn_phase(state: &mut State) -> i32 {
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
+    n_sqr_count: i32,
+    b_sqr_count: i32,
+    r_sqr_count: i32,
+
     passer_count: i32,
     passer_rank_count: i32,
     candidate_passer_count: i32,
@@ -100,6 +137,10 @@ pub struct FeatureMap {
 impl FeatureMap {
     pub fn empty() -> Self {
         FeatureMap {
+            n_sqr_count: 0,
+            b_sqr_count: 0,
+            r_sqr_count: 0,
+
             passer_count: 0,
             passer_rank_count: 0,
             candidate_passer_count: 0,
@@ -325,7 +366,10 @@ impl Evaluator {
         let (w_features_map, b_features_map) = self.extract_features(state);
 
         let pos_mp_score =
-            w_features_map.pin_count * self.params.mp_pin_val
+            w_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
+            + w_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
+            + w_features_map.r_sqr_count * self.params.mp_r_sqr_base_val
+            + w_features_map.pin_count * self.params.mp_pin_val
             + w_features_map.semi_pin_count * self.params.mp_semi_pin_val
             + w_features_map.rook_open_count * self.params.mp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
@@ -360,6 +404,9 @@ impl Evaluator {
             + w_features_map.q_stuck_count * self.params.mp_q_stuck_val
             + w_features_map.threat_point / self.params.mp_threat_discount_factor
 
+            - b_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
+            - b_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
+            - b_features_map.r_sqr_count * self.params.mp_r_sqr_base_val
             - b_features_map.pin_count * self.params.mp_pin_val
             - b_features_map.semi_pin_count * self.params.mp_semi_pin_val
             - b_features_map.rook_open_count * self.params.mp_rook_open_val
@@ -396,7 +443,10 @@ impl Evaluator {
             - b_features_map.threat_point / self.params.mp_threat_discount_factor;
 
         let pos_pp_score =
-            w_features_map.pin_count * self.params.pp_pin_val
+            w_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
+            + w_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
+            + w_features_map.r_sqr_count * self.params.pp_r_sqr_base_val
+            + w_features_map.pin_count * self.params.pp_pin_val
             + w_features_map.semi_pin_count * self.params.pp_semi_pin_val
             + w_features_map.rook_open_count * self.params.pp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
@@ -431,6 +481,9 @@ impl Evaluator {
             + w_features_map.q_stuck_count * self.params.pp_q_stuck_val
             + w_features_map.threat_point / self.params.pp_threat_discount_factor
 
+            - b_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
+            - b_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
+            - b_features_map.r_sqr_count * self.params.pp_r_sqr_base_val
             - b_features_map.pin_count * self.params.pp_pin_val
             - b_features_map.semi_pin_count * self.params.pp_semi_pin_val
             - b_features_map.rook_open_count * self.params.pp_rook_open_val
@@ -940,6 +993,8 @@ impl Evaluator {
                     w_feature_map.pk_attack_count += 1;
                 },
                 def::WN => {
+                    w_feature_map.n_sqr_count += SQR_TIER_N[index];
+
                     if index_mask & w_attack_mask == 0 {
                         if index_mask & b_attack_mask != 0 {
                             w_feature_map.threat_point -= threat_val;
@@ -964,6 +1019,8 @@ impl Evaluator {
                     }
                 },
                 def::WB => {
+                    w_feature_map.b_sqr_count += SQR_TIER_B[index];
+
                     if index_mask & w_attack_mask == 0 {
                         if index_mask & b_attack_mask != 0 {
                             w_feature_map.threat_point -= threat_val;
@@ -988,6 +1045,8 @@ impl Evaluator {
                     }
                 },
                 def::WR => {
+                    w_feature_map.r_sqr_count += SQR_TIER_R[index];
+
                     if index_mask & w_attack_mask == 0 {
                         if index_mask & b_attack_mask != 0 {
                             w_feature_map.threat_point -= threat_val;
@@ -1051,6 +1110,8 @@ impl Evaluator {
                     b_feature_map.pk_attack_count += 1;
                 },
                 def::BN => {
+                    b_feature_map.n_sqr_count += SQR_TIER_N[index];
+
                     if index_mask & b_attack_mask == 0 {
                         if index_mask & w_attack_mask != 0 {
                             b_feature_map.threat_point -= threat_val;
@@ -1075,6 +1136,8 @@ impl Evaluator {
                     }
                 },
                 def::BB => {
+                    b_feature_map.b_sqr_count += SQR_TIER_B[index];
+
                     if index_mask & b_attack_mask == 0 {
                         if index_mask & w_attack_mask != 0 {
                             b_feature_map.threat_point -= threat_val;
@@ -1099,6 +1162,8 @@ impl Evaluator {
                     }
                 },
                 def::BR => {
+                    b_feature_map.r_sqr_count += SQR_TIER_R[index];
+
                     if index_mask & b_attack_mask == 0 {
                         if index_mask & w_attack_mask != 0 {
                             b_feature_map.threat_point -= threat_val;

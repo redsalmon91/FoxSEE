@@ -18,6 +18,13 @@ pub struct EvalParams {
     pub pp_n_val: i32,
     pub pp_p_val: i32,
 
+    pub mp_n_sqr_base_val: i32,
+    pub mp_b_sqr_base_val: i32,
+    pub mp_r_sqr_base_val: i32,
+    pub pp_n_sqr_base_val: i32,
+    pub pp_b_sqr_base_val: i32,
+    pub pp_r_sqr_base_val: i32,
+
     pub mp_isolated_pawn_val: i32,
     pub mp_doubled_pawn_val: i32,
     pub mp_behind_pawn_val: i32,
@@ -132,6 +139,13 @@ impl EvalParams {
             pp_n_val: 0,
             pp_p_val: 0,
 
+            mp_n_sqr_base_val: 0,
+            mp_b_sqr_base_val: 0,
+            mp_r_sqr_base_val: 0,
+            pp_n_sqr_base_val: 0,
+            pp_b_sqr_base_val: 0,
+            pp_r_sqr_base_val: 0,
+
             mp_isolated_pawn_val: 0,
             mp_doubled_pawn_val: 0,
             mp_behind_pawn_val: 0,
@@ -245,6 +259,13 @@ impl EvalParams {
             pp_b_val: config_map.get("pp_b_val").unwrap().parse::<i32>().unwrap(),
             pp_n_val: config_map.get("pp_n_val").unwrap().parse::<i32>().unwrap(),
             pp_p_val: config_map.get("pp_p_val").unwrap().parse::<i32>().unwrap(),
+
+            mp_n_sqr_base_val: config_map.get("mp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_b_sqr_base_val: config_map.get("mp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_r_sqr_base_val: config_map.get("mp_r_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_n_sqr_base_val: config_map.get("pp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_b_sqr_base_val: config_map.get("pp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_r_sqr_base_val: config_map.get("pp_r_sqr_base_val").unwrap().parse::<i32>().unwrap(),
 
             mp_isolated_pawn_val: config_map.get("mp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
             mp_doubled_pawn_val: config_map.get("mp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
