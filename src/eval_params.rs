@@ -124,6 +124,16 @@ pub struct EvalParams {
     pub pp_r_mob_base_val: i32,
     pub pp_q_mob_base_val: i32,
 
+    pub mp_n_weak_mob_base_val: i32,
+    pub mp_b_weak_mob_base_val: i32,
+    pub mp_r_weak_mob_base_val: i32,
+    pub mp_q_weak_mob_base_val: i32,
+
+    pub pp_n_weak_mob_base_val: i32,
+    pub pp_b_weak_mob_base_val: i32,
+    pub pp_r_weak_mob_base_val: i32,
+    pub pp_q_weak_mob_base_val: i32,
+
     pub mp_n_stuck_val: i32,
     pub mp_b_stuck_val: i32,
     pub mp_r_stuck_val: i32,
@@ -278,6 +288,16 @@ impl EvalParams {
             pp_r_mob_base_val: 0,
             pp_q_mob_base_val: 0,
 
+            mp_n_weak_mob_base_val: 0,
+            mp_b_weak_mob_base_val: 0,
+            mp_r_weak_mob_base_val: 0,
+            mp_q_weak_mob_base_val: 0,
+
+            pp_n_weak_mob_base_val: 0,
+            pp_b_weak_mob_base_val: 0,
+            pp_r_weak_mob_base_val: 0,
+            pp_q_weak_mob_base_val: 0,
+
             mp_n_stuck_val: 0,
             mp_b_stuck_val: 0,
             mp_r_stuck_val: 0,
@@ -288,7 +308,7 @@ impl EvalParams {
             pp_r_stuck_val: 0,
             pp_q_stuck_val: 0,
 
-            mp_threat_discount_factor: 16,
+            mp_threat_discount_factor: 128,
             pp_threat_discount_factor: 128,
 
             mp_tempo_val: 0,
@@ -419,6 +439,16 @@ impl EvalParams {
             pp_b_mob_base_val: config_map.get("pp_b_mob_base_val").unwrap().parse::<i32>().unwrap(),
             pp_r_mob_base_val: config_map.get("pp_r_mob_base_val").unwrap().parse::<i32>().unwrap(),
             pp_q_mob_base_val: config_map.get("pp_q_mob_base_val").unwrap().parse::<i32>().unwrap(),
+
+            mp_n_weak_mob_base_val: config_map.get("mp_n_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_b_weak_mob_base_val: config_map.get("mp_b_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_r_weak_mob_base_val: config_map.get("mp_r_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_q_weak_mob_base_val: config_map.get("mp_q_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+
+            pp_n_weak_mob_base_val: config_map.get("pp_n_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_b_weak_mob_base_val: config_map.get("pp_b_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_r_weak_mob_base_val: config_map.get("pp_r_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_q_weak_mob_base_val: config_map.get("pp_q_weak_mob_base_val").unwrap().parse::<i32>().unwrap(),
 
             mp_n_stuck_val: config_map.get("mp_n_stuck_val").unwrap().parse::<i32>().unwrap(),
             mp_b_stuck_val: config_map.get("mp_b_stuck_val").unwrap().parse::<i32>().unwrap(),
