@@ -48,16 +48,16 @@ impl SearchParams {
             internal_iterative_deepening_reduction: 2,
 
             futility_pruning_depth: 7,
-            futility_pruning_margin: 85,
+            futility_pruning_margin: 120,
 
             razoring_depth: 2,
-            razoring_margin: 524,
+            razoring_margin: 500,
 
             singular_extension_margin: 132,
 
             aspiration_window_size: 50,
 
-            delta_margin: 240,
+            delta_margin: 200,
 
             sorting_capture_base_val: 1_000_000_000,
             sorting_mvv_lva_extra_base_val: 500,
@@ -68,9 +68,9 @@ impl SearchParams {
 
             sorting_checker_bonus: 50,
 
-            sorting_counter_move_val: -20,
-            sorting_killer_primary_val: -30,
-            sorting_killer_secondary_val: -40,
+            sorting_counter_move_val: -99,
+            sorting_killer_primary_val: -98,
+            sorting_killer_secondary_val: -97,
 
             late_move_reductions_depth: 2,
             late_move_reductions_move_count: 1,

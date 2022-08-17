@@ -68,6 +68,83 @@ const SQR_TIER_R: [i32; def::BOARD_SIZE] = [
     1, 2, 2, 2, 2, 2, 2, 1,
 ];
 
+const SQR_TIER_WK: [i32; def::BOARD_SIZE] = [
+    1, 2, 1, 0, 0, 0, 2, 1,
+    1, 1, 0, 0, 0, 0, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+const SQR_TIER_BK: [i32; def::BOARD_SIZE] = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    1, 1, 0, 0, 0, 0, 1, 1,
+    1, 2, 1, 0, 0, 0, 2, 1,
+];
+
+const SQR_TIER_K_EG: [i32; def::BOARD_SIZE] = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 0,
+    0, 1, 2, 2, 2, 2, 1, 0,
+    0, 1, 2, 3, 3, 2, 1, 0,
+    0, 1, 2, 3, 3, 2, 1, 0,
+    0, 1, 2, 2, 2, 2, 1, 0,
+    0, 1, 1, 1, 1, 1, 1, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+const SQR_TIER_WP: [i32; def::BOARD_SIZE] = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    2, 2, 2, 3, 3, 2, 2, 2,
+    2, 3, 3, 4, 4, 3, 3, 2,
+    2, 3, 4, 5, 5, 4, 3, 2,
+    2, 3, 4, 5, 5, 4, 3, 2,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+const SQR_TIER_WP_EG: [i32; def::BOARD_SIZE] = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+const SQR_TIER_BP: [i32; def::BOARD_SIZE] = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    2, 3, 4, 5, 5, 4, 3, 2,
+    2, 3, 4, 5, 5, 4, 3, 2,
+    2, 3, 3, 4, 4, 3, 3, 2,
+    2, 2, 2, 3, 3, 2, 2, 2,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+const SQR_TIER_BP_EG: [i32; def::BOARD_SIZE] = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    5, 5, 5, 5, 5, 5, 5, 5,
+    4, 4, 4, 4, 4, 4, 4, 4,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
 #[inline]
 pub fn get_phase(state: &mut State) -> i32 {
     (state.wq_count + state.bq_count) * Q_PHASE_WEIGHT
@@ -83,9 +160,13 @@ pub fn get_pawn_phase(state: &mut State) -> i32 {
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
+    p_sqr_count: i32,
+    p_eg_sqr_count: i32,
     n_sqr_count: i32,
     b_sqr_count: i32,
     r_sqr_count: i32,
+    k_sqr_count: i32,
+    k_eg_sqr_count: i32,
 
     passer_count: i32,
     passer_rank_count: i32,
@@ -110,7 +191,12 @@ pub struct FeatureMap {
     rk_attack_count: i32,
     qk_attack_count: i32,
 
-    king_exposure_count: i32,
+    king_pawn_protection_count: i32,
+    king_front_open_count: i32,
+    king_front_total_open_count: i32,
+    king_front_enery_pawn_cover_count: i32,
+    king_side_file_open_count: i32,
+    king_near_side_file_open_count: i32,
 
     unprotected_sqr_count: i32,
     under_attacked_sqr_count: i32,
@@ -137,9 +223,13 @@ pub struct FeatureMap {
 impl FeatureMap {
     pub fn empty() -> Self {
         FeatureMap {
+            p_sqr_count: 0,
+            p_eg_sqr_count: 0,
             n_sqr_count: 0,
             b_sqr_count: 0,
             r_sqr_count: 0,
+            k_sqr_count: 0,
+            k_eg_sqr_count: 0,
 
             passer_count: 0,
             passer_rank_count: 0,
@@ -163,7 +253,13 @@ impl FeatureMap {
             bk_attack_count: 0,
             rk_attack_count: 0,
             qk_attack_count: 0,
-            king_exposure_count: 0,
+
+            king_pawn_protection_count: 0,
+            king_front_open_count: 0,
+            king_front_total_open_count: 0,
+            king_front_enery_pawn_cover_count: 0,
+            king_side_file_open_count: 0,
+            king_near_side_file_open_count: 0,
 
             unprotected_sqr_count: 0,
             under_attacked_sqr_count: 0,
@@ -366,14 +462,23 @@ impl Evaluator {
         let (w_features_map, b_features_map) = self.extract_features(state);
 
         let pos_mp_score =
-            w_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
+            w_features_map.p_sqr_count * self.params.mp_p_sqr_base_val
+            + w_features_map.p_eg_sqr_count * self.params.mp_p_eg_sqr_base_val
+            + w_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
             + w_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
             + w_features_map.r_sqr_count * self.params.mp_r_sqr_base_val
+            + w_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
+            + w_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             + w_features_map.pin_count * self.params.mp_pin_val
             + w_features_map.semi_pin_count * self.params.mp_semi_pin_val
             + w_features_map.rook_open_count * self.params.mp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
-            + w_features_map.king_exposure_count * self.params.mp_k_exposure_val
+            + w_features_map.king_pawn_protection_count * self.params.mp_king_pawn_protection_val
+            + w_features_map.king_front_open_count * self.params.mp_king_front_open_val
+            + w_features_map.king_front_total_open_count * self.params.mp_king_front_total_open_val
+            + w_features_map.king_front_enery_pawn_cover_count * self.params.mp_king_front_enery_pawn_cover_val
+            + w_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
+            + w_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
             + w_features_map.pk_attack_count * self.params.mp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.mp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.mp_bk_attack_val
@@ -404,14 +509,23 @@ impl Evaluator {
             + w_features_map.q_stuck_count * self.params.mp_q_stuck_val
             + w_features_map.threat_point / self.params.mp_threat_discount_factor
 
+            - b_features_map.p_sqr_count * self.params.mp_p_sqr_base_val
+            - b_features_map.p_eg_sqr_count * self.params.mp_p_eg_sqr_base_val
             - b_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
             - b_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
             - b_features_map.r_sqr_count * self.params.mp_r_sqr_base_val
+            - b_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
+            - b_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             - b_features_map.pin_count * self.params.mp_pin_val
             - b_features_map.semi_pin_count * self.params.mp_semi_pin_val
             - b_features_map.rook_open_count * self.params.mp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
-            - b_features_map.king_exposure_count * self.params.mp_k_exposure_val
+            - b_features_map.king_pawn_protection_count * self.params.mp_king_pawn_protection_val
+            - b_features_map.king_front_open_count * self.params.mp_king_front_open_val
+            - b_features_map.king_front_total_open_count * self.params.mp_king_front_total_open_val
+            - b_features_map.king_front_enery_pawn_cover_count * self.params.mp_king_front_enery_pawn_cover_val
+            - b_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
+            - b_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
             - b_features_map.pk_attack_count * self.params.mp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.mp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.mp_bk_attack_val
@@ -443,14 +557,23 @@ impl Evaluator {
             - b_features_map.threat_point / self.params.mp_threat_discount_factor;
 
         let pos_pp_score =
-            w_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
+            w_features_map.p_sqr_count * self.params.pp_p_sqr_base_val
+            + w_features_map.p_eg_sqr_count * self.params.pp_p_eg_sqr_base_val
+            + w_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
             + w_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
             + w_features_map.r_sqr_count * self.params.pp_r_sqr_base_val
+            + w_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
+            + w_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
             + w_features_map.pin_count * self.params.pp_pin_val
             + w_features_map.semi_pin_count * self.params.pp_semi_pin_val
             + w_features_map.rook_open_count * self.params.pp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            + w_features_map.king_exposure_count * self.params.pp_k_exposure_val
+            + w_features_map.king_pawn_protection_count * self.params.pp_king_pawn_protection_val
+            + w_features_map.king_front_open_count * self.params.pp_king_front_open_val
+            + w_features_map.king_front_total_open_count * self.params.pp_king_front_total_open_val
+            + w_features_map.king_front_enery_pawn_cover_count * self.params.pp_king_front_enery_pawn_cover_val
+            + w_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
+            + w_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
             + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.pp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -481,14 +604,23 @@ impl Evaluator {
             + w_features_map.q_stuck_count * self.params.pp_q_stuck_val
             + w_features_map.threat_point / self.params.pp_threat_discount_factor
 
+            - b_features_map.p_sqr_count * self.params.pp_p_sqr_base_val
+            - b_features_map.p_eg_sqr_count * self.params.pp_p_eg_sqr_base_val
             - b_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
             - b_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
             - b_features_map.r_sqr_count * self.params.pp_r_sqr_base_val
+            - b_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
+            - b_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
             - b_features_map.pin_count * self.params.pp_pin_val
             - b_features_map.semi_pin_count * self.params.pp_semi_pin_val
             - b_features_map.rook_open_count * self.params.pp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            - b_features_map.king_exposure_count * self.params.pp_k_exposure_val
+            - b_features_map.king_pawn_protection_count * self.params.pp_king_pawn_protection_val
+            - b_features_map.king_front_open_count * self.params.pp_king_front_open_val
+            - b_features_map.king_front_total_open_count * self.params.pp_king_front_total_open_val
+            - b_features_map.king_front_enery_pawn_cover_count * self.params.pp_king_front_enery_pawn_cover_val
+            - b_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
+            - b_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
             - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.pp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -786,78 +918,46 @@ impl Evaluator {
         b_feature_map.under_attacked_sqr_count += (B_BASE_MASK & wq_attack_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask | bq_attack_mask)).count_ones() as i32;
 
         if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
-            let protecting_pawn_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones();
-
-            if protecting_pawn_count < 2 {
-                w_feature_map.king_exposure_count += 1;
-
-                if protecting_pawn_count == 0 {
-                    w_feature_map.king_exposure_count += 1;
-                }
-            }
+            w_feature_map.king_pawn_protection_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones() as i32;
 
             if bitboard.w_pawn & bitmask.file_masks[6] == 0 {
-                w_feature_map.king_exposure_count += 1;
+                w_feature_map.king_near_side_file_open_count += 1;
             }
 
             if bitboard.w_pawn & bitmask.file_masks[7] == 0 {
-                w_feature_map.king_exposure_count += 1;
+                w_feature_map.king_side_file_open_count += 1;
             }
         } else if bitmask.index_masks[state.wk_index] & WK_Q_SIDE_MASK != 0 {
-            let protecting_pawn_count = (bitboard.w_pawn & WK_Q_SIDE_MASK).count_ones();
+            w_feature_map.king_pawn_protection_count = (bitboard.w_pawn & WK_Q_SIDE_MASK).count_ones() as i32;
 
-            if protecting_pawn_count < 2 {
-                w_feature_map.king_exposure_count += 1;
-
-                if protecting_pawn_count == 0 {
-                    w_feature_map.king_exposure_count += 1;
-                }
+            if bitboard.w_pawn & bitmask.file_masks[1] == 0 {
+                w_feature_map.king_near_side_file_open_count += 1;
             }
 
             if bitboard.w_pawn & bitmask.file_masks[0] == 0 {
-                w_feature_map.king_exposure_count += 1;
-            }
-
-            if bitboard.w_pawn & bitmask.file_masks[1] == 0 {
-                w_feature_map.king_exposure_count += 1;
+                w_feature_map.king_side_file_open_count += 1;
             }
         }
 
         if bitmask.index_masks[state.bk_index] & BK_K_SIDE_MASK != 0 {
-            let protecting_pawn_count = (bitboard.b_pawn & BK_K_SIDE_MASK).count_ones();
-
-            if protecting_pawn_count < 2 {
-                b_feature_map.king_exposure_count += 1;
-
-                if protecting_pawn_count == 0 {
-                    b_feature_map.king_exposure_count += 1;
-                }
-            }
+            b_feature_map.king_pawn_protection_count = (bitboard.b_pawn & BK_K_SIDE_MASK).count_ones() as i32;
 
             if bitboard.b_pawn & bitmask.file_masks[6] == 0 {
-                b_feature_map.king_exposure_count += 1;
+                b_feature_map.king_near_side_file_open_count += 1;
             }
 
             if bitboard.b_pawn & bitmask.file_masks[7] == 0 {
-                b_feature_map.king_exposure_count += 1;
+                b_feature_map.king_side_file_open_count += 1;
             }
         } else if bitmask.index_masks[state.bk_index] & BK_Q_SIDE_MASK != 0 {
-            let protecting_pawn_count = (bitboard.b_pawn & BK_Q_SIDE_MASK).count_ones();
+            b_feature_map.king_pawn_protection_count = (bitboard.b_pawn & BK_Q_SIDE_MASK).count_ones() as i32;
 
-            if protecting_pawn_count < 2 {
-                b_feature_map.king_exposure_count += 1;
-
-                if protecting_pawn_count == 0 {
-                    b_feature_map.king_exposure_count += 1;
-                }
+            if bitboard.b_pawn & bitmask.file_masks[1] == 0 {
+                b_feature_map.king_near_side_file_open_count += 1;
             }
 
             if bitboard.b_pawn & bitmask.file_masks[0] == 0 {
-                b_feature_map.king_exposure_count += 1;
-            }
-
-            if bitboard.b_pawn & bitmask.file_masks[1] == 0 {
-                b_feature_map.king_exposure_count += 1;
+                b_feature_map.king_side_file_open_count += 1;
             }
         }
 
@@ -865,14 +965,14 @@ impl Evaluator {
             let k_front_index = bitmask.index_masks[state.wk_index + def::DIM_SIZE];
 
             if k_front_index & bitboard.b_pawn != 0 {
-                w_feature_map.king_exposure_count -= 1;
+                w_feature_map.king_front_enery_pawn_cover_count += 1;
             }
 
             if k_front_index & bitboard.w_pawn == 0 {
-                w_feature_map.king_exposure_count += 1;
+                w_feature_map.king_front_open_count += 1;
 
                 if bitmask.file_masks[state.wk_index] & bitboard.w_pawn == 0 {
-                    w_feature_map.king_exposure_count += 1;
+                    w_feature_map.king_front_total_open_count += 1;
                 }
             }
         }
@@ -881,14 +981,14 @@ impl Evaluator {
             let k_front_index = bitmask.index_masks[state.bk_index - def::DIM_SIZE];
 
             if k_front_index & bitboard.w_pawn != 0 {
-                b_feature_map.king_exposure_count -= 1;
+                b_feature_map.king_front_enery_pawn_cover_count += 1;
             }
 
             if k_front_index & bitboard.b_pawn == 0 {
-                b_feature_map.king_exposure_count += 1;
+                b_feature_map.king_front_open_count += 1;
 
                 if bitmask.file_masks[state.bk_index] & bitboard.b_pawn == 0 {
-                    b_feature_map.king_exposure_count += 1;
+                    b_feature_map.king_front_total_open_count += 1;
                 }
             }
         }
@@ -984,6 +1084,9 @@ impl Evaluator {
 
             match piece {
                 def::WP => {
+                    w_feature_map.p_sqr_count += SQR_TIER_WP[index];
+                    w_feature_map.p_eg_sqr_count += SQR_TIER_WP_EG[index];
+
                     if index_mask & w_attack_mask == 0 {
                         if index_mask & b_attack_mask != 0 {
                             w_feature_map.threat_point -= threat_val;
@@ -1010,10 +1113,6 @@ impl Evaluator {
                         w_feature_map.n_mobility_count += mobility_mask.count_ones() as i32;
                     }
 
-                    if bk_ring_mask & mov_mask != 0 {
-                        w_feature_map.nk_attack_count += 1;
-                    }
-
                     if bk_ring_mask & mov_mask & !bp_attack_mask != 0 {
                         w_feature_map.nk_attack_count += 1;
                     }
@@ -1034,10 +1133,6 @@ impl Evaluator {
                         w_feature_map.b_stuck_count += 1;
                     } else {
                         w_feature_map.b_mobility_count += mobility_mask.count_ones() as i32;
-                    }
-
-                    if bk_ring_mask & mov_mask != 0 {
-                        w_feature_map.bk_attack_count += 1;
                     }
 
                     if bk_ring_mask & mov_mask & !bp_attack_mask != 0 {
@@ -1064,10 +1159,6 @@ impl Evaluator {
                         w_feature_map.r_mobility_count += mobility_mask.count_ones() as i32;
                     }
 
-                    if bk_ring_mask & mov_mask != 0 {
-                        w_feature_map.rk_attack_count += 1;
-                    }
-
                     if bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) != 0 {
                         w_feature_map.rk_attack_count += 1;
                     }
@@ -1092,15 +1183,18 @@ impl Evaluator {
                         w_feature_map.q_mobility_count += mobility_mask.count_ones() as i32;
                     }
 
-                    if bk_ring_mask & mov_mask != 0 {
-                        w_feature_map.qk_attack_count += 1;
-                    }
-
                     if bk_ring_mask & mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) != 0 {
                         w_feature_map.qk_attack_count += 1;
                     }
                 },
+                def::WK => {
+                    w_feature_map.k_sqr_count += SQR_TIER_WK[index];
+                    w_feature_map.k_eg_sqr_count += SQR_TIER_K_EG[index];
+                },
                 def::BP => {
+                    b_feature_map.p_sqr_count += SQR_TIER_BP[index];
+                    b_feature_map.p_eg_sqr_count += SQR_TIER_BP_EG[index];
+
                     if index_mask & b_attack_mask == 0 {
                         if index_mask & w_attack_mask != 0 {
                             b_feature_map.threat_point -= threat_val;
@@ -1127,10 +1221,6 @@ impl Evaluator {
                         b_feature_map.n_mobility_count += mobility_mask.count_ones() as i32;
                     }
 
-                    if wk_ring_mask & mov_mask != 0 {
-                        b_feature_map.nk_attack_count += 1;
-                    }
-
                     if wk_ring_mask & mov_mask & !wp_attack_mask != 0 {
                         b_feature_map.nk_attack_count += 1;
                     }
@@ -1151,10 +1241,6 @@ impl Evaluator {
                         b_feature_map.b_stuck_count += 1;
                     } else {
                         b_feature_map.b_mobility_count += mobility_mask.count_ones() as i32;
-                    }
-
-                    if wk_ring_mask & mov_mask != 0 {
-                        b_feature_map.bk_attack_count += 1;
                     }
 
                     if wk_ring_mask & mov_mask & !wp_attack_mask != 0 {
@@ -1181,10 +1267,6 @@ impl Evaluator {
                         b_feature_map.r_mobility_count += mobility_mask.count_ones() as i32;
                     }
 
-                    if wk_ring_mask & mov_mask != 0 {
-                        b_feature_map.rk_attack_count += 1;
-                    }
-
                     if wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) != 0 {
                         b_feature_map.rk_attack_count += 1;
                     }
@@ -1209,14 +1291,14 @@ impl Evaluator {
                         b_feature_map.q_mobility_count += mobility_mask.count_ones() as i32;
                     }
 
-                    if wk_ring_mask & mov_mask != 0 {
-                        b_feature_map.qk_attack_count += 1;
-                    }
-
                     if wk_ring_mask & mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) != 0 {
                         b_feature_map.qk_attack_count += 1;
                     }
                 },
+                def::BK => {
+                    b_feature_map.k_sqr_count += SQR_TIER_BK[index];
+                    b_feature_map.k_eg_sqr_count += SQR_TIER_K_EG[index];
+                }
                 _ => {},
             }
         }

@@ -7,27 +7,39 @@ pub struct EvalParams {
     pub b_val: i32,
     pub n_val: i32,
     pub p_val: i32,
+
     pub mp_q_val: i32,
     pub mp_r_val: i32,
     pub mp_b_val: i32,
     pub mp_n_val: i32,
     pub mp_p_val: i32,
+
     pub pp_q_val: i32,
     pub pp_r_val: i32,
     pub pp_b_val: i32,
     pub pp_n_val: i32,
     pub pp_p_val: i32,
 
+    pub mp_p_sqr_base_val: i32,
+    pub mp_p_eg_sqr_base_val: i32,
     pub mp_n_sqr_base_val: i32,
     pub mp_b_sqr_base_val: i32,
     pub mp_r_sqr_base_val: i32,
+    pub mp_k_sqr_base_val: i32,
+    pub mp_k_eg_sqr_base_val: i32,
+
+    pub pp_p_sqr_base_val: i32,
+    pub pp_p_eg_sqr_base_val: i32,
     pub pp_n_sqr_base_val: i32,
     pub pp_b_sqr_base_val: i32,
     pub pp_r_sqr_base_val: i32,
+    pub pp_k_sqr_base_val: i32,
+    pub pp_k_eg_sqr_base_val: i32,
 
     pub mp_isolated_pawn_val: i32,
     pub mp_doubled_pawn_val: i32,
     pub mp_behind_pawn_val: i32,
+
     pub pp_isolated_pawn_val: i32,
     pub pp_doubled_pawn_val: i32,
     pub pp_behind_pawn_val: i32,
@@ -36,6 +48,7 @@ pub struct EvalParams {
     pub mp_passer_rank_val: i32,
     pub mp_candidate_passer_base_val: i32,
     pub mp_candidate_passer_rank_val: i32,
+
     pub pp_passer_base_val: i32,
     pub pp_passer_rank_val: i32,
     pub pp_candidate_passer_base_val: i32,
@@ -46,27 +59,42 @@ pub struct EvalParams {
     pub mp_bk_attack_val: i32,
     pub mp_rk_attack_val: i32,
     pub mp_qk_attack_val: i32,
+
     pub pp_pk_attack_val: i32,
     pub pp_nk_attack_val: i32,
     pub pp_bk_attack_val: i32,
     pub pp_rk_attack_val: i32,
     pub pp_qk_attack_val: i32,
 
-    pub mp_k_exposure_val: i32,
-    pub pp_k_exposure_val: i32,
+    pub mp_king_pawn_protection_val: i32,
+    pub mp_king_front_open_val: i32,
+    pub mp_king_front_total_open_val: i32,
+    pub mp_king_front_enery_pawn_cover_val: i32,
+    pub mp_king_side_file_open_val: i32,
+    pub mp_king_near_side_file_open_val: i32,
+
+    pub pp_king_pawn_protection_val: i32,
+    pub pp_king_front_open_val: i32,
+    pub pp_king_front_total_open_val: i32,
+    pub pp_king_front_enery_pawn_cover_val: i32,
+    pub pp_king_side_file_open_val: i32,
+    pub pp_king_near_side_file_open_val: i32,
 
     pub mp_rook_open_val: i32,
     pub mp_rook_semi_open_val: i32,
+
     pub pp_rook_open_val: i32,
     pub pp_rook_semi_open_val: i32,
 
     pub mp_pin_val: i32,
     pub mp_semi_pin_val: i32,
+
     pub pp_pin_val: i32,
     pub pp_semi_pin_val: i32,
 
     pub mp_unprotected_sqr_val: i32,
     pub mp_under_attacked_sqr_val: i32,
+
     pub pp_unprotected_sqr_val: i32,
     pub pp_under_attacked_sqr_val: i32,
 
@@ -74,6 +102,7 @@ pub struct EvalParams {
     pub mp_protected_n_val: i32,
     pub mp_protected_b_val: i32,
     pub mp_protected_r_val: i32,
+
     pub pp_protected_p_val: i32,
     pub pp_protected_n_val: i32,
     pub pp_protected_b_val: i32,
@@ -81,6 +110,7 @@ pub struct EvalParams {
 
     pub mp_np_protected_3rd_rank_sqr_val: i32,
     pub mp_np_protected_4th_rank_sqr_val: i32,
+
     pub pp_np_protected_3rd_rank_sqr_val: i32,
     pub pp_np_protected_4th_rank_sqr_val: i32,
 
@@ -88,6 +118,7 @@ pub struct EvalParams {
     pub mp_b_mob_base_val: i32,
     pub mp_r_mob_base_val: i32,
     pub mp_q_mob_base_val: i32,
+
     pub pp_n_mob_base_val: i32,
     pub pp_b_mob_base_val: i32,
     pub pp_r_mob_base_val: i32,
@@ -97,6 +128,7 @@ pub struct EvalParams {
     pub mp_b_stuck_val: i32,
     pub mp_r_stuck_val: i32,
     pub mp_q_stuck_val: i32,
+
     pub pp_n_stuck_val: i32,
     pub pp_b_stuck_val: i32,
     pub pp_r_stuck_val: i32,
@@ -113,6 +145,7 @@ pub struct EvalParams {
 
     pub mp_different_color_bishop_val: i32,
     pub mp_different_color_bishop_with_rook_val: i32,
+
     pub pp_different_color_bishop_val: i32,
     pub pp_different_color_bishop_with_rook_val: i32,
 
@@ -128,27 +161,39 @@ impl EvalParams {
             b_val: 350,
             n_val: 345,
             p_val: 100,
+
             mp_q_val: 0,
             mp_r_val: 0,
             mp_b_val: 0,
             mp_n_val: 0,
             mp_p_val: 0,
+
             pp_q_val: 0,
             pp_r_val: 0,
             pp_b_val: 0,
             pp_n_val: 0,
             pp_p_val: 0,
 
+            mp_p_sqr_base_val: 0,
+            mp_p_eg_sqr_base_val: 0,
             mp_n_sqr_base_val: 0,
             mp_b_sqr_base_val: 0,
             mp_r_sqr_base_val: 0,
+            mp_k_sqr_base_val: 0,
+            mp_k_eg_sqr_base_val: 0,
+
+            pp_p_sqr_base_val: 0,
+            pp_p_eg_sqr_base_val: 0,
             pp_n_sqr_base_val: 0,
             pp_b_sqr_base_val: 0,
             pp_r_sqr_base_val: 0,
+            pp_k_sqr_base_val: 0,
+            pp_k_eg_sqr_base_val: 0,
 
             mp_isolated_pawn_val: 0,
             mp_doubled_pawn_val: 0,
             mp_behind_pawn_val: 0,
+
             pp_isolated_pawn_val: 0,
             pp_doubled_pawn_val: 0,
             pp_behind_pawn_val: 0,
@@ -157,6 +202,7 @@ impl EvalParams {
             mp_passer_rank_val: 0,
             mp_candidate_passer_base_val: 0,
             mp_candidate_passer_rank_val: 0,
+
             pp_passer_base_val: 0,
             pp_passer_rank_val: 0,
             pp_candidate_passer_base_val: 0,
@@ -167,27 +213,42 @@ impl EvalParams {
             mp_bk_attack_val: 0,
             mp_rk_attack_val: 0,
             mp_qk_attack_val: 0,
+
             pp_pk_attack_val: 0,
             pp_nk_attack_val: 0,
             pp_bk_attack_val: 0,
             pp_rk_attack_val: 0,
             pp_qk_attack_val: 0,
 
-            mp_k_exposure_val: 0,
-            pp_k_exposure_val: 0,
+            mp_king_pawn_protection_val: 0,
+            mp_king_front_open_val: 0,
+            mp_king_front_total_open_val: 0,
+            mp_king_front_enery_pawn_cover_val: 0,
+            mp_king_side_file_open_val: 0,
+            mp_king_near_side_file_open_val: 0,
+
+            pp_king_pawn_protection_val: 0,
+            pp_king_front_open_val: 0,
+            pp_king_front_total_open_val: 0,
+            pp_king_front_enery_pawn_cover_val: 0,
+            pp_king_side_file_open_val: 0,
+            pp_king_near_side_file_open_val: 0,
 
             mp_rook_open_val: 0,
             mp_rook_semi_open_val: 0,
+
             pp_rook_open_val: 0,
             pp_rook_semi_open_val: 0,
 
             mp_pin_val: 0,
             mp_semi_pin_val: 0,
+
             pp_pin_val: 0,
             pp_semi_pin_val: 0,
 
             mp_unprotected_sqr_val: 0,
             mp_under_attacked_sqr_val: 0,
+
             pp_unprotected_sqr_val: 0,
             pp_under_attacked_sqr_val: 0,
 
@@ -195,6 +256,7 @@ impl EvalParams {
             mp_protected_n_val: 0,
             mp_protected_b_val: 0,
             mp_protected_r_val: 0,
+
             pp_protected_p_val: 0,
             pp_protected_n_val: 0,
             pp_protected_b_val: 0,
@@ -202,6 +264,7 @@ impl EvalParams {
 
             mp_np_protected_3rd_rank_sqr_val: 0,
             mp_np_protected_4th_rank_sqr_val: 0,
+
             pp_np_protected_3rd_rank_sqr_val: 0,
             pp_np_protected_4th_rank_sqr_val: 0,
 
@@ -209,6 +272,7 @@ impl EvalParams {
             mp_b_mob_base_val: 0,
             mp_r_mob_base_val: 0,
             mp_q_mob_base_val: 0,
+
             pp_n_mob_base_val: 0,
             pp_b_mob_base_val: 0,
             pp_r_mob_base_val: 0,
@@ -218,6 +282,7 @@ impl EvalParams {
             mp_b_stuck_val: 0,
             mp_r_stuck_val: 0,
             mp_q_stuck_val: 0,
+
             pp_n_stuck_val: 0,
             pp_b_stuck_val: 0,
             pp_r_stuck_val: 0,
@@ -234,6 +299,7 @@ impl EvalParams {
 
             mp_different_color_bishop_val: 0,
             mp_different_color_bishop_with_rook_val: 0,
+
             pp_different_color_bishop_val: 0,
             pp_different_color_bishop_with_rook_val: 0,
 
@@ -260,12 +326,20 @@ impl EvalParams {
             pp_n_val: config_map.get("pp_n_val").unwrap().parse::<i32>().unwrap(),
             pp_p_val: config_map.get("pp_p_val").unwrap().parse::<i32>().unwrap(),
 
+            mp_p_sqr_base_val: config_map.get("mp_p_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_p_eg_sqr_base_val: config_map.get("mp_p_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             mp_n_sqr_base_val: config_map.get("mp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             mp_b_sqr_base_val: config_map.get("mp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             mp_r_sqr_base_val: config_map.get("mp_r_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_k_sqr_base_val: config_map.get("mp_k_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            mp_k_eg_sqr_base_val: config_map.get("mp_k_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_p_sqr_base_val: config_map.get("pp_p_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_p_eg_sqr_base_val: config_map.get("pp_p_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             pp_n_sqr_base_val: config_map.get("pp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             pp_b_sqr_base_val: config_map.get("pp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             pp_r_sqr_base_val: config_map.get("pp_r_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_k_sqr_base_val: config_map.get("pp_k_sqr_base_val").unwrap().parse::<i32>().unwrap(),
+            pp_k_eg_sqr_base_val: config_map.get("pp_k_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
 
             mp_isolated_pawn_val: config_map.get("mp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
             mp_doubled_pawn_val: config_map.get("mp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
@@ -294,8 +368,19 @@ impl EvalParams {
             pp_rk_attack_val: config_map.get("pp_rk_attack_val").unwrap().parse::<i32>().unwrap(),
             pp_qk_attack_val: config_map.get("pp_qk_attack_val").unwrap().parse::<i32>().unwrap(),
 
-            mp_k_exposure_val: config_map.get("mp_k_exposure_val").unwrap().parse::<i32>().unwrap(),
-            pp_k_exposure_val: config_map.get("pp_k_exposure_val").unwrap().parse::<i32>().unwrap(),
+            mp_king_pawn_protection_val: config_map.get("mp_king_pawn_protection_val").unwrap().parse::<i32>().unwrap(),
+            mp_king_front_open_val: config_map.get("mp_king_front_open_val").unwrap().parse::<i32>().unwrap(),
+            mp_king_front_total_open_val: config_map.get("mp_king_front_total_open_val").unwrap().parse::<i32>().unwrap(),
+            mp_king_front_enery_pawn_cover_val: config_map.get("mp_king_front_enery_pawn_cover_val").unwrap().parse::<i32>().unwrap(),
+            mp_king_side_file_open_val: config_map.get("mp_king_side_file_open_val").unwrap().parse::<i32>().unwrap(),
+            mp_king_near_side_file_open_val: config_map.get("mp_king_near_side_file_open_val").unwrap().parse::<i32>().unwrap(),
+
+            pp_king_pawn_protection_val: config_map.get("pp_king_pawn_protection_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_front_open_val: config_map.get("pp_king_front_open_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_front_total_open_val: config_map.get("pp_king_front_total_open_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_front_enery_pawn_cover_val: config_map.get("pp_king_front_enery_pawn_cover_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_side_file_open_val: config_map.get("pp_king_side_file_open_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_near_side_file_open_val: config_map.get("pp_king_near_side_file_open_val").unwrap().parse::<i32>().unwrap(),
 
             mp_rook_open_val: config_map.get("mp_rook_open_val").unwrap().parse::<i32>().unwrap(),
             mp_rook_semi_open_val: config_map.get("mp_rook_semi_open_val").unwrap().parse::<i32>().unwrap(),
