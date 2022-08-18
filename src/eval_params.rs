@@ -48,11 +48,19 @@ pub struct EvalParams {
     pub mp_passer_rank_val: i32,
     pub mp_candidate_passer_base_val: i32,
     pub mp_candidate_passer_rank_val: i32,
+    pub rmp_passer_base_val: i32,
+    pub rmp_passer_rank_val: i32,
+    pub rmp_candidate_passer_base_val: i32,
+    pub rmp_candidate_passer_rank_val: i32,
 
     pub pp_passer_base_val: i32,
     pub pp_passer_rank_val: i32,
     pub pp_candidate_passer_base_val: i32,
     pub pp_candidate_passer_rank_val: i32,
+    pub rpp_passer_base_val: i32,
+    pub rpp_passer_rank_val: i32,
+    pub rpp_candidate_passer_base_val: i32,
+    pub rpp_candidate_passer_rank_val: i32,
 
     pub mp_pk_attack_val: i32,
     pub mp_nk_attack_val: i32,
@@ -144,9 +152,6 @@ pub struct EvalParams {
     pub pp_r_stuck_val: i32,
     pub pp_q_stuck_val: i32,
 
-    pub mp_threat_discount_factor: i32,
-    pub pp_threat_discount_factor: i32,
-
     pub mp_tempo_val: i32,
     pub pp_tempo_val: i32,
 
@@ -200,8 +205,8 @@ impl EvalParams {
             pp_k_sqr_base_val: 0,
             pp_k_eg_sqr_base_val: 0,
 
-            mp_isolated_pawn_val: 0,
-            mp_doubled_pawn_val: 0,
+            mp_isolated_pawn_val: -10,
+            mp_doubled_pawn_val: 8,
             mp_behind_pawn_val: 0,
 
             pp_isolated_pawn_val: 0,
@@ -212,17 +217,25 @@ impl EvalParams {
             mp_passer_rank_val: 0,
             mp_candidate_passer_base_val: 0,
             mp_candidate_passer_rank_val: 0,
+            rmp_passer_base_val: 0,
+            rmp_passer_rank_val: 0,
+            rmp_candidate_passer_base_val: 0,
+            rmp_candidate_passer_rank_val: 0,
 
             pp_passer_base_val: 0,
             pp_passer_rank_val: 0,
             pp_candidate_passer_base_val: 0,
             pp_candidate_passer_rank_val: 0,
+            rpp_passer_base_val: 0,
+            rpp_passer_rank_val: 0,
+            rpp_candidate_passer_base_val: 0,
+            rpp_candidate_passer_rank_val: 0,
 
             mp_pk_attack_val: 0,
             mp_nk_attack_val: 0,
             mp_bk_attack_val: 0,
-            mp_rk_attack_val: 0,
-            mp_qk_attack_val: 0,
+            mp_rk_attack_val: 56,
+            mp_qk_attack_val: 48,
 
             pp_pk_attack_val: 0,
             pp_nk_attack_val: 0,
@@ -308,9 +321,6 @@ impl EvalParams {
             pp_r_stuck_val: 0,
             pp_q_stuck_val: 0,
 
-            mp_threat_discount_factor: 128,
-            pp_threat_discount_factor: 128,
-
             mp_tempo_val: 0,
             pp_tempo_val: 0,
 
@@ -372,10 +382,18 @@ impl EvalParams {
             mp_passer_rank_val: config_map.get("mp_passer_rank_val").unwrap().parse::<i32>().unwrap(),
             mp_candidate_passer_base_val: config_map.get("mp_candidate_passer_base_val").unwrap().parse::<i32>().unwrap(),
             mp_candidate_passer_rank_val: config_map.get("mp_candidate_passer_rank_val").unwrap().parse::<i32>().unwrap(),
+            rmp_passer_base_val: config_map.get("rmp_passer_base_val").unwrap().parse::<i32>().unwrap(),
+            rmp_passer_rank_val: config_map.get("rmp_passer_rank_val").unwrap().parse::<i32>().unwrap(),
+            rmp_candidate_passer_base_val: config_map.get("rmp_candidate_passer_base_val").unwrap().parse::<i32>().unwrap(),
+            rmp_candidate_passer_rank_val: config_map.get("rmp_candidate_passer_rank_val").unwrap().parse::<i32>().unwrap(),
             pp_passer_base_val: config_map.get("pp_passer_base_val").unwrap().parse::<i32>().unwrap(),
             pp_passer_rank_val: config_map.get("pp_passer_rank_val").unwrap().parse::<i32>().unwrap(),
             pp_candidate_passer_base_val: config_map.get("pp_candidate_passer_base_val").unwrap().parse::<i32>().unwrap(),
             pp_candidate_passer_rank_val: config_map.get("pp_candidate_passer_rank_val").unwrap().parse::<i32>().unwrap(),
+            rpp_passer_base_val: config_map.get("rpp_passer_base_val").unwrap().parse::<i32>().unwrap(),
+            rpp_passer_rank_val: config_map.get("rpp_passer_rank_val").unwrap().parse::<i32>().unwrap(),
+            rpp_candidate_passer_base_val: config_map.get("rpp_candidate_passer_base_val").unwrap().parse::<i32>().unwrap(),
+            rpp_candidate_passer_rank_val: config_map.get("rpp_candidate_passer_rank_val").unwrap().parse::<i32>().unwrap(),
 
             mp_pk_attack_val: config_map.get("mp_pk_attack_val").unwrap().parse::<i32>().unwrap(),
             mp_nk_attack_val: config_map.get("mp_nk_attack_val").unwrap().parse::<i32>().unwrap(),
@@ -458,9 +476,6 @@ impl EvalParams {
             pp_b_stuck_val: config_map.get("pp_b_stuck_val").unwrap().parse::<i32>().unwrap(),
             pp_r_stuck_val: config_map.get("pp_r_stuck_val").unwrap().parse::<i32>().unwrap(),
             pp_q_stuck_val: config_map.get("pp_q_stuck_val").unwrap().parse::<i32>().unwrap(),
-
-            mp_threat_discount_factor: config_map.get("mp_threat_discount_factor").unwrap().parse::<i32>().unwrap(),
-            pp_threat_discount_factor: config_map.get("pp_threat_discount_factor").unwrap().parse::<i32>().unwrap(),
 
             mp_tempo_val: config_map.get("mp_tempo_val").unwrap().parse::<i32>().unwrap(),
             pp_tempo_val: config_map.get("pp_tempo_val").unwrap().parse::<i32>().unwrap(),
