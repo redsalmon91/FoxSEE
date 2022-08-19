@@ -735,6 +735,14 @@ impl Evaluator {
         let mut w_feature_map = FeatureMap::empty();
         let mut b_feature_map = FeatureMap::empty();
 
+        if (state.cas_rights | state.cas_history) & 0b1100 != 0 {
+            w_feature_map.king_cas_rights_count = 1;
+        }
+    
+        if (state.cas_rights | state.cas_history) & 0b0011 != 0 {
+            b_feature_map.king_cas_rights_count = 1;
+        }
+
         let mut wp_attack_mask = 0;
         let mut wn_attack_mask = 0;
         let mut wb_attack_mask = 0;
