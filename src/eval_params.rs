@@ -39,10 +39,16 @@ pub struct EvalParams {
     pub mp_isolated_pawn_val: i32,
     pub mp_doubled_pawn_val: i32,
     pub mp_behind_pawn_val: i32,
+    pub rmp_isolated_pawn_val: i32,
+    pub rmp_doubled_pawn_val: i32,
+    pub rmp_behind_pawn_val: i32,
 
     pub pp_isolated_pawn_val: i32,
     pub pp_doubled_pawn_val: i32,
     pub pp_behind_pawn_val: i32,
+    pub rpp_isolated_pawn_val: i32,
+    pub rpp_doubled_pawn_val: i32,
+    pub rpp_behind_pawn_val: i32,
 
     pub mp_passer_base_val: i32,
     pub mp_passer_rank_val: i32,
@@ -87,6 +93,11 @@ pub struct EvalParams {
     pub pp_king_front_enery_pawn_cover_val: i32,
     pub pp_king_side_file_open_val: i32,
     pub pp_king_near_side_file_open_val: i32,
+
+    pub mp_king_cas_rights_val: i32,
+    pub rmp_king_cas_rights_val: i32,
+    pub pp_king_cas_rights_val: i32,
+    pub rpp_king_cas_rights_val: i32,
 
     pub mp_rook_open_val: i32,
     pub mp_rook_semi_open_val: i32,
@@ -191,8 +202,8 @@ impl EvalParams {
 
             mp_p_sqr_base_val: 0,
             mp_p_eg_sqr_base_val: 0,
-            mp_n_sqr_base_val: 0,
-            mp_b_sqr_base_val: 0,
+            mp_n_sqr_base_val: 7,
+            mp_b_sqr_base_val: 2,
             mp_r_sqr_base_val: 0,
             mp_k_sqr_base_val: 0,
             mp_k_eg_sqr_base_val: 0,
@@ -208,17 +219,23 @@ impl EvalParams {
             mp_isolated_pawn_val: -10,
             mp_doubled_pawn_val: 8,
             mp_behind_pawn_val: 0,
+            rmp_isolated_pawn_val: -10,
+            rmp_doubled_pawn_val: 8,
+            rmp_behind_pawn_val: 0,
 
             pp_isolated_pawn_val: 0,
             pp_doubled_pawn_val: 0,
             pp_behind_pawn_val: 0,
+            rpp_isolated_pawn_val: 0,
+            rpp_doubled_pawn_val: 0,
+            rpp_behind_pawn_val: 0,
 
             mp_passer_base_val: 0,
             mp_passer_rank_val: 0,
             mp_candidate_passer_base_val: 0,
             mp_candidate_passer_rank_val: 0,
             rmp_passer_base_val: 0,
-            rmp_passer_rank_val: 0,
+            rmp_passer_rank_val: 24,
             rmp_candidate_passer_base_val: 0,
             rmp_candidate_passer_rank_val: 0,
 
@@ -229,7 +246,7 @@ impl EvalParams {
             rpp_passer_base_val: 0,
             rpp_passer_rank_val: 0,
             rpp_candidate_passer_base_val: 0,
-            rpp_candidate_passer_rank_val: 0,
+            rpp_candidate_passer_rank_val: 8,
 
             mp_pk_attack_val: 0,
             mp_nk_attack_val: 0,
@@ -257,11 +274,16 @@ impl EvalParams {
             pp_king_side_file_open_val: 0,
             pp_king_near_side_file_open_val: 0,
 
-            mp_rook_open_val: 0,
-            mp_rook_semi_open_val: 0,
+            mp_king_cas_rights_val: 0,
+            rmp_king_cas_rights_val: 0,
+            pp_king_cas_rights_val: 0,
+            rpp_king_cas_rights_val: 0,
 
-            pp_rook_open_val: 0,
-            pp_rook_semi_open_val: 0,
+            mp_rook_open_val: 16,
+            mp_rook_semi_open_val: 48,
+
+            pp_rook_open_val: 8,
+            pp_rook_semi_open_val: 64,
 
             mp_pin_val: 0,
             mp_semi_pin_val: 0,
@@ -275,7 +297,7 @@ impl EvalParams {
             pp_unprotected_sqr_val: 0,
             pp_under_attacked_sqr_val: 0,
 
-            mp_protected_p_val: 0,
+            mp_protected_p_val: 16,
             mp_protected_n_val: 0,
             mp_protected_b_val: 0,
             mp_protected_r_val: 0,
@@ -291,8 +313,8 @@ impl EvalParams {
             pp_np_protected_3rd_rank_sqr_val: 0,
             pp_np_protected_4th_rank_sqr_val: 0,
 
-            mp_n_mob_base_val: 0,
-            mp_b_mob_base_val: 0,
+            mp_n_mob_base_val: 6,
+            mp_b_mob_base_val: 12,
             mp_r_mob_base_val: 0,
             mp_q_mob_base_val: 0,
 
@@ -374,9 +396,15 @@ impl EvalParams {
             mp_isolated_pawn_val: config_map.get("mp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
             mp_doubled_pawn_val: config_map.get("mp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
             mp_behind_pawn_val: config_map.get("mp_behind_pawn_val").unwrap().parse::<i32>().unwrap(),
+            rmp_isolated_pawn_val: config_map.get("rmp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
+            rmp_doubled_pawn_val: config_map.get("rmp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
+            rmp_behind_pawn_val: config_map.get("rmp_behind_pawn_val").unwrap().parse::<i32>().unwrap(),
             pp_isolated_pawn_val: config_map.get("pp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
             pp_doubled_pawn_val: config_map.get("pp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
             pp_behind_pawn_val: config_map.get("pp_behind_pawn_val").unwrap().parse::<i32>().unwrap(),
+            rpp_isolated_pawn_val: config_map.get("rpp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
+            rpp_doubled_pawn_val: config_map.get("rpp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
+            rpp_behind_pawn_val: config_map.get("rpp_behind_pawn_val").unwrap().parse::<i32>().unwrap(),
 
             mp_passer_base_val: config_map.get("mp_passer_base_val").unwrap().parse::<i32>().unwrap(),
             mp_passer_rank_val: config_map.get("mp_passer_rank_val").unwrap().parse::<i32>().unwrap(),
@@ -419,6 +447,11 @@ impl EvalParams {
             pp_king_front_enery_pawn_cover_val: config_map.get("pp_king_front_enery_pawn_cover_val").unwrap().parse::<i32>().unwrap(),
             pp_king_side_file_open_val: config_map.get("pp_king_side_file_open_val").unwrap().parse::<i32>().unwrap(),
             pp_king_near_side_file_open_val: config_map.get("pp_king_near_side_file_open_val").unwrap().parse::<i32>().unwrap(),
+
+            mp_king_cas_rights_val: config_map.get("mp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
+            rmp_king_cas_rights_val: config_map.get("rmp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_cas_rights_val: config_map.get("pp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
+            rpp_king_cas_rights_val: config_map.get("rpp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
 
             mp_rook_open_val: config_map.get("mp_rook_open_val").unwrap().parse::<i32>().unwrap(),
             mp_rook_semi_open_val: config_map.get("mp_rook_semi_open_val").unwrap().parse::<i32>().unwrap(),

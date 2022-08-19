@@ -196,6 +196,7 @@ pub struct FeatureMap {
     king_front_enery_pawn_cover_count: i32,
     king_side_file_open_count: i32,
     king_near_side_file_open_count: i32,
+    king_cas_rights_count: i32,
 
     unprotected_sqr_count: i32,
     under_attacked_sqr_count: i32,
@@ -263,6 +264,7 @@ impl FeatureMap {
             king_front_enery_pawn_cover_count: 0,
             king_side_file_open_count: 0,
             king_near_side_file_open_count: 0,
+            king_cas_rights_count: 0,
 
             unprotected_sqr_count: 0,
             under_attacked_sqr_count: 0,
@@ -487,6 +489,7 @@ impl Evaluator {
             + w_features_map.king_front_enery_pawn_cover_count * self.params.mp_king_front_enery_pawn_cover_val
             + w_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
             + w_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
+            + w_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
             + w_features_map.pk_attack_count * self.params.mp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.mp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.mp_bk_attack_val
@@ -537,6 +540,7 @@ impl Evaluator {
             - b_features_map.king_front_enery_pawn_cover_count * self.params.mp_king_front_enery_pawn_cover_val
             - b_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
             - b_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
+            - b_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
             - b_features_map.pk_attack_count * self.params.mp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.mp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.mp_bk_attack_val
@@ -588,6 +592,7 @@ impl Evaluator {
             + w_features_map.king_front_enery_pawn_cover_count * self.params.pp_king_front_enery_pawn_cover_val
             + w_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
             + w_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
+            + w_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
             + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.pp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -638,6 +643,7 @@ impl Evaluator {
             - b_features_map.king_front_enery_pawn_cover_count * self.params.pp_king_front_enery_pawn_cover_val
             - b_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
             - b_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
+            - b_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
             - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.pp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -672,22 +678,36 @@ impl Evaluator {
             - b_features_map.q_stuck_count * self.params.pp_q_stuck_val;
 
         let pos_rmp_score =
-            w_features_map.passer_count * self.params.rmp_passer_base_val
+            w_features_map.behind_pawn_count * self.params.rmp_behind_pawn_val
+            + w_features_map.isolated_pawn_count * self.params.rmp_isolated_pawn_val
+            + w_features_map.doubled_pawn_count * self.params.rmp_doubled_pawn_val
+            + w_features_map.passer_count * self.params.rmp_passer_base_val
             + w_features_map.passer_rank_count * self.params.rmp_passer_rank_val
             + w_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
+            + w_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
 
+            - b_features_map.behind_pawn_count * self.params.rmp_behind_pawn_val
+            - b_features_map.isolated_pawn_count * self.params.rmp_isolated_pawn_val
+            - b_features_map.doubled_pawn_count * self.params.rmp_doubled_pawn_val
             - b_features_map.passer_count * self.params.rmp_passer_base_val
             - b_features_map.passer_rank_count * self.params.rmp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
-            - b_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val;
+            - b_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
+            - b_features_map.king_cas_rights_count * self.params.rpp_king_cas_rights_val;
 
         let pos_rpp_score =
-            w_features_map.passer_count * self.params.rpp_passer_base_val
+            w_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
+            + w_features_map.isolated_pawn_count * self.params.rpp_isolated_pawn_val
+            + w_features_map.doubled_pawn_count * self.params.rpp_doubled_pawn_val
+            + w_features_map.passer_count * self.params.rpp_passer_base_val
             + w_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             + w_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
 
+            - b_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
+            - b_features_map.isolated_pawn_count * self.params.rpp_isolated_pawn_val
+            - b_features_map.doubled_pawn_count * self.params.rpp_doubled_pawn_val
             - b_features_map.passer_count * self.params.rpp_passer_base_val
             - b_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
