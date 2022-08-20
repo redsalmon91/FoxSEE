@@ -229,11 +229,7 @@ pub struct FeatureMap {
     b_mobility_count: i32,
     r_mobility_count: i32,
     q_mobility_count: i32,
-
-    n_weak_mobility_count: i32,
-    b_weak_mobility_count: i32,
-    r_weak_mobility_count: i32,
-    q_weak_mobility_count: i32,
+    k_mobility_count: i32,
 
     n_stuck_count: i32,
     b_stuck_count: i32,
@@ -298,11 +294,7 @@ impl FeatureMap {
             b_mobility_count: 0,
             r_mobility_count: 0,
             q_mobility_count: 0,
-
-            n_weak_mobility_count: 0,
-            b_weak_mobility_count: 0,
-            r_weak_mobility_count: 0,
-            q_weak_mobility_count: 0,
+            k_mobility_count: 0,
 
             n_stuck_count: 0,
             b_stuck_count: 0,
@@ -455,10 +447,7 @@ impl Evaluator {
             + w_features_map.b_mobility_count * self.params.mp_b_mob_base_val
             + w_features_map.r_mobility_count * self.params.mp_r_mob_base_val
             + w_features_map.q_mobility_count * self.params.mp_q_mob_base_val
-            + w_features_map.n_weak_mobility_count * self.params.mp_n_weak_mob_base_val
-            + w_features_map.b_weak_mobility_count * self.params.mp_b_weak_mob_base_val
-            + w_features_map.r_weak_mobility_count * self.params.mp_r_weak_mob_base_val
-            + w_features_map.q_weak_mobility_count * self.params.mp_q_weak_mob_base_val
+            + w_features_map.k_mobility_count * self.params.mp_k_mob_base_val
             + w_features_map.n_stuck_count * self.params.mp_n_stuck_val
             + w_features_map.b_stuck_count * self.params.mp_b_stuck_val
             + w_features_map.r_stuck_count * self.params.mp_r_stuck_val
@@ -507,10 +496,7 @@ impl Evaluator {
             - b_features_map.b_mobility_count * self.params.mp_b_mob_base_val
             - b_features_map.r_mobility_count * self.params.mp_r_mob_base_val
             - b_features_map.q_mobility_count * self.params.mp_q_mob_base_val
-            - b_features_map.n_weak_mobility_count * self.params.mp_n_weak_mob_base_val
-            - b_features_map.b_weak_mobility_count * self.params.mp_b_weak_mob_base_val
-            - b_features_map.r_weak_mobility_count * self.params.mp_r_weak_mob_base_val
-            - b_features_map.q_weak_mobility_count * self.params.mp_q_weak_mob_base_val
+            - b_features_map.k_mobility_count * self.params.mp_k_mob_base_val
             - b_features_map.n_stuck_count * self.params.mp_n_stuck_val
             - b_features_map.b_stuck_count * self.params.mp_b_stuck_val
             - b_features_map.r_stuck_count * self.params.mp_r_stuck_val
@@ -560,10 +546,7 @@ impl Evaluator {
             + w_features_map.b_mobility_count * self.params.pp_b_mob_base_val
             + w_features_map.r_mobility_count * self.params.pp_r_mob_base_val
             + w_features_map.q_mobility_count * self.params.pp_q_mob_base_val
-            + w_features_map.n_weak_mobility_count * self.params.pp_n_weak_mob_base_val
-            + w_features_map.b_weak_mobility_count * self.params.pp_b_weak_mob_base_val
-            + w_features_map.r_weak_mobility_count * self.params.pp_r_weak_mob_base_val
-            + w_features_map.q_weak_mobility_count * self.params.pp_q_weak_mob_base_val
+            + w_features_map.k_mobility_count * self.params.pp_k_mob_base_val
             + w_features_map.n_stuck_count * self.params.pp_n_stuck_val
             + w_features_map.b_stuck_count * self.params.pp_b_stuck_val
             + w_features_map.r_stuck_count * self.params.pp_r_stuck_val
@@ -612,10 +595,7 @@ impl Evaluator {
             - b_features_map.b_mobility_count * self.params.pp_b_mob_base_val
             - b_features_map.r_mobility_count * self.params.pp_r_mob_base_val
             - b_features_map.q_mobility_count * self.params.pp_q_mob_base_val
-            - b_features_map.n_weak_mobility_count * self.params.pp_n_weak_mob_base_val
-            - b_features_map.b_weak_mobility_count * self.params.pp_b_weak_mob_base_val
-            - b_features_map.r_weak_mobility_count * self.params.pp_r_weak_mob_base_val
-            - b_features_map.q_weak_mobility_count * self.params.pp_q_weak_mob_base_val
+            - b_features_map.k_mobility_count * self.params.pp_k_mob_base_val
             - b_features_map.n_stuck_count * self.params.pp_n_stuck_val
             - b_features_map.b_stuck_count * self.params.pp_b_stuck_val
             - b_features_map.r_stuck_count * self.params.pp_r_stuck_val
@@ -635,6 +615,7 @@ impl Evaluator {
             + w_features_map.b_mobility_count * self.params.rmp_b_mob_base_val
             + w_features_map.r_mobility_count * self.params.rmp_r_mob_base_val
             + w_features_map.q_mobility_count * self.params.rmp_q_mob_base_val
+            + w_features_map.k_mobility_count * self.params.rmp_k_mob_base_val
 
             - b_features_map.behind_pawn_count * self.params.rmp_behind_pawn_val
             - b_features_map.isolated_pawn_count * self.params.rmp_isolated_pawn_val
@@ -648,7 +629,8 @@ impl Evaluator {
             - b_features_map.n_mobility_count * self.params.rmp_n_mob_base_val
             - b_features_map.b_mobility_count * self.params.rmp_b_mob_base_val
             - b_features_map.r_mobility_count * self.params.rmp_r_mob_base_val
-            - b_features_map.q_mobility_count * self.params.rmp_q_mob_base_val;
+            - b_features_map.q_mobility_count * self.params.rmp_q_mob_base_val
+            - b_features_map.k_mobility_count * self.params.rmp_k_mob_base_val;
 
         let pos_rpp_score =
             w_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
@@ -659,6 +641,11 @@ impl Evaluator {
             + w_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
             + w_features_map.king_caslted_count * self.params.rpp_king_castled_val
+            + w_features_map.n_mobility_count * self.params.rpp_n_mob_base_val
+            + w_features_map.b_mobility_count * self.params.rpp_b_mob_base_val
+            + w_features_map.r_mobility_count * self.params.rpp_r_mob_base_val
+            + w_features_map.q_mobility_count * self.params.rpp_q_mob_base_val
+            + w_features_map.k_mobility_count * self.params.rpp_k_mob_base_val
 
             - b_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
             - b_features_map.isolated_pawn_count * self.params.rpp_isolated_pawn_val
@@ -667,7 +654,12 @@ impl Evaluator {
             - b_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
             - b_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
-            - b_features_map.king_caslted_count * self.params.rpp_king_castled_val;
+            - b_features_map.king_caslted_count * self.params.rpp_king_castled_val
+            - b_features_map.n_mobility_count * self.params.rpp_n_mob_base_val
+            - b_features_map.b_mobility_count * self.params.rpp_b_mob_base_val
+            - b_features_map.r_mobility_count * self.params.rpp_r_mob_base_val
+            - b_features_map.q_mobility_count * self.params.rpp_q_mob_base_val
+            - b_features_map.k_mobility_count * self.params.rpp_k_mob_base_val;
 
         let main_phase = get_phase(state);
         let pawn_phase = get_pawn_phase(state);
@@ -1125,8 +1117,6 @@ impl Evaluator {
                 def::WN => {
                     w_feature_map.n_sqr_count += SQR_TIER_N[index];
 
-                    w_feature_map.n_weak_mobility_count += mov_mask.count_ones() as i32;
-
                     let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
                         w_feature_map.n_stuck_count += 1;
@@ -1140,8 +1130,6 @@ impl Evaluator {
                 },
                 def::WB => {
                     w_feature_map.b_sqr_count += SQR_TIER_B[index];
-
-                    w_feature_map.b_weak_mobility_count += mov_mask.count_ones() as i32;
 
                     let mobility_mask = mov_mask & !bp_attack_mask & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
@@ -1157,8 +1145,6 @@ impl Evaluator {
                 def::WR => {
                     w_feature_map.r_sqr_count += SQR_TIER_R[index];
 
-                    w_feature_map.r_weak_mobility_count += mov_mask.count_ones() as i32;
-
                     let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
                         w_feature_map.r_stuck_count += 1;
@@ -1171,8 +1157,6 @@ impl Evaluator {
                     }
                 },
                 def::WQ => {
-                    w_feature_map.q_weak_mobility_count += mov_mask.count_ones() as i32;
-
                     let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask | br_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
                         w_feature_map.q_stuck_count += 1;
@@ -1197,8 +1181,6 @@ impl Evaluator {
                 def::BN => {
                     b_feature_map.n_sqr_count += SQR_TIER_N[index];
 
-                    b_feature_map.n_weak_mobility_count += mov_mask.count_ones() as i32;
-
                     let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
                         b_feature_map.n_stuck_count += 1;
@@ -1212,8 +1194,6 @@ impl Evaluator {
                 },
                 def::BB => {
                     b_feature_map.b_sqr_count += SQR_TIER_B[index];
-
-                    b_feature_map.b_weak_mobility_count += mov_mask.count_ones() as i32;
 
                     let mobility_mask = mov_mask & !wp_attack_mask & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
@@ -1229,8 +1209,6 @@ impl Evaluator {
                 def::BR => {
                     b_feature_map.r_sqr_count += SQR_TIER_R[index];
 
-                    b_feature_map.r_weak_mobility_count += mov_mask.count_ones() as i32;
-
                     let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
                         b_feature_map.r_stuck_count += 1;
@@ -1243,8 +1221,6 @@ impl Evaluator {
                     }
                 },
                 def::BQ => {
-                    b_feature_map.q_weak_mobility_count += mov_mask.count_ones() as i32;
-
                     let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask | wr_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
                         b_feature_map.q_stuck_count += 1;
