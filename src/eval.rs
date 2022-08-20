@@ -63,17 +63,6 @@ const SQR_TIER_B: [i32; def::BOARD_SIZE] = [
     0, 1, 1, 1, 1, 1, 1, 0,
 ];
 
-const SQR_TIER_R: [i32; def::BOARD_SIZE] = [
-    1, 2, 2, 2, 2, 2, 2, 1,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    1, 2, 2, 2, 2, 2, 2, 1,
-];
-
 const SQR_TIER_WK: [i32; def::BOARD_SIZE] = [
     1, 2, 1, 0, 0, 0, 2, 1,
     1, 1, 0, 0, 0, 0, 1, 1,
@@ -179,7 +168,6 @@ pub struct FeatureMap {
     p_eg_sqr_count: i32,
     n_sqr_count: i32,
     b_sqr_count: i32,
-    r_sqr_count: i32,
     k_sqr_count: i32,
     k_eg_sqr_count: i32,
 
@@ -206,11 +194,13 @@ pub struct FeatureMap {
     qk_attack_count: i32,
 
     king_pawn_protection_count: i32,
-    king_front_open_count: i32,
-    king_front_total_open_count: i32,
-    king_front_enery_pawn_cover_count: i32,
-    king_side_file_open_count: i32,
-    king_near_side_file_open_count: i32,
+    king_on_open_file_count: i32,
+    king_on_opponent_semi_open_file_count: i32,
+    king_on_own_semi_open_file_count: i32,
+    king_near_open_file_count: i32,
+    king_near_opponent_semi_open_file_count: i32,
+    king_near_own_semi_open_file_count: i32,
+
     king_cas_rights_count: i32,
     king_caslted_count: i32,
 
@@ -244,7 +234,6 @@ impl FeatureMap {
             p_eg_sqr_count: 0,
             n_sqr_count: 0,
             b_sqr_count: 0,
-            r_sqr_count: 0,
             k_sqr_count: 0,
             k_eg_sqr_count: 0,
 
@@ -271,11 +260,13 @@ impl FeatureMap {
             qk_attack_count: 0,
 
             king_pawn_protection_count: 0,
-            king_front_open_count: 0,
-            king_front_total_open_count: 0,
-            king_front_enery_pawn_cover_count: 0,
-            king_side_file_open_count: 0,
-            king_near_side_file_open_count: 0,
+            king_on_open_file_count: 0,
+            king_on_opponent_semi_open_file_count: 0,
+            king_on_own_semi_open_file_count: 0,
+            king_near_open_file_count: 0,
+            king_near_opponent_semi_open_file_count: 0,
+            king_near_own_semi_open_file_count: 0,
+
             king_cas_rights_count: 0,
             king_caslted_count: 0,
 
@@ -408,7 +399,6 @@ impl Evaluator {
             + w_features_map.p_eg_sqr_count * self.params.mp_p_eg_sqr_base_val
             + w_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
             + w_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
-            + w_features_map.r_sqr_count * self.params.mp_r_sqr_base_val
             + w_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
             + w_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             + w_features_map.pin_count * self.params.mp_pin_val
@@ -416,11 +406,12 @@ impl Evaluator {
             + w_features_map.rook_open_count * self.params.mp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
             + w_features_map.king_pawn_protection_count * self.params.mp_king_pawn_protection_val
-            + w_features_map.king_front_open_count * self.params.mp_king_front_open_val
-            + w_features_map.king_front_total_open_count * self.params.mp_king_front_total_open_val
-            + w_features_map.king_front_enery_pawn_cover_count * self.params.mp_king_front_enery_pawn_cover_val
-            + w_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
-            + w_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
+            + w_features_map.king_on_open_file_count * self.params.mp_king_on_open_file_val
+            + w_features_map.king_on_opponent_semi_open_file_count * self.params.mp_king_on_opponent_semi_open_file_val
+            + w_features_map.king_on_own_semi_open_file_count * self.params.mp_king_on_own_semi_open_file_val
+            + w_features_map.king_near_open_file_count * self.params.mp_king_near_open_file_val
+            + w_features_map.king_near_opponent_semi_open_file_count * self.params.mp_king_near_opponent_semi_open_file_val
+            + w_features_map.king_near_own_semi_open_file_count * self.params.mp_king_near_own_semi_open_file_val
             + w_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
             + w_features_map.king_caslted_count * self.params.mp_king_castled_val
             + w_features_map.pk_attack_count * self.params.mp_pk_attack_val
@@ -457,7 +448,6 @@ impl Evaluator {
             - b_features_map.p_eg_sqr_count * self.params.mp_p_eg_sqr_base_val
             - b_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
             - b_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
-            - b_features_map.r_sqr_count * self.params.mp_r_sqr_base_val
             - b_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
             - b_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             - b_features_map.pin_count * self.params.mp_pin_val
@@ -465,11 +455,12 @@ impl Evaluator {
             - b_features_map.rook_open_count * self.params.mp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
             - b_features_map.king_pawn_protection_count * self.params.mp_king_pawn_protection_val
-            - b_features_map.king_front_open_count * self.params.mp_king_front_open_val
-            - b_features_map.king_front_total_open_count * self.params.mp_king_front_total_open_val
-            - b_features_map.king_front_enery_pawn_cover_count * self.params.mp_king_front_enery_pawn_cover_val
-            - b_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
-            - b_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
+            - b_features_map.king_on_open_file_count * self.params.mp_king_on_open_file_val
+            - b_features_map.king_on_opponent_semi_open_file_count * self.params.mp_king_on_opponent_semi_open_file_val
+            - b_features_map.king_on_own_semi_open_file_count * self.params.mp_king_on_own_semi_open_file_val
+            - b_features_map.king_near_open_file_count * self.params.mp_king_near_open_file_val
+            - b_features_map.king_near_opponent_semi_open_file_count * self.params.mp_king_near_opponent_semi_open_file_val
+            - b_features_map.king_near_own_semi_open_file_count * self.params.mp_king_near_own_semi_open_file_val
             - b_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
             - b_features_map.king_caslted_count * self.params.mp_king_castled_val
             - b_features_map.pk_attack_count * self.params.mp_pk_attack_val
@@ -507,19 +498,12 @@ impl Evaluator {
             + w_features_map.p_eg_sqr_count * self.params.pp_p_eg_sqr_base_val
             + w_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
             + w_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
-            + w_features_map.r_sqr_count * self.params.pp_r_sqr_base_val
             + w_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
             + w_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
             + w_features_map.pin_count * self.params.pp_pin_val
             + w_features_map.semi_pin_count * self.params.pp_semi_pin_val
             + w_features_map.rook_open_count * self.params.pp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            + w_features_map.king_pawn_protection_count * self.params.pp_king_pawn_protection_val
-            + w_features_map.king_front_open_count * self.params.pp_king_front_open_val
-            + w_features_map.king_front_total_open_count * self.params.pp_king_front_total_open_val
-            + w_features_map.king_front_enery_pawn_cover_count * self.params.pp_king_front_enery_pawn_cover_val
-            + w_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
-            + w_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
             + w_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
             + w_features_map.king_caslted_count * self.params.pp_king_castled_val
             + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
@@ -556,19 +540,12 @@ impl Evaluator {
             - b_features_map.p_eg_sqr_count * self.params.pp_p_eg_sqr_base_val
             - b_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
             - b_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
-            - b_features_map.r_sqr_count * self.params.pp_r_sqr_base_val
             - b_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
             - b_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
             - b_features_map.pin_count * self.params.pp_pin_val
             - b_features_map.semi_pin_count * self.params.pp_semi_pin_val
             - b_features_map.rook_open_count * self.params.pp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            - b_features_map.king_pawn_protection_count * self.params.pp_king_pawn_protection_val
-            - b_features_map.king_front_open_count * self.params.pp_king_front_open_val
-            - b_features_map.king_front_total_open_count * self.params.pp_king_front_total_open_val
-            - b_features_map.king_front_enery_pawn_cover_count * self.params.pp_king_front_enery_pawn_cover_val
-            - b_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
-            - b_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
             - b_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
             - b_features_map.king_caslted_count * self.params.pp_king_castled_val
             - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
@@ -945,76 +922,110 @@ impl Evaluator {
 
         if bitmask.index_masks[state.wk_index] & WK_K_SIDE_MASK != 0 {
             w_feature_map.king_pawn_protection_count = (bitboard.w_pawn & WK_K_SIDE_MASK).count_ones() as i32;
-
-            if bitboard.w_pawn & bitmask.file_masks[6] == 0 {
-                w_feature_map.king_near_side_file_open_count += 1;
-            }
-
-            if bitboard.w_pawn & bitmask.file_masks[7] == 0 {
-                w_feature_map.king_side_file_open_count += 1;
-            }
         } else if bitmask.index_masks[state.wk_index] & WK_Q_SIDE_MASK != 0 {
             w_feature_map.king_pawn_protection_count = (bitboard.w_pawn & WK_Q_SIDE_MASK).count_ones() as i32;
-
-            if bitboard.w_pawn & bitmask.file_masks[1] == 0 {
-                w_feature_map.king_near_side_file_open_count += 1;
-            }
-
-            if bitboard.w_pawn & bitmask.file_masks[0] == 0 {
-                w_feature_map.king_side_file_open_count += 1;
-            }
         }
 
         if bitmask.index_masks[state.bk_index] & BK_K_SIDE_MASK != 0 {
             b_feature_map.king_pawn_protection_count = (bitboard.b_pawn & BK_K_SIDE_MASK).count_ones() as i32;
-
-            if bitboard.b_pawn & bitmask.file_masks[6] == 0 {
-                b_feature_map.king_near_side_file_open_count += 1;
-            }
-
-            if bitboard.b_pawn & bitmask.file_masks[7] == 0 {
-                b_feature_map.king_side_file_open_count += 1;
-            }
         } else if bitmask.index_masks[state.bk_index] & BK_Q_SIDE_MASK != 0 {
             b_feature_map.king_pawn_protection_count = (bitboard.b_pawn & BK_Q_SIDE_MASK).count_ones() as i32;
-
-            if bitboard.b_pawn & bitmask.file_masks[1] == 0 {
-                b_feature_map.king_near_side_file_open_count += 1;
-            }
-
-            if bitboard.b_pawn & bitmask.file_masks[0] == 0 {
-                b_feature_map.king_side_file_open_count += 1;
-            }
         }
 
-        if state.wk_index < def::SEVENTH_RANK_INDEX {
-            let k_front_index = bitmask.index_masks[state.wk_index + def::DIM_SIZE];
+        {
+            let wk_file_mask = file_masks[state.wk_index];
+            let wk_file = def::get_file(state.wk_index);
 
-            if k_front_index & bitboard.b_pawn != 0 {
-                w_feature_map.king_front_enery_pawn_cover_count += 1;
+            if (bitboard.w_pawn | bitboard.b_pawn) & wk_file_mask == 0 {
+                w_feature_map.king_on_open_file_count = 1;
+            } else {
+                if bitboard.b_pawn & wk_file_mask == 0 {
+                    w_feature_map.king_on_opponent_semi_open_file_count = 1;
+                }
+
+                if bitboard.w_pawn & wk_file_mask == 0 {
+                    w_feature_map.king_on_own_semi_open_file_count = 1;
+                }
             }
 
-            if k_front_index & bitboard.w_pawn == 0 {
-                w_feature_map.king_front_open_count += 1;
+            if wk_file > 0 {
+                let wk_left_file_mask = file_masks[state.wk_index - 1];
 
-                if bitmask.file_masks[state.wk_index] & bitboard.w_pawn == 0 {
-                    w_feature_map.king_front_total_open_count += 1;
+                if (bitboard.w_pawn | bitboard.b_pawn) & wk_left_file_mask == 0 {
+                    w_feature_map.king_near_open_file_count += 1;
+                } else {
+                    if bitboard.b_pawn & wk_left_file_mask == 0 {
+                        w_feature_map.king_near_opponent_semi_open_file_count += 1;
+                    }
+
+                    if bitboard.w_pawn & wk_left_file_mask == 0 {
+                        w_feature_map.king_near_own_semi_open_file_count += 1;
+                    }
+                }
+            }
+
+            if wk_file < 7 {
+                let wk_right_file_mask = file_masks[state.wk_index + 1];
+
+                if (bitboard.w_pawn | bitboard.b_pawn) & wk_right_file_mask == 0 {
+                    w_feature_map.king_near_open_file_count += 1;
+                } else {
+                    if bitboard.b_pawn & wk_right_file_mask == 0 {
+                        w_feature_map.king_near_opponent_semi_open_file_count += 1;
+                    }
+
+                    if bitboard.w_pawn & wk_right_file_mask == 0 {
+                        w_feature_map.king_near_own_semi_open_file_count += 1;
+                    }
                 }
             }
         }
 
-        if state.bk_index >= def::SECOND_RANK_INDEX {
-            let k_front_index = bitmask.index_masks[state.bk_index - def::DIM_SIZE];
+        {
+            let bk_file_mask = file_masks[state.bk_index];
+            let bk_file = def::get_file(state.bk_index);
 
-            if k_front_index & bitboard.w_pawn != 0 {
-                b_feature_map.king_front_enery_pawn_cover_count += 1;
+            if (bitboard.b_pawn | bitboard.w_pawn) & bk_file_mask == 0 {
+                b_feature_map.king_on_open_file_count = 1;
+            } else {
+                if bitboard.w_pawn & bk_file_mask == 0 {
+                    b_feature_map.king_on_opponent_semi_open_file_count = 1;
+                }
+
+                if bitboard.b_pawn & bk_file_mask == 0 {
+                    b_feature_map.king_on_own_semi_open_file_count = 1;
+                }
             }
 
-            if k_front_index & bitboard.b_pawn == 0 {
-                b_feature_map.king_front_open_count += 1;
+            if bk_file > 0 {
+                let bk_left_file_mask = file_masks[state.bk_index - 1];
 
-                if bitmask.file_masks[state.bk_index] & bitboard.b_pawn == 0 {
-                    b_feature_map.king_front_total_open_count += 1;
+                if (bitboard.b_pawn | bitboard.w_pawn) & bk_left_file_mask == 0 {
+                    b_feature_map.king_near_open_file_count += 1;
+                } else {
+                    if bitboard.w_pawn & bk_left_file_mask == 0 {
+                        b_feature_map.king_near_opponent_semi_open_file_count += 1;
+                    }
+
+                    if bitboard.b_pawn & bk_left_file_mask == 0 {
+                        b_feature_map.king_near_own_semi_open_file_count += 1;
+                    }
+                }
+            }
+
+            if bk_file < 7 {
+                let bk_right_file_mask = file_masks[state.bk_index + 1];
+
+                if (bitboard.b_pawn | bitboard.w_pawn) & bk_right_file_mask == 0 {
+                    b_feature_map.king_near_open_file_count += 1;
+                } else {
+                    if bitboard.w_pawn & bk_right_file_mask == 0 {
+                        b_feature_map.king_near_opponent_semi_open_file_count += 1;
+                    }
+
+                    if bitboard.w_pawn & bk_right_file_mask == 0 {
+                        b_feature_map.king_near_own_semi_open_file_count += 1;
+                    }
                 }
             }
         }
@@ -1143,8 +1154,6 @@ impl Evaluator {
                     }
                 },
                 def::WR => {
-                    w_feature_map.r_sqr_count += SQR_TIER_R[index];
-
                     let mobility_mask = mov_mask & !(bp_attack_mask | bn_attack_mask | bb_attack_mask) & !bitboard.w_all & !(b_attack_mask & !w_attack_mask);
                     if mobility_mask == 0 {
                         w_feature_map.r_stuck_count += 1;
@@ -1207,8 +1216,6 @@ impl Evaluator {
                     }
                 },
                 def::BR => {
-                    b_feature_map.r_sqr_count += SQR_TIER_R[index];
-
                     let mobility_mask = mov_mask & !(wp_attack_mask | wn_attack_mask | wb_attack_mask) & !bitboard.b_all & !(w_attack_mask & !b_attack_mask);
                     if mobility_mask == 0 {
                         b_feature_map.r_stuck_count += 1;
