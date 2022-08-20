@@ -631,6 +631,10 @@ impl Evaluator {
             + w_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
             + w_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
             + w_features_map.king_caslted_count * self.params.rmp_king_castled_val
+            + w_features_map.n_mobility_count * self.params.rmp_n_mob_base_val
+            + w_features_map.b_mobility_count * self.params.rmp_b_mob_base_val
+            + w_features_map.r_mobility_count * self.params.rmp_r_mob_base_val
+            + w_features_map.q_mobility_count * self.params.rmp_q_mob_base_val
 
             - b_features_map.behind_pawn_count * self.params.rmp_behind_pawn_val
             - b_features_map.isolated_pawn_count * self.params.rmp_isolated_pawn_val
@@ -640,7 +644,11 @@ impl Evaluator {
             - b_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
             - b_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
             - b_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
-            - b_features_map.king_caslted_count * self.params.rmp_king_castled_val;
+            - b_features_map.king_caslted_count * self.params.rmp_king_castled_val
+            - b_features_map.n_mobility_count * self.params.rmp_n_mob_base_val
+            - b_features_map.b_mobility_count * self.params.rmp_b_mob_base_val
+            - b_features_map.r_mobility_count * self.params.rmp_r_mob_base_val
+            - b_features_map.q_mobility_count * self.params.rmp_q_mob_base_val;
 
         let pos_rpp_score =
             w_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
