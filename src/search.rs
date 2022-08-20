@@ -305,13 +305,11 @@ impl SearchEngine {
                 }
             },
             _ => {
-                let (material_score, is_draw) = self.evaluator.eval_materials(state);
-
-                if is_draw && ply > 0 {
+                if self.evaluator.is_material_draw(state) && ply > 0 {
                     return 0;
                 }
 
-                static_eval = self.evaluator.eval_state(state, material_score);
+                static_eval = self.evaluator.eval_state(state);
             },
         }
 
@@ -757,13 +755,11 @@ impl SearchEngine {
                 }
             },
             _ => {
-                let (material_score, is_draw) = self.evaluator.eval_materials(state);
-
-                if is_draw {
+                if self.evaluator.is_material_draw(state) {
                     return 0;
                 }
 
-                static_eval = self.evaluator.eval_state(state, material_score);
+                static_eval = self.evaluator.eval_state(state);
             },
         }
 

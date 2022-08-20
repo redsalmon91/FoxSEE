@@ -38,6 +38,9 @@ const B_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_11111111_00000000_0000
 const W_CAS_MASK: u8 = 0b1100;
 const B_CAS_MASK: u8 = 0b0011;
 
+const BISHOP_KNIGHT_MATE_MIN: i32 = 2;
+const KNIGHT_MATE_MIN: i32 = 2;
+
 const SQR_TIER_N: [i32; def::BOARD_SIZE] = [
     0, 1, 1, 1, 1, 1, 1, 0,
     1, 2, 2, 2, 2, 2, 2, 1,
@@ -159,6 +162,15 @@ pub fn get_phase(state: &mut State) -> i32 {
 #[inline]
 pub fn get_pawn_phase(state: &mut State) -> i32 {
     state.wp_count + state.bp_count
+}
+
+#[inline]
+fn get_score_sign(state: &State) -> i32 {
+    if state.player == def::PLAYER_W {
+        1
+    } else {
+        -1
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -337,10 +349,27 @@ impl Evaluator {
         }
     }
 
-    pub fn eval_materials(&self, state: &mut State) -> (i32, bool) {
+    pub fn is_material_draw(&self, state: &State) -> bool {
         let bitboard = state.bitboard;
-        let bitmask = bitmask::get_bitmask();
 
+        if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
+            if state.wb_count + state.wn_count < BISHOP_KNIGHT_MATE_MIN && state.bb_count + state.bn_count < BISHOP_KNIGHT_MATE_MIN {
+                return true;
+            }
+
+            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && state.bn_count < KNIGHT_MATE_MIN {
+                return true;
+            }
+
+            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && state.wn_count < KNIGHT_MATE_MIN {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn eval_materials(&self, state: &mut State) -> i32 {
         let w_queen_count = state.wq_count;
         let w_rook_count = state.wr_count;
         let w_bishop_count = state.wb_count;
@@ -352,20 +381,6 @@ impl Evaluator {
         let b_bishop_count = state.bb_count;
         let b_knight_count = state.bn_count;
         let b_pawn_count = state.bp_count;
-
-        if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-            if w_bishop_count + w_knight_count < 2 && b_bishop_count + b_knight_count < 2 {
-                return (0, true);
-            }
-
-            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && b_knight_count < 3 {
-                return (0, true);
-            }
-
-            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && w_knight_count < 3 {
-                return (0, true);
-            }
-        }
 
         let material_base_score = (w_queen_count - b_queen_count) * self.params.q_val
             + (w_rook_count - b_rook_count) * self.params.r_val
@@ -388,92 +403,12 @@ impl Evaluator {
         let main_phase = get_phase(state);
         let pawn_phase = get_pawn_phase(state);
 
-        let material_score = material_base_score
+        material_base_score
             + material_mp_score * main_phase / TOTAL_MAIN_PHASE
-            + material_pp_score * pawn_phase / TOTAL_PAWN_PHASE;
-
-        let mut mp_material_score = 0;
-        let mut pp_material_score = 0;
-
-        if material_base_score > self.params.p_val && bitboard.w_pawn == 0 {
-            mp_material_score -= self.params.mp_pawn_essential_val;
-            pp_material_score -= self.params.pp_pawn_essential_val;
-        }
-
-        if material_base_score < -self.params.p_val && bitboard.b_pawn == 0 {
-            mp_material_score += self.params.mp_pawn_essential_val;
-            pp_material_score += self.params.pp_pawn_essential_val;
-        }
-
-        let mut is_endgame_with_different_colored_bishop = false;
-
-        if bitboard.w_knight | bitboard.b_knight | bitboard.w_queen | bitboard.b_queen == 0 {
-            if w_bishop_count == 1 && b_bishop_count == 1 {
-                let mut wb_reachable_mask = 0;
-                let mut bb_reachable_mask = 0;
-
-                for index in 0..def::BOARD_SIZE {
-                    match state.squares[index] {
-                        def::WB => {
-                            wb_reachable_mask = bitmask.b_cover_masks[index];
-                        },
-                        def::BB => {
-                            bb_reachable_mask = bitmask.b_cover_masks[index]
-                        },
-                        _ => {}
-                    }
-                }
-
-                is_endgame_with_different_colored_bishop = wb_reachable_mask & bb_reachable_mask == 0;
-            }
-        }
-
-        if is_endgame_with_different_colored_bishop {
-            if bitboard.w_rook | bitboard.b_rook == 0 {
-                if material_base_score > 0  {
-                    mp_material_score -= self.params.mp_different_color_bishop_val;
-                    pp_material_score -= self.params.pp_different_color_bishop_val;
-                } else if material_base_score < 0 {
-                    mp_material_score += self.params.mp_different_color_bishop_val;
-                    pp_material_score += self.params.pp_different_color_bishop_val;
-                }
-            } else {
-                if material_base_score > 0  {
-                    mp_material_score -= self.params.mp_different_color_bishop_with_rook_val;
-                    pp_material_score -= self.params.pp_different_color_bishop_with_rook_val;
-                } else if material_base_score < 0 {
-                    mp_material_score += self.params.mp_different_color_bishop_with_rook_val;
-                    pp_material_score += self.params.pp_different_color_bishop_with_rook_val;
-                }
-            }
-        } else {
-            if w_bishop_count > 1 {
-                mp_material_score += self.params.mp_bishop_pair_val;
-                pp_material_score += self.params.pp_bishop_pair_val;
-            }
-
-            if b_bishop_count > 1 {
-                mp_material_score -= self.params.mp_bishop_pair_val;
-                pp_material_score -= self.params.pp_bishop_pair_val;
-            }
-        }
-
-        let score_sign = if state.player == def::PLAYER_W {
-            1
-        } else {
-            -1
-        };
-
-        ((material_score + mp_material_score * main_phase / TOTAL_MAIN_PHASE + pp_material_score * pawn_phase / TOTAL_PAWN_PHASE) * score_sign, false)
+            + material_pp_score * pawn_phase / TOTAL_PAWN_PHASE
     }
 
-    pub fn eval_state(&self, state: &mut State, material_score: i32) -> i32 {
-        let score_sign = if state.player == def::PLAYER_W {
-            1
-        } else {
-            -1
-        };
-
+    pub fn eval_state(&self, state: &mut State) -> i32 {
         let (w_features_map, b_features_map) = self.extract_features(state);
 
         let pos_mp_score =
@@ -736,7 +671,7 @@ impl Evaluator {
 
         let tempo_score = self.params.mp_tempo_val * main_phase / TOTAL_MAIN_PHASE + self.params.pp_tempo_val * pawn_phase / TOTAL_PAWN_PHASE;
 
-        material_score + pos_score * score_sign + tempo_score
+        (self.eval_materials(state) + pos_score) * get_score_sign(state) + tempo_score
     }
 
     fn extract_features(&self, state: &mut State) -> (FeatureMap, FeatureMap) {
