@@ -99,6 +99,11 @@ pub struct EvalParams {
     pub pp_king_cas_rights_val: i32,
     pub rpp_king_cas_rights_val: i32,
 
+    pub mp_king_castled_val: i32,
+    pub rmp_king_castled_val: i32,
+    pub pp_king_castled_val: i32,
+    pub rpp_king_castled_val: i32,
+
     pub mp_rook_open_val: i32,
     pub mp_rook_semi_open_val: i32,
 
@@ -279,6 +284,11 @@ impl EvalParams {
             pp_king_cas_rights_val: 0,
             rpp_king_cas_rights_val: 0,
 
+            mp_king_castled_val: 0,
+            rmp_king_castled_val: 0,
+            pp_king_castled_val: 0,
+            rpp_king_castled_val: 0,
+
             mp_rook_open_val: 16,
             mp_rook_semi_open_val: 48,
 
@@ -452,6 +462,11 @@ impl EvalParams {
             rmp_king_cas_rights_val: config_map.get("rmp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
             pp_king_cas_rights_val: config_map.get("pp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
             rpp_king_cas_rights_val: config_map.get("rpp_king_cas_rights_val").unwrap().parse::<i32>().unwrap(),
+
+            mp_king_castled_val: config_map.get("mp_king_castled_val").unwrap().parse::<i32>().unwrap(),
+            rmp_king_castled_val: config_map.get("rmp_king_castled_val").unwrap().parse::<i32>().unwrap(),
+            pp_king_castled_val: config_map.get("pp_king_castled_val").unwrap().parse::<i32>().unwrap(),
+            rpp_king_castled_val: config_map.get("rpp_king_castled_val").unwrap().parse::<i32>().unwrap(),
 
             mp_rook_open_val: config_map.get("mp_rook_open_val").unwrap().parse::<i32>().unwrap(),
             mp_rook_semi_open_val: config_map.get("mp_rook_semi_open_val").unwrap().parse::<i32>().unwrap(),

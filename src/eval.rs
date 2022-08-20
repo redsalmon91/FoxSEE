@@ -35,6 +35,9 @@ const W_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_00000000_11111111_0000
 const B_3RD_RANK_MASK: u64 = 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000;
 const B_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_11111111_00000000_00000000_00000000_00000000;
 
+const W_CAS_MASK: u8 = 0b1100;
+const B_CAS_MASK: u8 = 0b0011;
+
 const SQR_TIER_N: [i32; def::BOARD_SIZE] = [
     0, 1, 1, 1, 1, 1, 1, 0,
     1, 2, 2, 2, 2, 2, 2, 1,
@@ -197,6 +200,7 @@ pub struct FeatureMap {
     king_side_file_open_count: i32,
     king_near_side_file_open_count: i32,
     king_cas_rights_count: i32,
+    king_caslted_count: i32,
 
     unprotected_sqr_count: i32,
     under_attacked_sqr_count: i32,
@@ -265,6 +269,7 @@ impl FeatureMap {
             king_side_file_open_count: 0,
             king_near_side_file_open_count: 0,
             king_cas_rights_count: 0,
+            king_caslted_count: 0,
 
             unprotected_sqr_count: 0,
             under_attacked_sqr_count: 0,
@@ -490,6 +495,7 @@ impl Evaluator {
             + w_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
             + w_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
             + w_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
+            + w_features_map.king_caslted_count * self.params.mp_king_castled_val
             + w_features_map.pk_attack_count * self.params.mp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.mp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.mp_bk_attack_val
@@ -541,6 +547,7 @@ impl Evaluator {
             - b_features_map.king_near_side_file_open_count * self.params.mp_king_near_side_file_open_val
             - b_features_map.king_side_file_open_count * self.params.mp_king_side_file_open_val
             - b_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
+            - b_features_map.king_caslted_count * self.params.mp_king_castled_val
             - b_features_map.pk_attack_count * self.params.mp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.mp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.mp_bk_attack_val
@@ -593,6 +600,7 @@ impl Evaluator {
             + w_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
             + w_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
             + w_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
+            + w_features_map.king_caslted_count * self.params.pp_king_castled_val
             + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.pp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -644,6 +652,7 @@ impl Evaluator {
             - b_features_map.king_near_side_file_open_count * self.params.pp_king_near_side_file_open_val
             - b_features_map.king_side_file_open_count * self.params.pp_king_side_file_open_val
             - b_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
+            - b_features_map.king_caslted_count * self.params.pp_king_castled_val
             - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.pp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -686,6 +695,7 @@ impl Evaluator {
             + w_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
             + w_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
+            + w_features_map.king_caslted_count * self.params.rmp_king_castled_val
 
             - b_features_map.behind_pawn_count * self.params.rmp_behind_pawn_val
             - b_features_map.isolated_pawn_count * self.params.rmp_isolated_pawn_val
@@ -694,7 +704,8 @@ impl Evaluator {
             - b_features_map.passer_rank_count * self.params.rmp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
             - b_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
-            - b_features_map.king_cas_rights_count * self.params.rpp_king_cas_rights_val;
+            - b_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
+            - b_features_map.king_caslted_count * self.params.rmp_king_castled_val;
 
         let pos_rpp_score =
             w_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
@@ -704,6 +715,7 @@ impl Evaluator {
             + w_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             + w_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
+            + w_features_map.king_caslted_count * self.params.rpp_king_castled_val
 
             - b_features_map.behind_pawn_count * self.params.rpp_behind_pawn_val
             - b_features_map.isolated_pawn_count * self.params.rpp_isolated_pawn_val
@@ -711,7 +723,8 @@ impl Evaluator {
             - b_features_map.passer_count * self.params.rpp_passer_base_val
             - b_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
-            - b_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val;
+            - b_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
+            - b_features_map.king_caslted_count * self.params.rpp_king_castled_val;
 
         let main_phase = get_phase(state);
         let pawn_phase = get_pawn_phase(state);
@@ -735,11 +748,15 @@ impl Evaluator {
         let mut w_feature_map = FeatureMap::empty();
         let mut b_feature_map = FeatureMap::empty();
 
-        if (state.cas_rights | state.cas_history) & 0b1100 != 0 {
+        if state.cas_history & W_CAS_MASK != 0 {
+            w_feature_map.king_caslted_count = 1;
+        } else if state.cas_rights & W_CAS_MASK != 0 {
             w_feature_map.king_cas_rights_count = 1;
         }
     
-        if (state.cas_rights | state.cas_history) & 0b0011 != 0 {
+        if state.cas_history & B_CAS_MASK != 0 {
+            b_feature_map.king_caslted_count = 1;
+        } else if state.cas_rights & B_CAS_MASK != 0 {
             b_feature_map.king_cas_rights_count = 1;
         }
 
