@@ -288,18 +288,32 @@ impl Evaluator {
         + (w_knight_count - b_knight_count) * self.params.mp_n_val
         + (w_pawn_count - b_pawn_count) * self.params.mp_p_val;
 
+        let material_rmp_score = (w_queen_count - b_queen_count) * self.params.rmp_q_val
+        + (w_rook_count - b_rook_count) * self.params.rmp_r_val
+        + (w_bishop_count - b_bishop_count) * self.params.rmp_b_val
+        + (w_knight_count - b_knight_count) * self.params.rmp_n_val
+        + (w_pawn_count - b_pawn_count) * self.params.rmp_p_val;
+
         let material_pp_score = (w_queen_count - b_queen_count) * self.params.pp_q_val
         + (w_rook_count - b_rook_count) * self.params.pp_r_val
         + (w_bishop_count - b_bishop_count) * self.params.pp_b_val
         + (w_knight_count - b_knight_count) * self.params.pp_n_val
         + (w_pawn_count - b_pawn_count) * self.params.pp_p_val;
 
+        let material_rpp_score = (w_queen_count - b_queen_count) * self.params.rpp_q_val
+        + (w_rook_count - b_rook_count) * self.params.rpp_r_val
+        + (w_bishop_count - b_bishop_count) * self.params.rpp_b_val
+        + (w_knight_count - b_knight_count) * self.params.rpp_n_val
+        + (w_pawn_count - b_pawn_count) * self.params.rpp_p_val;
+
         let main_phase = get_phase(state);
         let pawn_phase = get_pawn_phase(state);
 
         material_base_score
             + material_mp_score * main_phase / TOTAL_MAIN_PHASE
+            + material_rmp_score * (TOTAL_MAIN_PHASE - main_phase) / TOTAL_MAIN_PHASE
             + material_pp_score * pawn_phase / TOTAL_PAWN_PHASE
+            + material_rpp_score * (TOTAL_PAWN_PHASE - pawn_phase) / TOTAL_PAWN_PHASE
     }
 
     pub fn eval_state(&self, state: &mut State) -> i32 {

@@ -14,11 +14,23 @@ pub struct EvalParams {
     pub mp_n_val: i32,
     pub mp_p_val: i32,
 
+    pub rmp_q_val: i32,
+    pub rmp_r_val: i32,
+    pub rmp_b_val: i32,
+    pub rmp_n_val: i32,
+    pub rmp_p_val: i32,
+
     pub pp_q_val: i32,
     pub pp_r_val: i32,
     pub pp_b_val: i32,
     pub pp_n_val: i32,
     pub pp_p_val: i32,
+
+    pub rpp_q_val: i32,
+    pub rpp_r_val: i32,
+    pub rpp_b_val: i32,
+    pub rpp_n_val: i32,
+    pub rpp_p_val: i32,
 
     pub mp_n_sqr_base_val: i32,
     pub mp_b_sqr_base_val: i32,
@@ -132,18 +144,6 @@ pub struct EvalParams {
 
     pub mp_tempo_val: i32,
     pub pp_tempo_val: i32,
-
-    pub mp_pawn_essential_val: i32,
-    pub pp_pawn_essential_val: i32,
-
-    pub mp_different_color_bishop_val: i32,
-    pub mp_different_color_bishop_with_rook_val: i32,
-
-    pub pp_different_color_bishop_val: i32,
-    pub pp_different_color_bishop_with_rook_val: i32,
-
-    pub mp_bishop_pair_val: i32,
-    pub pp_bishop_pair_val: i32,
 }
 
 impl EvalParams {
@@ -160,12 +160,22 @@ impl EvalParams {
             mp_b_val: 0,
             mp_n_val: 0,
             mp_p_val: 0,
+            rmp_q_val: 0,
+            rmp_r_val: 0,
+            rmp_b_val: 0,
+            rmp_n_val: 0,
+            rmp_p_val: 0,
 
             pp_q_val: 0,
             pp_r_val: 0,
             pp_b_val: 0,
             pp_n_val: 0,
             pp_p_val: 0,
+            rpp_q_val: 0,
+            rpp_r_val: 0,
+            rpp_b_val: 0,
+            rpp_n_val: 0,
+            rpp_p_val: 0,
 
             mp_n_sqr_base_val: 7,
             mp_b_sqr_base_val: 2,
@@ -176,7 +186,7 @@ impl EvalParams {
             mp_isolated_pawn_val: -10,
             mp_doubled_pawn_val: 0,
             mp_behind_pawn_val: 0,
-            rmp_isolated_pawn_val: 0,
+            rmp_isolated_pawn_val: -8,
             rmp_doubled_pawn_val: 0,
             rmp_behind_pawn_val: 0,
 
@@ -280,18 +290,6 @@ impl EvalParams {
 
             mp_tempo_val: 0,
             pp_tempo_val: 0,
-
-            mp_pawn_essential_val: 0,
-            pp_pawn_essential_val: 0,
-
-            mp_different_color_bishop_val: 0,
-            mp_different_color_bishop_with_rook_val: 0,
-
-            pp_different_color_bishop_val: 0,
-            pp_different_color_bishop_with_rook_val: 0,
-
-            mp_bishop_pair_val: 0,
-            pp_bishop_pair_val: 0,
         }
     }
 
@@ -307,11 +305,21 @@ impl EvalParams {
             mp_b_val: config_map.get("mp_b_val").unwrap().parse::<i32>().unwrap(),
             mp_n_val: config_map.get("mp_n_val").unwrap().parse::<i32>().unwrap(),
             mp_p_val: config_map.get("mp_p_val").unwrap().parse::<i32>().unwrap(),
+            rmp_q_val: config_map.get("rmp_q_val").unwrap().parse::<i32>().unwrap(),
+            rmp_r_val: config_map.get("rmp_r_val").unwrap().parse::<i32>().unwrap(),
+            rmp_b_val: config_map.get("rmp_b_val").unwrap().parse::<i32>().unwrap(),
+            rmp_n_val: config_map.get("rmp_n_val").unwrap().parse::<i32>().unwrap(),
+            rmp_p_val: config_map.get("rmp_p_val").unwrap().parse::<i32>().unwrap(),
             pp_q_val: config_map.get("pp_q_val").unwrap().parse::<i32>().unwrap(),
             pp_r_val: config_map.get("pp_r_val").unwrap().parse::<i32>().unwrap(),
             pp_b_val: config_map.get("pp_b_val").unwrap().parse::<i32>().unwrap(),
             pp_n_val: config_map.get("pp_n_val").unwrap().parse::<i32>().unwrap(),
             pp_p_val: config_map.get("pp_p_val").unwrap().parse::<i32>().unwrap(),
+            rpp_q_val: config_map.get("rpp_q_val").unwrap().parse::<i32>().unwrap(),
+            rpp_r_val: config_map.get("rpp_r_val").unwrap().parse::<i32>().unwrap(),
+            rpp_b_val: config_map.get("rpp_b_val").unwrap().parse::<i32>().unwrap(),
+            rpp_n_val: config_map.get("rpp_n_val").unwrap().parse::<i32>().unwrap(),
+            rpp_p_val: config_map.get("rpp_p_val").unwrap().parse::<i32>().unwrap(),
 
             mp_n_sqr_base_val: config_map.get("mp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             mp_b_sqr_base_val: config_map.get("mp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
@@ -421,17 +429,6 @@ impl EvalParams {
 
             mp_tempo_val: config_map.get("mp_tempo_val").unwrap().parse::<i32>().unwrap(),
             pp_tempo_val: config_map.get("pp_tempo_val").unwrap().parse::<i32>().unwrap(),
-
-            mp_pawn_essential_val: config_map.get("mp_pawn_essential_val").unwrap().parse::<i32>().unwrap(),
-            pp_pawn_essential_val: config_map.get("pp_pawn_essential_val").unwrap().parse::<i32>().unwrap(),
-
-            mp_different_color_bishop_val: config_map.get("mp_different_color_bishop_val").unwrap().parse::<i32>().unwrap(),
-            mp_different_color_bishop_with_rook_val: config_map.get("mp_different_color_bishop_with_rook_val").unwrap().parse::<i32>().unwrap(),
-            pp_different_color_bishop_val: config_map.get("pp_different_color_bishop_val").unwrap().parse::<i32>().unwrap(),
-            pp_different_color_bishop_with_rook_val: config_map.get("pp_different_color_bishop_with_rook_val").unwrap().parse::<i32>().unwrap(),
-
-            mp_bishop_pair_val: config_map.get("mp_bishop_pair_val").unwrap().parse::<i32>().unwrap(),
-            pp_bishop_pair_val: config_map.get("pp_bishop_pair_val").unwrap().parse::<i32>().unwrap(),
         }
     }
 }
