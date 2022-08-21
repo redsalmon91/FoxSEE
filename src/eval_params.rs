@@ -95,10 +95,6 @@ pub struct EvalParams {
     pub pp_rook_semi_open_val: i32,
 
     pub mp_pin_val: i32,
-    pub mp_semi_pin_val: i32,
-
-    pub pp_pin_val: i32,
-    pub pp_semi_pin_val: i32,
 
     pub mp_unprotected_sqr_val: i32,
     pub mp_under_attacked_sqr_val: i32,
@@ -266,10 +262,6 @@ impl EvalParams {
             pp_rook_semi_open_val: 64,
 
             mp_pin_val: -32,
-            mp_semi_pin_val: 0,
-
-            pp_pin_val: 0,
-            pp_semi_pin_val: 0,
 
             mp_unprotected_sqr_val: 0,
             mp_under_attacked_sqr_val: -4,
@@ -278,7 +270,7 @@ impl EvalParams {
             pp_under_attacked_sqr_val: 0,
 
             mp_protected_p_val: 8,
-            mp_protected_n_val: 0,
+            mp_protected_n_val: 2,
             mp_protected_b_val: 0,
             mp_protected_r_val: 0,
 
@@ -430,9 +422,6 @@ impl EvalParams {
             pp_rook_semi_open_val: config_map.get("pp_rook_semi_open_val").unwrap().parse::<i32>().unwrap(),
 
             mp_pin_val: config_map.get("mp_pin_val").unwrap().parse::<i32>().unwrap(),
-            mp_semi_pin_val: config_map.get("mp_semi_pin_val").unwrap().parse::<i32>().unwrap(),
-            pp_pin_val: config_map.get("pp_pin_val").unwrap().parse::<i32>().unwrap(),
-            pp_semi_pin_val: config_map.get("pp_semi_pin_val").unwrap().parse::<i32>().unwrap(),
 
             mp_unprotected_sqr_val: config_map.get("mp_unprotected_sqr_val").unwrap().parse::<i32>().unwrap(),
             mp_under_attacked_sqr_val: config_map.get("mp_under_attacked_sqr_val").unwrap().parse::<i32>().unwrap(),

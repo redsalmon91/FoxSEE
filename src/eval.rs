@@ -185,7 +185,6 @@ pub struct FeatureMap {
     rook_semi_open_count: i32,
 
     pin_count: i32,
-    semi_pin_count: i32,
 
     pk_attack_count: i32,
     nk_attack_count: i32,
@@ -250,7 +249,6 @@ impl FeatureMap {
             rook_semi_open_count: 0,
 
             pin_count: 0,
-            semi_pin_count: 0,
 
             pk_attack_count: 0,
             nk_attack_count: 0,
@@ -400,7 +398,6 @@ impl Evaluator {
             + w_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
             + w_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             + w_features_map.pin_count * self.params.mp_pin_val
-            + w_features_map.semi_pin_count * self.params.mp_semi_pin_val
             + w_features_map.rook_open_count * self.params.mp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
             + w_features_map.king_pawn_protection_count * self.params.mp_king_pawn_protection_val
@@ -448,7 +445,6 @@ impl Evaluator {
             - b_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
             - b_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             - b_features_map.pin_count * self.params.mp_pin_val
-            - b_features_map.semi_pin_count * self.params.mp_semi_pin_val
             - b_features_map.rook_open_count * self.params.mp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
             - b_features_map.king_pawn_protection_count * self.params.mp_king_pawn_protection_val
@@ -496,8 +492,6 @@ impl Evaluator {
             + w_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
             + w_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
             + w_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
-            + w_features_map.pin_count * self.params.pp_pin_val
-            + w_features_map.semi_pin_count * self.params.pp_semi_pin_val
             + w_features_map.rook_open_count * self.params.pp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
             + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
@@ -536,8 +530,6 @@ impl Evaluator {
             - b_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
             - b_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
             - b_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
-            - b_features_map.pin_count * self.params.pp_pin_val
-            - b_features_map.semi_pin_count * self.params.pp_semi_pin_val
             - b_features_map.rook_open_count * self.params.pp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
             - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
@@ -665,9 +657,6 @@ impl Evaluator {
         let mut bb_attack_mask = 0;
         let mut br_attack_mask = 0;
         let mut bq_attack_mask = 0;
-
-        let mut wq_index = 0;
-        let mut bq_index = 0;
 
         let mut mov_mask_map = [0; def::BOARD_SIZE];
 
@@ -834,8 +823,6 @@ impl Evaluator {
                 },
 
                 def::WQ => {
-                    wq_index = index;
-
                     let mut mov_mask = 0;
 
                     mov_mask |= bitmask.horizontal_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask & bitmask.rank_masks[index]) as usize];
@@ -847,8 +834,6 @@ impl Evaluator {
                     mov_mask_map[index] = mov_mask;
                 },
                 def::BQ => {
-                    bq_index = index;
-
                     let mut mov_mask = 0;
 
                     mov_mask |= bitmask.horizontal_attack_masks[index][util::kindergarten_transform_rank_diag(occupy_mask & bitmask.rank_masks[index]) as usize];
@@ -1015,19 +1000,6 @@ impl Evaluator {
         let w_in_check = mov_table::is_in_check(state, def::PLAYER_W);
         let b_in_check = mov_table::is_in_check(state, def::PLAYER_B);
 
-        let w_queen_under_attack = if bitboard.w_queen == 0 {
-            false
-        } else {
-            mov_table::is_under_attack(state, wq_index, def::PLAYER_W)
-        };
-
-        let b_queen_under_attack  = if bitboard.b_queen == 0 {
-            false
-        } else {
-            mov_table::is_under_attack(state, bq_index, def::PLAYER_B)
-        };
-
-
         for index in start_index..end_index {
             let piece = squares[index];
 
@@ -1047,16 +1019,6 @@ impl Evaluator {
                         mov_table::is_in_check(state, def::PLAYER_W)
                     };
 
-                    let queen_under_attack = if w_queen_under_attack {
-                        false
-                    } else {
-                        if bitboard.w_queen == 0 {
-                            false
-                        } else {
-                            mov_table::is_under_attack(state, wq_index, def::PLAYER_W)
-                        }
-                    };
-
                     state.bitboard.w_all ^= index_mask;
 
                     if king_under_attack {
@@ -1065,8 +1027,6 @@ impl Evaluator {
                         if w_attack_without_king_mask & index_mask == 0 {
                             w_feature_map.pin_count += 1;
                         }
-                    } else if queen_under_attack {
-                        w_feature_map.semi_pin_count += 1;
                     }
                 } else {
                     state.bitboard.b_all ^= index_mask;
@@ -1074,16 +1034,6 @@ impl Evaluator {
                         false
                     } else {
                         mov_table::is_in_check(state, def::PLAYER_B)
-                    };
-
-                    let queen_under_attack = if b_queen_under_attack {
-                        false
-                    } else {
-                        if bitboard.b_queen == 0 {
-                            false
-                        } else {
-                            mov_table::is_under_attack(state, bq_index, def::PLAYER_B)
-                        }
                     };
 
                     state.bitboard.b_all ^= index_mask;
@@ -1094,8 +1044,6 @@ impl Evaluator {
                         if b_attack_without_king_mask & index_mask == 0 {
                             b_feature_map.pin_count += 1;
                         }
-                    } else if queen_under_attack {
-                        b_feature_map.semi_pin_count += 1;
                     }
                 }
             }
