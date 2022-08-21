@@ -20,19 +20,10 @@ pub struct EvalParams {
     pub pp_n_val: i32,
     pub pp_p_val: i32,
 
-    pub mp_p_sqr_base_val: i32,
-    pub mp_p_eg_sqr_base_val: i32,
     pub mp_n_sqr_base_val: i32,
     pub mp_b_sqr_base_val: i32,
-    pub mp_k_sqr_base_val: i32,
-    pub mp_k_eg_sqr_base_val: i32,
-
-    pub pp_p_sqr_base_val: i32,
-    pub pp_p_eg_sqr_base_val: i32,
     pub pp_n_sqr_base_val: i32,
     pub pp_b_sqr_base_val: i32,
-    pub pp_k_sqr_base_val: i32,
-    pub pp_k_eg_sqr_base_val: i32,
 
     pub mp_isolated_pawn_val: i32,
     pub mp_doubled_pawn_val: i32,
@@ -72,12 +63,6 @@ pub struct EvalParams {
     pub mp_rk_attack_val: i32,
     pub mp_qk_attack_val: i32,
 
-    pub pp_pk_attack_val: i32,
-    pub pp_nk_attack_val: i32,
-    pub pp_bk_attack_val: i32,
-    pub pp_rk_attack_val: i32,
-    pub pp_qk_attack_val: i32,
-
     pub mp_king_pawn_protection_val: i32,
     pub mp_king_on_open_file_val: i32,
     pub mp_king_on_opponent_semi_open_file_val: i32,
@@ -106,11 +91,6 @@ pub struct EvalParams {
     pub mp_protected_n_val: i32,
     pub mp_protected_b_val: i32,
     pub mp_protected_r_val: i32,
-
-    pub pp_protected_p_val: i32,
-    pub pp_protected_n_val: i32,
-    pub pp_protected_b_val: i32,
-    pub pp_protected_r_val: i32,
 
     pub mp_np_protected_3rd_rank_sqr_val: i32,
     pub mp_np_protected_4th_rank_sqr_val: i32,
@@ -187,19 +167,11 @@ impl EvalParams {
             pp_n_val: 0,
             pp_p_val: 0,
 
-            mp_p_sqr_base_val: 0,
-            mp_p_eg_sqr_base_val: 0,
             mp_n_sqr_base_val: 7,
             mp_b_sqr_base_val: 2,
-            mp_k_sqr_base_val: 0,
-            mp_k_eg_sqr_base_val: 0,
 
-            pp_p_sqr_base_val: 0,
-            pp_p_eg_sqr_base_val: 0,
             pp_n_sqr_base_val: 0,
             pp_b_sqr_base_val: 0,
-            pp_k_sqr_base_val: 0,
-            pp_k_eg_sqr_base_val: 0,
 
             mp_isolated_pawn_val: -10,
             mp_doubled_pawn_val: 0,
@@ -239,12 +211,6 @@ impl EvalParams {
             mp_rk_attack_val: 56,
             mp_qk_attack_val: 48,
 
-            pp_pk_attack_val: 0,
-            pp_nk_attack_val: 0,
-            pp_bk_attack_val: 0,
-            pp_rk_attack_val: 0,
-            pp_qk_attack_val: 0,
-
             mp_king_pawn_protection_val: 52,
             mp_king_on_open_file_val: 0,
             mp_king_on_opponent_semi_open_file_val: 0,
@@ -273,11 +239,6 @@ impl EvalParams {
             mp_protected_n_val: 2,
             mp_protected_b_val: 0,
             mp_protected_r_val: 0,
-
-            pp_protected_p_val: 0,
-            pp_protected_n_val: 0,
-            pp_protected_b_val: 0,
-            pp_protected_r_val: 0,
 
             mp_np_protected_3rd_rank_sqr_val: 0,
             mp_np_protected_4th_rank_sqr_val: 0,
@@ -352,18 +313,10 @@ impl EvalParams {
             pp_n_val: config_map.get("pp_n_val").unwrap().parse::<i32>().unwrap(),
             pp_p_val: config_map.get("pp_p_val").unwrap().parse::<i32>().unwrap(),
 
-            mp_p_sqr_base_val: config_map.get("mp_p_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            mp_p_eg_sqr_base_val: config_map.get("mp_p_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             mp_n_sqr_base_val: config_map.get("mp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             mp_b_sqr_base_val: config_map.get("mp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            mp_k_sqr_base_val: config_map.get("mp_k_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            mp_k_eg_sqr_base_val: config_map.get("mp_k_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            pp_p_sqr_base_val: config_map.get("pp_p_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            pp_p_eg_sqr_base_val: config_map.get("pp_p_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             pp_n_sqr_base_val: config_map.get("pp_n_sqr_base_val").unwrap().parse::<i32>().unwrap(),
             pp_b_sqr_base_val: config_map.get("pp_b_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            pp_k_sqr_base_val: config_map.get("pp_k_sqr_base_val").unwrap().parse::<i32>().unwrap(),
-            pp_k_eg_sqr_base_val: config_map.get("pp_k_eg_sqr_base_val").unwrap().parse::<i32>().unwrap(),
 
             mp_isolated_pawn_val: config_map.get("mp_isolated_pawn_val").unwrap().parse::<i32>().unwrap(),
             mp_doubled_pawn_val: config_map.get("mp_doubled_pawn_val").unwrap().parse::<i32>().unwrap(),
@@ -400,11 +353,6 @@ impl EvalParams {
             mp_bk_attack_val: config_map.get("mp_bk_attack_val").unwrap().parse::<i32>().unwrap(),
             mp_rk_attack_val: config_map.get("mp_rk_attack_val").unwrap().parse::<i32>().unwrap(),
             mp_qk_attack_val: config_map.get("mp_qk_attack_val").unwrap().parse::<i32>().unwrap(),
-            pp_pk_attack_val: config_map.get("pp_pk_attack_val").unwrap().parse::<i32>().unwrap(),
-            pp_nk_attack_val: config_map.get("pp_nk_attack_val").unwrap().parse::<i32>().unwrap(),
-            pp_bk_attack_val: config_map.get("pp_bk_attack_val").unwrap().parse::<i32>().unwrap(),
-            pp_rk_attack_val: config_map.get("pp_rk_attack_val").unwrap().parse::<i32>().unwrap(),
-            pp_qk_attack_val: config_map.get("pp_qk_attack_val").unwrap().parse::<i32>().unwrap(),
 
             mp_king_pawn_protection_val: config_map.get("mp_king_pawn_protection_val").unwrap().parse::<i32>().unwrap(),
             mp_king_on_open_file_val: config_map.get("mp_king_on_open_file_val").unwrap().parse::<i32>().unwrap(),
@@ -432,10 +380,6 @@ impl EvalParams {
             mp_protected_n_val: config_map.get("mp_protected_n_val").unwrap().parse::<i32>().unwrap(),
             mp_protected_b_val: config_map.get("mp_protected_b_val").unwrap().parse::<i32>().unwrap(),
             mp_protected_r_val: config_map.get("mp_protected_r_val").unwrap().parse::<i32>().unwrap(),
-            pp_protected_p_val: config_map.get("pp_protected_p_val").unwrap().parse::<i32>().unwrap(),
-            pp_protected_n_val: config_map.get("pp_protected_n_val").unwrap().parse::<i32>().unwrap(),
-            pp_protected_b_val: config_map.get("pp_protected_b_val").unwrap().parse::<i32>().unwrap(),
-            pp_protected_r_val: config_map.get("pp_protected_r_val").unwrap().parse::<i32>().unwrap(),
 
             mp_np_protected_3rd_rank_sqr_val: config_map.get("mp_np_protected_3rd_rank_sqr_val").unwrap().parse::<i32>().unwrap(),
             mp_np_protected_4th_rank_sqr_val: config_map.get("mp_np_protected_4th_rank_sqr_val").unwrap().parse::<i32>().unwrap(),

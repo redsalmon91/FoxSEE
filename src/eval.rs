@@ -54,90 +54,13 @@ const SQR_TIER_N: [i32; def::BOARD_SIZE] = [
 
 const SQR_TIER_B: [i32; def::BOARD_SIZE] = [
     0, 1, 1, 1, 1, 1, 1, 0,
-    1, 2, 2, 2, 2, 2, 2, 1,
-    1, 2, 2, 2, 2, 2, 2, 1,
-    1, 2, 2, 2, 2, 2, 2, 1,
-    1, 2, 2, 2, 2, 2, 2, 1,
-    1, 2, 2, 2, 2, 2, 2, 1,
-    1, 2, 2, 2, 2, 2, 2, 1,
+    1, 3, 2, 2, 2, 2, 3, 1,
+    1, 2, 3, 2, 2, 3, 2, 1,
+    1, 2, 2, 3, 3, 2, 2, 1,
+    1, 2, 2, 3, 3, 2, 2, 1,
+    1, 2, 3, 2, 2, 3, 2, 1,
+    1, 3, 2, 2, 2, 2, 3, 1,
     0, 1, 1, 1, 1, 1, 1, 0,
-];
-
-const SQR_TIER_WK: [i32; def::BOARD_SIZE] = [
-    1, 2, 1, 0, 0, 0, 2, 1,
-    1, 1, 0, 0, 0, 0, 1, 1,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-];
-
-const SQR_TIER_BK: [i32; def::BOARD_SIZE] = [
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    1, 1, 0, 0, 0, 0, 1, 1,
-    1, 2, 1, 0, 0, 0, 2, 1,
-];
-
-const SQR_TIER_K_EG: [i32; def::BOARD_SIZE] = [
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 0,
-    0, 1, 2, 2, 2, 2, 1, 0,
-    0, 1, 2, 3, 3, 2, 1, 0,
-    0, 1, 2, 3, 3, 2, 1, 0,
-    0, 1, 2, 2, 2, 2, 1, 0,
-    0, 1, 1, 1, 1, 1, 1, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-];
-
-const SQR_TIER_WP: [i32; def::BOARD_SIZE] = [
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    1, 1, 1, 1, 1, 1, 1, 1,
-    2, 2, 2, 3, 3, 2, 2, 2,
-    2, 3, 3, 4, 4, 3, 3, 2,
-    2, 3, 4, 5, 5, 4, 3, 2,
-    2, 3, 4, 5, 5, 4, 3, 2,
-    0, 0, 0, 0, 0, 0, 0, 0,
-];
-
-const SQR_TIER_WP_EG: [i32; def::BOARD_SIZE] = [
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    1, 1, 1, 1, 1, 1, 1, 1,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    5, 5, 5, 5, 5, 5, 5, 5,
-    0, 0, 0, 0, 0, 0, 0, 0,
-];
-
-const SQR_TIER_BP: [i32; def::BOARD_SIZE] = [
-    0, 0, 0, 0, 0, 0, 0, 0,
-    2, 3, 4, 5, 5, 4, 3, 2,
-    2, 3, 4, 5, 5, 4, 3, 2,
-    2, 3, 3, 4, 4, 3, 3, 2,
-    2, 2, 2, 3, 3, 2, 2, 2,
-    1, 1, 1, 1, 1, 1, 1, 1,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-];
-
-const SQR_TIER_BP_EG: [i32; def::BOARD_SIZE] = [
-    0, 0, 0, 0, 0, 0, 0, 0,
-    5, 5, 5, 5, 5, 5, 5, 5,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    1, 1, 1, 1, 1, 1, 1, 1,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
 #[inline]
@@ -164,12 +87,8 @@ fn get_score_sign(state: &State) -> i32 {
 
 #[derive(PartialEq, Debug)]
 pub struct FeatureMap {
-    p_sqr_count: i32,
-    p_eg_sqr_count: i32,
     n_sqr_count: i32,
     b_sqr_count: i32,
-    k_sqr_count: i32,
-    k_eg_sqr_count: i32,
 
     passer_count: i32,
     passer_rank_count: i32,
@@ -228,12 +147,8 @@ pub struct FeatureMap {
 impl FeatureMap {
     pub fn empty() -> Self {
         FeatureMap {
-            p_sqr_count: 0,
-            p_eg_sqr_count: 0,
             n_sqr_count: 0,
             b_sqr_count: 0,
-            k_sqr_count: 0,
-            k_eg_sqr_count: 0,
 
             passer_count: 0,
             passer_rank_count: 0,
@@ -391,12 +306,8 @@ impl Evaluator {
         let (w_features_map, b_features_map) = self.extract_features(state);
 
         let pos_mp_score =
-            w_features_map.p_sqr_count * self.params.mp_p_sqr_base_val
-            + w_features_map.p_eg_sqr_count * self.params.mp_p_eg_sqr_base_val
-            + w_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
+            w_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
             + w_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
-            + w_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
-            + w_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             + w_features_map.pin_count * self.params.mp_pin_val
             + w_features_map.rook_open_count * self.params.mp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
@@ -438,12 +349,8 @@ impl Evaluator {
             + w_features_map.r_stuck_count * self.params.mp_r_stuck_val
             + w_features_map.q_stuck_count * self.params.mp_q_stuck_val
 
-            - b_features_map.p_sqr_count * self.params.mp_p_sqr_base_val
-            - b_features_map.p_eg_sqr_count * self.params.mp_p_eg_sqr_base_val
             - b_features_map.n_sqr_count * self.params.mp_n_sqr_base_val
             - b_features_map.b_sqr_count * self.params.mp_b_sqr_base_val
-            - b_features_map.k_sqr_count * self.params.mp_k_sqr_base_val
-            - b_features_map.k_eg_sqr_count * self.params.mp_k_eg_sqr_base_val
             - b_features_map.pin_count * self.params.mp_pin_val
             - b_features_map.rook_open_count * self.params.mp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.mp_rook_semi_open_val
@@ -486,23 +393,10 @@ impl Evaluator {
             - b_features_map.q_stuck_count * self.params.mp_q_stuck_val;
 
         let pos_pp_score =
-            w_features_map.p_sqr_count * self.params.pp_p_sqr_base_val
-            + w_features_map.p_eg_sqr_count * self.params.pp_p_eg_sqr_base_val
-            + w_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
+            w_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
             + w_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
-            + w_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
-            + w_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
             + w_features_map.rook_open_count * self.params.pp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
-            + w_features_map.nk_attack_count * self.params.pp_nk_attack_val
-            + w_features_map.bk_attack_count * self.params.pp_bk_attack_val
-            + w_features_map.rk_attack_count * self.params.pp_rk_attack_val
-            + w_features_map.qk_attack_count * self.params.pp_qk_attack_val
-            + w_features_map.protected_p_count * self.params.pp_protected_p_val
-            + w_features_map.protected_n_count * self.params.pp_protected_n_val
-            + w_features_map.protected_b_count * self.params.pp_protected_b_val
-            + w_features_map.protected_r_count * self.params.pp_protected_r_val
             + w_features_map.np_protected_3rd_rank_sqr_count * self.params.pp_np_protected_3rd_rank_sqr_val
             + w_features_map.np_protected_4th_rank_sqr_count * self.params.pp_np_protected_4th_rank_sqr_val
             + w_features_map.behind_pawn_count * self.params.pp_behind_pawn_val
@@ -524,23 +418,10 @@ impl Evaluator {
             + w_features_map.r_stuck_count * self.params.pp_r_stuck_val
             + w_features_map.q_stuck_count * self.params.pp_q_stuck_val
 
-            - b_features_map.p_sqr_count * self.params.pp_p_sqr_base_val
-            - b_features_map.p_eg_sqr_count * self.params.pp_p_eg_sqr_base_val
             - b_features_map.n_sqr_count * self.params.pp_n_sqr_base_val
             - b_features_map.b_sqr_count * self.params.pp_b_sqr_base_val
-            - b_features_map.k_sqr_count * self.params.pp_k_sqr_base_val
-            - b_features_map.k_eg_sqr_count * self.params.pp_k_eg_sqr_base_val
             - b_features_map.rook_open_count * self.params.pp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
-            - b_features_map.nk_attack_count * self.params.pp_nk_attack_val
-            - b_features_map.bk_attack_count * self.params.pp_bk_attack_val
-            - b_features_map.rk_attack_count * self.params.pp_rk_attack_val
-            - b_features_map.qk_attack_count * self.params.pp_qk_attack_val
-            - b_features_map.protected_p_count * self.params.pp_protected_p_val
-            - b_features_map.protected_n_count * self.params.pp_protected_n_val
-            - b_features_map.protected_b_count * self.params.pp_protected_b_val
-            - b_features_map.protected_r_count * self.params.pp_protected_r_val
             - b_features_map.np_protected_3rd_rank_sqr_count * self.params.pp_np_protected_3rd_rank_sqr_val
             - b_features_map.np_protected_4th_rank_sqr_count * self.params.pp_np_protected_4th_rank_sqr_val
             - b_features_map.behind_pawn_count * self.params.pp_behind_pawn_val
@@ -1050,9 +931,6 @@ impl Evaluator {
 
             match piece {
                 def::WP => {
-                    w_feature_map.p_sqr_count += SQR_TIER_WP[index];
-                    w_feature_map.p_eg_sqr_count += SQR_TIER_WP_EG[index];
-
                     w_feature_map.pk_attack_count += 1;
                 },
                 def::WN => {
@@ -1108,15 +986,9 @@ impl Evaluator {
                     }
                 },
                 def::WK => {
-                    w_feature_map.k_sqr_count += SQR_TIER_WK[index];
-                    w_feature_map.k_eg_sqr_count += SQR_TIER_K_EG[index];
-
                     w_feature_map.k_mobility_count = (bitmask.k_attack_masks[state.wk_index] & !b_attack_without_king_mask).count_ones() as i32;
                 },
                 def::BP => {
-                    b_feature_map.p_sqr_count += SQR_TIER_BP[index];
-                    b_feature_map.p_eg_sqr_count += SQR_TIER_BP_EG[index];
-
                     b_feature_map.pk_attack_count += 1;
                 },
                 def::BN => {
@@ -1172,9 +1044,6 @@ impl Evaluator {
                     }
                 },
                 def::BK => {
-                    b_feature_map.k_sqr_count += SQR_TIER_BK[index];
-                    b_feature_map.k_eg_sqr_count += SQR_TIER_K_EG[index];
-
                     b_feature_map.k_mobility_count = (bitmask.k_attack_masks[state.bk_index] & !w_attack_without_king_mask).count_ones() as i32;
                 }
                 _ => {},
