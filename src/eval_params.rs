@@ -216,7 +216,7 @@ impl EvalParams {
             mp_isolated_pawn_val: -10,
             mp_doubled_pawn_val: 0,
             mp_behind_pawn_val: 0,
-            rmp_isolated_pawn_val: -10,
+            rmp_isolated_pawn_val: 0,
             rmp_doubled_pawn_val: 0,
             rmp_behind_pawn_val: 0,
 
@@ -257,7 +257,7 @@ impl EvalParams {
             pp_rk_attack_val: 0,
             pp_qk_attack_val: 0,
 
-            mp_king_pawn_protection_val: 0,
+            mp_king_pawn_protection_val: 52,
             mp_king_on_open_file_val: 0,
             mp_king_on_opponent_semi_open_file_val: 0,
             mp_king_on_own_semi_open_file_val: 0,
@@ -270,7 +270,7 @@ impl EvalParams {
             pp_king_cas_rights_val: 0,
             rpp_king_cas_rights_val: 0,
 
-            mp_king_castled_val: 0,
+            mp_king_castled_val: 16,
             rmp_king_castled_val: 0,
             pp_king_castled_val: 0,
             rpp_king_castled_val: 0,
@@ -281,19 +281,19 @@ impl EvalParams {
             pp_rook_open_val: 8,
             pp_rook_semi_open_val: 64,
 
-            mp_pin_val: 0,
+            mp_pin_val: -32,
             mp_semi_pin_val: 0,
 
             pp_pin_val: 0,
             pp_semi_pin_val: 0,
 
             mp_unprotected_sqr_val: 0,
-            mp_under_attacked_sqr_val: 0,
+            mp_under_attacked_sqr_val: -4,
 
             pp_unprotected_sqr_val: 0,
             pp_under_attacked_sqr_val: 0,
 
-            mp_protected_p_val: 16,
+            mp_protected_p_val: 8,
             mp_protected_n_val: 0,
             mp_protected_b_val: 0,
             mp_protected_r_val: 0,

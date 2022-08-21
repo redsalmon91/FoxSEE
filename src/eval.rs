@@ -1180,6 +1180,8 @@ impl Evaluator {
                 def::WK => {
                     w_feature_map.k_sqr_count += SQR_TIER_WK[index];
                     w_feature_map.k_eg_sqr_count += SQR_TIER_K_EG[index];
+
+                    w_feature_map.k_mobility_count = (bitmask.k_attack_masks[state.wk_index] & !b_attack_without_king_mask).count_ones() as i32;
                 },
                 def::BP => {
                     b_feature_map.p_sqr_count += SQR_TIER_BP[index];
@@ -1242,6 +1244,8 @@ impl Evaluator {
                 def::BK => {
                     b_feature_map.k_sqr_count += SQR_TIER_BK[index];
                     b_feature_map.k_eg_sqr_count += SQR_TIER_K_EG[index];
+
+                    b_feature_map.k_mobility_count = (bitmask.k_attack_masks[state.bk_index] & !w_attack_without_king_mask).count_ones() as i32;
                 }
                 _ => {},
             }
