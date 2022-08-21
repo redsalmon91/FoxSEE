@@ -38,8 +38,8 @@ const B_4TH_RANK_MASK: u64 = 0b00000000_00000000_00000000_11111111_00000000_0000
 const W_CAS_MASK: u8 = 0b1100;
 const B_CAS_MASK: u8 = 0b0011;
 
-const BISHOP_KNIGHT_MATE_MIN: i32 = 2;
-const KNIGHT_MATE_MIN: i32 = 2;
+const BISHOP_KNIGHT_MATE_MIN_COUNT: i32 = 2;
+const KNIGHT_MATE_MIN_COUNT: i32 = 2;
 
 const SQR_TIER_N: [i32; def::BOARD_SIZE] = [
     0, 1, 1, 1, 1, 1, 1, 0,
@@ -247,15 +247,15 @@ impl Evaluator {
         let bitboard = state.bitboard;
 
         if bitboard.w_pawn | bitboard.b_pawn | bitboard.w_rook | bitboard.b_rook | bitboard.w_queen | bitboard.b_queen == 0 {
-            if state.wb_count + state.wn_count < BISHOP_KNIGHT_MATE_MIN && state.bb_count + state.bn_count < BISHOP_KNIGHT_MATE_MIN {
+            if state.wb_count + state.wn_count < BISHOP_KNIGHT_MATE_MIN_COUNT && state.bb_count + state.bn_count < BISHOP_KNIGHT_MATE_MIN_COUNT {
                 return true;
             }
 
-            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && state.bn_count < KNIGHT_MATE_MIN {
+            if (bitboard.w_bishop | bitboard.w_knight) == 0 && bitboard.b_bishop == 0 && state.bn_count < KNIGHT_MATE_MIN_COUNT {
                 return true;
             }
 
-            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && state.wn_count < KNIGHT_MATE_MIN {
+            if (bitboard.b_bishop | bitboard.b_knight) == 0 && bitboard.w_bishop == 0 && state.wn_count < KNIGHT_MATE_MIN_COUNT {
                 return true;
             }
         }
@@ -309,11 +309,33 @@ impl Evaluator {
         let main_phase = get_phase(state);
         let pawn_phase = get_pawn_phase(state);
 
-        material_base_score
+        let material_score = material_base_score
             + material_mp_score * main_phase / TOTAL_MAIN_PHASE
             + material_rmp_score * (TOTAL_MAIN_PHASE - main_phase) / TOTAL_MAIN_PHASE
             + material_pp_score * pawn_phase / TOTAL_PAWN_PHASE
-            + material_rpp_score * (TOTAL_PAWN_PHASE - pawn_phase) / TOTAL_PAWN_PHASE
+            + material_rpp_score * (TOTAL_PAWN_PHASE - pawn_phase) / TOTAL_PAWN_PHASE;
+
+        if material_base_score > 0 && w_pawn_count + w_rook_count + w_queen_count == 0 {
+            if w_bishop_count + w_knight_count < BISHOP_KNIGHT_MATE_MIN_COUNT {
+                return 0;
+            }
+
+            if w_bishop_count == 0 && w_knight_count < KNIGHT_MATE_MIN_COUNT {
+                return 0;
+            }
+        }
+
+        if material_base_score < 0 && b_pawn_count + b_rook_count + b_queen_count == 0 {
+            if b_bishop_count + b_knight_count < BISHOP_KNIGHT_MATE_MIN_COUNT {
+                return 0;
+            }
+
+            if b_bishop_count == 0 && b_knight_count < KNIGHT_MATE_MIN_COUNT {
+                return 0;
+            }
+        }
+
+        material_score
     }
 
     pub fn eval_state(&self, state: &mut State) -> i32 {
