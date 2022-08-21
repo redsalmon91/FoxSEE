@@ -309,33 +309,11 @@ impl Evaluator {
         let main_phase = get_phase(state);
         let pawn_phase = get_pawn_phase(state);
 
-        let material_score = material_base_score
+        material_base_score
             + material_mp_score * main_phase / TOTAL_MAIN_PHASE
             + material_rmp_score * (TOTAL_MAIN_PHASE - main_phase) / TOTAL_MAIN_PHASE
             + material_pp_score * pawn_phase / TOTAL_PAWN_PHASE
-            + material_rpp_score * (TOTAL_PAWN_PHASE - pawn_phase) / TOTAL_PAWN_PHASE;
-
-        if material_base_score > 0 && w_pawn_count + w_rook_count + w_queen_count == 0 {
-            if w_bishop_count + w_knight_count < BISHOP_KNIGHT_MATE_MIN_COUNT {
-                return 0;
-            }
-
-            if w_bishop_count == 0 && w_knight_count < KNIGHT_MATE_MIN_COUNT {
-                return 0;
-            }
-        }
-
-        if material_base_score < 0 && b_pawn_count + b_rook_count + b_queen_count == 0 {
-            if b_bishop_count + b_knight_count < BISHOP_KNIGHT_MATE_MIN_COUNT {
-                return 0;
-            }
-
-            if b_bishop_count == 0 && b_knight_count < KNIGHT_MATE_MIN_COUNT {
-                return 0;
-            }
-        }
-
-        material_score
+            + material_rpp_score * (TOTAL_PAWN_PHASE - pawn_phase) / TOTAL_PAWN_PHASE
     }
 
     pub fn eval_state(&self, state: &mut State) -> i32 {
