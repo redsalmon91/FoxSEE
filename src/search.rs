@@ -547,11 +547,7 @@ impl SearchEngine {
             }
 
             let score = if depth > self.params.late_move_reductions_depth && mov_count > self.params.late_move_reductions_move_count && !extended {
-                let mut reduction = (mov_count as f64).sqrt() as u8;
-                if reduction > depth - 2 {
-                    reduction = depth - 2;
-                }
-
+                let reduction = 2;
                 depth -= reduction;
 
                 let score = -self.ab_search(state, gives_check, extended, -alpha - 1, -alpha, depth - 1, ply + 1);

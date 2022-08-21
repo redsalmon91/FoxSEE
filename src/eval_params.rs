@@ -250,7 +250,7 @@ impl EvalParams {
             mp_protected_b_val: 0,
             mp_protected_r_val: 0,
 
-            mp_np_protected_3rd_rank_sqr_val: 0,
+            mp_np_protected_3rd_rank_sqr_val: -32,
             mp_np_protected_4th_rank_sqr_val: 0,
 
             pp_np_protected_3rd_rank_sqr_val: 0,
@@ -260,7 +260,7 @@ impl EvalParams {
             mp_b_mob_base_val: 12,
             mp_r_mob_base_val: 0,
             mp_q_mob_base_val: 0,
-            mp_k_mob_base_val: 0,
+            mp_k_mob_base_val: 18,
             rmp_n_mob_base_val: 6,
             rmp_b_mob_base_val: 12,
             rmp_r_mob_base_val: 0,
@@ -288,7 +288,7 @@ impl EvalParams {
             pp_r_stuck_val: 0,
             pp_q_stuck_val: 0,
 
-            mp_tempo_val: 0,
+            mp_tempo_val: 16,
             pp_tempo_val: 0,
         }
     }

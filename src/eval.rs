@@ -95,7 +95,6 @@ pub struct FeatureMap {
     candidate_passer_count: i32,
     candidate_passer_rank_count: i32,
 
-    controlled_passer_count: i32,
     doubled_pawn_count: i32,
     isolated_pawn_count: i32,
     behind_pawn_count: i32,
@@ -155,7 +154,6 @@ impl FeatureMap {
             candidate_passer_count: 0,
             candidate_passer_rank_count: 0,
 
-            controlled_passer_count: 0,
             doubled_pawn_count: 0,
             isolated_pawn_count: 0,
             behind_pawn_count: 0,
@@ -559,8 +557,6 @@ impl Evaluator {
         let start_index = occupy_mask.trailing_zeros() as usize;
         let end_index = def::BOARD_SIZE - occupy_mask.leading_zeros() as usize;
 
-        let piece_mask = bitboard.w_knight | bitboard.w_bishop | bitboard.w_rook | bitboard.w_queen | bitboard.b_knight | bitboard.b_bishop | bitboard.b_rook | bitboard.b_queen;
-
         for index in start_index..end_index {
             let moving_piece = squares[index];
 
@@ -579,29 +575,14 @@ impl Evaluator {
                     if (bitmask.bp_forward_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
                         if (bitmask.wp_forward_masks[index] & !file_mask) & bitboard.w_pawn == 0 {
                             w_feature_map.isolated_pawn_count += 1;
-
-                            if file_mask & bitboard.b_pawn == 0 {
-                                w_feature_map.isolated_pawn_count += 1;
-                            }
                         } else {
                             w_feature_map.behind_pawn_count += 1;
-
-                            if file_mask & bitboard.b_pawn == 0 {
-                                w_feature_map.behind_pawn_count += 1;
-                            }
                         }
                     }
 
                     if forward_mask & (bitboard.b_pawn | (bitboard.w_pawn & file_mask)) == 0 {
                         w_feature_map.passer_count += 1;
                         w_feature_map.passer_rank_count += passer_rank - 1;
-
-                        if piece_mask == 0 {
-                            let pawn_control_mask = bitmask.wp_front_control_sqr_masks[index];
-                            if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.wk_index] != 0 {
-                                w_feature_map.controlled_passer_count += 1;
-                            }
-                        }
                     } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.b_pawn).count_ones() == 1 && bitmask.wp_connected_sqr_masks[index] & bitboard.w_pawn != 0 {
                         w_feature_map.candidate_passer_count += 1;
                         w_feature_map.candidate_passer_rank_count += passer_rank - 1;
@@ -621,29 +602,14 @@ impl Evaluator {
                     if (bitmask.wp_forward_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
                         if (bitmask.bp_forward_masks[index] & !file_mask) & bitboard.b_pawn == 0 {
                             b_feature_map.isolated_pawn_count += 1;
-
-                            if file_mask & bitboard.w_pawn == 0 {
-                                b_feature_map.isolated_pawn_count += 1;
-                            }
                         } else {
                             b_feature_map.behind_pawn_count += 1;
-
-                            if file_mask & bitboard.w_pawn == 0 {
-                                b_feature_map.behind_pawn_count += 1;
-                            }
                         }
                     }
 
                     if forward_mask & (bitboard.w_pawn | (bitboard.b_pawn & file_mask)) == 0 {
                         b_feature_map.passer_count += 1;
                         b_feature_map.passer_rank_count += passer_rank - 1;
-
-                        if piece_mask == 0 {
-                            let pawn_control_mask = bitmask.bp_front_control_sqr_masks[index];
-                            if pawn_control_mask == 0 || pawn_control_mask & bitmask.index_masks[state.bk_index] != 0 {
-                                b_feature_map.controlled_passer_count += 1;
-                            }
-                        }
                     } else if forward_mask & (bitboard.w_pawn | bitboard.b_pawn) & file_mask == 0 && (forward_mask & bitboard.w_pawn).count_ones() == 1 && bitmask.bp_connected_sqr_masks[index] & bitboard.b_pawn != 0 {
                         b_feature_map.candidate_passer_count += 1;
                         b_feature_map.candidate_passer_rank_count += passer_rank - 1;
