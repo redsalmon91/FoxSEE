@@ -201,7 +201,6 @@ pub struct FeatureMap {
     king_near_opponent_semi_open_file_count: i32,
     king_near_own_semi_open_file_count: i32,
 
-    king_cas_rights_count: i32,
     king_caslted_count: i32,
 
     unprotected_sqr_count: i32,
@@ -267,7 +266,6 @@ impl FeatureMap {
             king_near_opponent_semi_open_file_count: 0,
             king_near_own_semi_open_file_count: 0,
 
-            king_cas_rights_count: 0,
             king_caslted_count: 0,
 
             unprotected_sqr_count: 0,
@@ -412,7 +410,6 @@ impl Evaluator {
             + w_features_map.king_near_open_file_count * self.params.mp_king_near_open_file_val
             + w_features_map.king_near_opponent_semi_open_file_count * self.params.mp_king_near_opponent_semi_open_file_val
             + w_features_map.king_near_own_semi_open_file_count * self.params.mp_king_near_own_semi_open_file_val
-            + w_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
             + w_features_map.king_caslted_count * self.params.mp_king_castled_val
             + w_features_map.pk_attack_count * self.params.mp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.mp_nk_attack_val
@@ -461,7 +458,6 @@ impl Evaluator {
             - b_features_map.king_near_open_file_count * self.params.mp_king_near_open_file_val
             - b_features_map.king_near_opponent_semi_open_file_count * self.params.mp_king_near_opponent_semi_open_file_val
             - b_features_map.king_near_own_semi_open_file_count * self.params.mp_king_near_own_semi_open_file_val
-            - b_features_map.king_cas_rights_count * self.params.mp_king_cas_rights_val
             - b_features_map.king_caslted_count * self.params.mp_king_castled_val
             - b_features_map.pk_attack_count * self.params.mp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.mp_nk_attack_val
@@ -504,8 +500,6 @@ impl Evaluator {
             + w_features_map.semi_pin_count * self.params.pp_semi_pin_val
             + w_features_map.rook_open_count * self.params.pp_rook_open_val
             + w_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            + w_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
-            + w_features_map.king_caslted_count * self.params.pp_king_castled_val
             + w_features_map.pk_attack_count * self.params.pp_pk_attack_val
             + w_features_map.nk_attack_count * self.params.pp_nk_attack_val
             + w_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -546,8 +540,6 @@ impl Evaluator {
             - b_features_map.semi_pin_count * self.params.pp_semi_pin_val
             - b_features_map.rook_open_count * self.params.pp_rook_open_val
             - b_features_map.rook_semi_open_count * self.params.pp_rook_semi_open_val
-            - b_features_map.king_cas_rights_count * self.params.pp_king_cas_rights_val
-            - b_features_map.king_caslted_count * self.params.pp_king_castled_val
             - b_features_map.pk_attack_count * self.params.pp_pk_attack_val
             - b_features_map.nk_attack_count * self.params.pp_nk_attack_val
             - b_features_map.bk_attack_count * self.params.pp_bk_attack_val
@@ -586,8 +578,6 @@ impl Evaluator {
             + w_features_map.passer_rank_count * self.params.rmp_passer_rank_val
             + w_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
-            + w_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
-            + w_features_map.king_caslted_count * self.params.rmp_king_castled_val
             + w_features_map.n_mobility_count * self.params.rmp_n_mob_base_val
             + w_features_map.b_mobility_count * self.params.rmp_b_mob_base_val
             + w_features_map.r_mobility_count * self.params.rmp_r_mob_base_val
@@ -601,8 +591,6 @@ impl Evaluator {
             - b_features_map.passer_rank_count * self.params.rmp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rmp_candidate_passer_base_val
             - b_features_map.candidate_passer_rank_count * self.params.rmp_candidate_passer_rank_val
-            - b_features_map.king_cas_rights_count * self.params.rmp_king_cas_rights_val
-            - b_features_map.king_caslted_count * self.params.rmp_king_castled_val
             - b_features_map.n_mobility_count * self.params.rmp_n_mob_base_val
             - b_features_map.b_mobility_count * self.params.rmp_b_mob_base_val
             - b_features_map.r_mobility_count * self.params.rmp_r_mob_base_val
@@ -617,7 +605,6 @@ impl Evaluator {
             + w_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             + w_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
             + w_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
-            + w_features_map.king_caslted_count * self.params.rpp_king_castled_val
             + w_features_map.n_mobility_count * self.params.rpp_n_mob_base_val
             + w_features_map.b_mobility_count * self.params.rpp_b_mob_base_val
             + w_features_map.r_mobility_count * self.params.rpp_r_mob_base_val
@@ -631,7 +618,6 @@ impl Evaluator {
             - b_features_map.passer_rank_count * self.params.rpp_passer_rank_val
             - b_features_map.candidate_passer_count * self.params.rpp_candidate_passer_base_val
             - b_features_map.candidate_passer_rank_count * self.params.rpp_candidate_passer_rank_val
-            - b_features_map.king_caslted_count * self.params.rpp_king_castled_val
             - b_features_map.n_mobility_count * self.params.rpp_n_mob_base_val
             - b_features_map.b_mobility_count * self.params.rpp_b_mob_base_val
             - b_features_map.r_mobility_count * self.params.rpp_r_mob_base_val
@@ -662,14 +648,10 @@ impl Evaluator {
 
         if state.cas_history & W_CAS_MASK != 0 {
             w_feature_map.king_caslted_count = 1;
-        } else if state.cas_rights & W_CAS_MASK != 0 {
-            w_feature_map.king_cas_rights_count = 1;
         }
     
         if state.cas_history & B_CAS_MASK != 0 {
             b_feature_map.king_caslted_count = 1;
-        } else if state.cas_rights & B_CAS_MASK != 0 {
-            b_feature_map.king_cas_rights_count = 1;
         }
 
         let mut wp_attack_mask = 0;
