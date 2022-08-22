@@ -150,9 +150,9 @@ impl EvalParams {
     pub const fn default() -> Self {
         EvalParams {
             q_val: 1000,
-            r_val: 500,
+            r_val: 516,
             b_val: 350,
-            n_val: 345,
+            n_val: 350,
             p_val: 100,
 
             mp_q_val: 0,
@@ -160,8 +160,8 @@ impl EvalParams {
             mp_b_val: 0,
             mp_n_val: 0,
             mp_p_val: 0,
-            rmp_q_val: 0,
-            rmp_r_val: 0,
+            rmp_q_val: 64,
+            rmp_r_val: 56,
             rmp_b_val: 0,
             rmp_n_val: 0,
             rmp_p_val: 0,
@@ -194,15 +194,15 @@ impl EvalParams {
             pp_doubled_pawn_val: 0,
             pp_behind_pawn_val: 0,
             rpp_isolated_pawn_val: 0,
-            rpp_doubled_pawn_val: 0,
+            rpp_doubled_pawn_val: -16,
             rpp_behind_pawn_val: 0,
 
             mp_passer_base_val: 0,
-            mp_passer_rank_val: 0,
+            mp_passer_rank_val: 24,
             mp_candidate_passer_base_val: 0,
             mp_candidate_passer_rank_val: 0,
             rmp_passer_base_val: 0,
-            rmp_passer_rank_val: 24,
+            rmp_passer_rank_val: 64,
             rmp_candidate_passer_base_val: 0,
             rmp_candidate_passer_rank_val: 0,
 
@@ -216,12 +216,12 @@ impl EvalParams {
             rpp_candidate_passer_rank_val: 8,
 
             mp_pk_attack_val: 0,
-            mp_nk_attack_val: 0,
-            mp_bk_attack_val: 0,
+            mp_nk_attack_val: 8,
+            mp_bk_attack_val: 8,
             mp_rk_attack_val: 56,
             mp_qk_attack_val: 48,
 
-            mp_king_pawn_protection_val: 52,
+            mp_king_pawn_protection_val: 32,
             mp_king_on_open_file_val: 0,
             mp_king_on_opponent_semi_open_file_val: 0,
             mp_king_on_own_semi_open_file_val: 0,
@@ -232,10 +232,10 @@ impl EvalParams {
             mp_king_castled_val: 16,
 
             mp_rook_open_val: 16,
-            mp_rook_semi_open_val: 48,
+            mp_rook_semi_open_val: 32,
 
-            pp_rook_open_val: 8,
-            pp_rook_semi_open_val: 64,
+            pp_rook_open_val: 64,
+            pp_rook_semi_open_val: 8,
 
             mp_pin_val: -32,
 
@@ -261,10 +261,10 @@ impl EvalParams {
             mp_r_mob_base_val: 0,
             mp_q_mob_base_val: 0,
             mp_k_mob_base_val: 18,
-            rmp_n_mob_base_val: 6,
-            rmp_b_mob_base_val: 12,
-            rmp_r_mob_base_val: 0,
-            rmp_q_mob_base_val: 0,
+            rmp_n_mob_base_val: 0,
+            rmp_b_mob_base_val: 0,
+            rmp_r_mob_base_val: 2,
+            rmp_q_mob_base_val: 2,
             rmp_k_mob_base_val: 0,
 
             pp_n_mob_base_val: 0,
